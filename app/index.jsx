@@ -1,21 +1,34 @@
 import { StyleSheet, Text, View, Image } from 'react-native'
-import Logo from '../assets/img/MQuest_light_logo.png'
-import {Link} from 'expo-router'
+import { Link } from 'expo-router'
 import ThemedView from '../components/ThemedView'
+import ThemedLogo from '../components/ThemedLogo'
+import Spacer from '../components/Spacer'
+import ThemedText from '../components/ThemedText'
 
 const Home = () => {
   return (
     <ThemedView style={styles.container}>
-      <Image source={Logo} style={styles.img}/>
-      <Text style={styles.title}>The number one</Text>
-      <Text>Reading list App</Text>
+      <ThemedLogo />
+
+      <Spacer />
+      <ThemedText style={styles.title} title={true}>The number one</ThemedText>
+
+      <Spacer/>
+      <ThemedText>Reading list App</ThemedText>
 
       <View style={styles.card}>
         <Text>This is card</Text>
       </View>
 
-      <Link href="/about" style={styles.link}>About</Link>
-      <Link href="/contact" style={styles.link}>Contact</Link>
+      <Link href="/login" style={styles.link}>
+        <ThemedText>Login</ThemedText>
+      </Link>
+      <Link href="/register" style={styles.link}>
+        <ThemedText>Register</ThemedText>
+      </Link>
+      <Link href="/profile" style={styles.link}>
+        <ThemedText>Profile</ThemedText>
+      </Link>
     </ThemedView>
   )
 }
@@ -40,12 +53,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     boxShadow: '4px 4px rgba(0,0,0,0.1)',
   },
-
-  img: {
-    width: 100,
-    height: 100,
-  },
-
+  
   link: {
     marginVertical: 10,
     borderBottomWidth: 1,
