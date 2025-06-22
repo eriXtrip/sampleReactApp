@@ -4,19 +4,19 @@ import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
 import ThemedText from '../../components/ThemedText'
 
-const create = () => {
+const subjectlist = () => {
   return (
-    <ThemedView style={styles.container}>
-        <ThemedText title={true} style={styles.heading}>
-            Settings
-        </ThemedText>
+    <ThemedView style={styles.container} safe={true}>
+        
         <Spacer/>
-
+        <ThemedText title={true} style={styles.heading}>
+            Subjects List
+        </ThemedText>
     </ThemedView>
   )
 }
 
-export default create
+export default subjectlist
 
 const styles = StyleSheet.create({
     container: {

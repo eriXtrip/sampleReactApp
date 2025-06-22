@@ -31,7 +31,7 @@ export default function DashboardLayout() {
         tabBarInactiveTintColor: theme.iconColor
     }}>
       <Tabs.Screen 
-        name="profile" 
+        name="home" 
         options={{ 
           title: "Home", 
           tabBarIcon: ({ focused }) => (
@@ -44,7 +44,7 @@ export default function DashboardLayout() {
         }} 
       />
       <Tabs.Screen 
-        name="books" 
+        name="subjectlist" 
         options={{ 
           title: "Subject", 
           tabBarIcon: ({ focused }) => (
@@ -57,7 +57,7 @@ export default function DashboardLayout() {
         }} 
       />
       <Tabs.Screen 
-        name="create" 
+        name="settings" 
         options={{ 
           title: "Settings", 
           tabBarIcon: ({ focused }) => (

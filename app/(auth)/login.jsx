@@ -6,6 +6,7 @@ import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
 import ThemedText from '../../components/ThemedText'
 import ThemedButton from '../../components/ThemedButton'
+import ThemedAlert from '../../components/ThemedAlert'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
 
@@ -15,30 +16,45 @@ const Login = () => {
     const theme = Colors[colorScheme] ?? Colors.light
     const [showPassword, setShowPassword] = useState(false)
 
+    const [emailOrLrn, setEmailOrLrn] = useState('');
+    const [password, setPassword] = useState('');
+    const [alert, setAlert] = useState({ visible: false, message: '' });
+
+    const showAlert = (msg) => setAlert({ visible: true, message: msg });
+    const closeAlert = () => setAlert({ ...alert, visible: false });
+
     const handleSubmit = () => {
-        console.log('login form submitted')
-        router.replace('/')
-    }
+        if (!emailOrLrn.trim() || !password) {
+            showAlert('Please enter both Email and Password.');
+            return;
+        }
+
+        console.log('Login submitted:', { emailOrLrn, password });
+        router.replace('/');
+    };
+
 
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView style={styles.container} safe={true}>
             <Spacer height={40} />
             
             <ThemedText title={true} style={styles.title}>Login to Your Account</ThemedText>
             
             <Spacer height={30} />
             
-            <ThemedText style={styles.label}>Email or LRN</ThemedText>
+            <ThemedText style={styles.label}>Email</ThemedText>
             <TextInput
                 style={[styles.input, { 
                     backgroundColor: theme.uiBackground,
                     color: theme.text,
                     borderColor: theme.iconColor
                 }]}
-                placeholder="Enter email or LRN"
+                placeholder="Enter email"
                 placeholderTextColor={theme.iconColor}
                 autoCapitalize="none"
                 keyboardType="email-address"
+                value={emailOrLrn}
+                onChangeText={setEmailOrLrn}
             />
             
             <Spacer height={20} />
@@ -55,6 +71,8 @@ const Login = () => {
                     placeholder="Enter password"
                     placeholderTextColor={theme.iconColor}
                     secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
                 />
                 <Pressable 
                     onPress={() => setShowPassword(!showPassword)}
@@ -79,6 +97,9 @@ const Login = () => {
             <Link href='/register' style={styles.link}>
                 <ThemedText style={{ textAlign: 'center' }}>Don't have an account? Register Instead</ThemedText>
             </Link>
+
+            <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
+
         </ThemedView>
     )
 }

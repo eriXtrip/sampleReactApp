@@ -1,26 +1,22 @@
 import { StyleSheet } from 'react-native'
-import { Link } from 'expo-router'
 
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
 import ThemedText from '../../components/ThemedText'
 
-const profile = () => {
+const settings = () => {
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={styles.container} safe={true}>
         <ThemedText title={true} style={styles.heading}>
-            Your Email
+            Settings
         </ThemedText>
-        <Spacer/>
-
-        <ThemedText>Time To Start Your Quest...</ThemedText>
         <Spacer/>
 
     </ThemedView>
   )
 }
 
-export default profile
+export default settings
 
 const styles = StyleSheet.create({
     container: {
