@@ -30,7 +30,7 @@ const Login = () => {
         }
 
         console.log('Login submitted:', { emailOrLrn, password });
-        router.replace('/');
+        router.replace('/home');
     };
 
 
