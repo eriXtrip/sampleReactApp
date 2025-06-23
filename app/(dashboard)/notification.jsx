@@ -1,4 +1,8 @@
 import { StyleSheet } from 'react-native'
+import { Link } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import { useColorScheme } from 'react-native'
+import { Colors } from '../../constants/Colors'
 
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
@@ -8,8 +12,11 @@ const notification = () => {
   return (
     <ThemedView style={styles.container} safe={true}>
         <ThemedText title={true} style={styles.heading}>
-            Notification
+            Your Email
         </ThemedText>
+        <Spacer/>
+
+        <ThemedText>Time To Start Your Quest...</ThemedText>
         <Spacer/>
 
     </ThemedView>

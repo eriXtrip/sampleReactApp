@@ -9,28 +9,44 @@ import {
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
 
-const ThemedView = ({ style, safe = false, ...props }) => {
+const ThemedView = ({ style, safe = false, children, ...props }) => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
-
-  if (!safe) return (
-    <View 
-      style = {[{backgroundColor: theme.background}, style]}
-      {...props}
-    />
-  )
-
   const insets = useSafeAreaInsets()
+
+  // Android-specific adjustments
+  const androidSafeArea = {
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : insets.top,
+    paddingBottom: Platform.OS === 'android' ? 0 : insets.bottom,
+  };
+
+  if (!safe){
+    return (
+      <View 
+          style={[{ backgroundColor: theme.background }, style]}
+          {...props}
+        >
+          {children}
+      </View>
+    )
+  }
 
   return (
     <View 
-      style = {[{backgroundColor: theme.background,
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-      }, style]}
+      style={[
+        { backgroundColor: theme.background },
+        Platform.OS === 'android' ? androidSafeArea : {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
+        style
+      ]}
       {...props}
-    />
+    >
+      {children}
+    </View>
   )
 
   return (

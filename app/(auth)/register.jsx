@@ -3,13 +3,17 @@ import { StyleSheet, Text, TextInput, View, Pressable, ScrollView } from 'react-
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
+import { Colors } from '../../constants/Colors';
+
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
 import ThemedText from '../../components/ThemedText';
 import ThemedButton from '../../components/ThemedButton';
 import ThemedAlert from '../../components/ThemedAlert';
-import { useColorScheme } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import ThemedTextInput from '../../components/ThemedTextInput';
+import ThemedPasswordInput from '../../components/ThemedPasswordInput';
+
 
 const Register = () => {
     const router = useRouter();
@@ -74,8 +78,8 @@ const Register = () => {
         if (!validateStep(4)) {
             return showAlert(
             formData.role === 'Teacher'
-                ? 'Teacher ID is required.'
-                : 'LRN is required.'
+                ? 'Teacher ID must be exactly 10 digits.'
+                : 'LRN must be exactly 12 digits.'
             );
         }
         setStep(5);
@@ -120,12 +124,20 @@ const Register = () => {
             return !!gender;
 
             case 3:
-            return !!birthday;
+            return (
+                !!birthday &&
+                new Date(birthday).toDateString() !== new Date().toDateString() &&
+                new Date(birthday) < new Date()
+            );
+
 
             case 4:
-            return role === 'Teacher'
-                ? !!teacherId.trim()
-                : !!lrn.trim();
+                if (role === 'Teacher') {
+                    return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
+                } else {
+                    return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
+                }
+
 
             case 5:
             return !!email;
@@ -152,18 +164,12 @@ const Register = () => {
             console.log(`${key}: ${value}`);
         });
 
-        router.replace('/');
+        router.replace('/home');
     };
-
-
-
-    
-
 
     return (
         <ThemedView style={styles.container} safe={true}>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
-                <Spacer height={20} />
 
                 {/* Progress indicator */}
                 <View style={styles.progressContainer}>
@@ -221,22 +227,19 @@ const Register = () => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                             <ThemedText style={styles.label}>First Name</ThemedText>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
+                            <ThemedTextInput
                                 placeholder="First name"
-                                placeholderTextColor={theme.iconColor}
                                 value={formData.firstName}
                                 onChangeText={(text) => handleChange('firstName', text)}
                                 autoCapitalize="words"
                             />
+
                             </View>
 
                             <View style={styles.halfInput}>
                             <ThemedText style={styles.label}>Middle Name</ThemedText>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
+                            <ThemedTextInput
                                 placeholder="Middle name"
-                                placeholderTextColor={theme.iconColor}
                                 value={formData.middleName}
                                 onChangeText={(text) => handleChange('middleName', text)}
                                 autoCapitalize="words"
@@ -250,10 +253,8 @@ const Register = () => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                             <ThemedText style={styles.label}>Last Name</ThemedText>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
+                            <ThemedTextInput
                                 placeholder="Last name"
-                                placeholderTextColor={theme.iconColor}
                                 value={formData.lastName}
                                 onChangeText={(text) => handleChange('lastName', text)}
                                 autoCapitalize="words"
@@ -262,10 +263,8 @@ const Register = () => {
 
                             <View style={styles.halfInput}>
                             <ThemedText style={styles.label}>Suffix (Optional)</ThemedText>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
+                            <ThemedTextInput
                                 placeholder="e.g. Jr, Sr, III"
-                                placeholderTextColor={theme.iconColor}
                                 value={formData.suffix}
                                 onChangeText={(text) => handleChange('suffix', text)}
                                 autoCapitalize="characters"
@@ -297,7 +296,7 @@ const Register = () => {
                         Select your gender.
                         </ThemedText>
 
-                        <View style={[styles.genderList, {backgroundColor: theme.uiBackground, borderColor: theme.iconColor,}]}>
+                        <View style={[styles.genderList, {backgroundColor: theme.Background, borderColor: theme.iconColor,}]}>
                         {['Female', 'Male', 'Prefer not to say'].map((option) => (
                             <Pressable
                             key={option}
@@ -385,31 +384,22 @@ const Register = () => {
                         {formData.role === 'Teacher' ? "What's your Teacher ID?" : "What's your LRN?"}
                         </ThemedText>
 
-                        <ThemedText style={{ marginBottom: 20, marginLeft: 4, fontSize: 14, color: theme.text }}>
+                        <ThemedText>
                         {formData.role === 'Teacher'
                             ? 'Enter your assigned Teacher ID number.'
                             : 'Enter your 12-digit Learner Reference Number (LRN).'}
                         </ThemedText>
 
-                        <TextInput
-                        style={[
-                            styles.input,
-                            {
-                            backgroundColor: theme.uiBackground,
-                            color: theme.text,
-                            borderColor: theme.iconColor,
-                            },
-                        ]}
-                        placeholder={
-                            formData.role === 'Teacher' ? 'Enter Teacher ID' : 'Enter LRN (e.g. 123456789012)'
-                        }
-                        placeholderTextColor={theme.iconColor}
-                        value={formData.role === 'Teacher' ? formData.teacherId : formData.lrn}
-                        onChangeText={(text) =>
-                            handleChange(formData.role === 'Teacher' ? 'teacherId' : 'lrn', text)
-                        }
-                        keyboardType="numeric"
-                        maxLength={formData.role === 'Teacher' ? 10 : 12}
+                        <Spacer height={25} />
+
+                        <ThemedTextInput
+                            placeholder={formData.role === 'Teacher' ? 'Enter Teacher ID' : 'Enter LRN (e.g. 123456789012)'}
+                            value={formData.role === 'Teacher' ? formData.teacherId : formData.lrn}
+                            onChangeText={(text) =>
+                                handleChange(formData.role === 'Teacher' ? 'teacherId' : 'lrn', text)
+                            }
+                            keyboardType="numeric"
+                            maxLength={formData.role === 'Teacher' ? 10 : 12}
                         />
 
                         <Spacer height={25} />
@@ -436,22 +426,13 @@ const Register = () => {
                         Enter your active email where you can be contacted.
                         </ThemedText>
 
-                        <TextInput
-                        style={[
-                            styles.input,
-                            {
-                            backgroundColor: theme.uiBackground,
-                            color: theme.text,
-                            borderColor: theme.iconColor,
-                            },
-                        ]}
-                        placeholder="example@email.com"
-                        placeholderTextColor={theme.iconColor}
-                        value={formData.email}
-                        onChangeText={(text) => handleChange('email', text)}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
+                        <ThemedTextInput
+                            placeholder="example@email.com"
+                            value={formData.email}
+                            onChangeText={(text) => handleChange('email', text)}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
                         />
 
                         <Spacer height={25} />
@@ -480,35 +461,19 @@ const Register = () => {
 
                         <Spacer height={15} />
                         <ThemedText style={styles.label}>Password</ThemedText>
-                        <View style={styles.passwordContainer}>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor, paddingRight: 40 }]}
-                                placeholder="Enter password"
-                                placeholderTextColor={theme.iconColor}
-                                value={formData.password}
-                                onChangeText={(text) => handleChange('password', text)}
-                                secureTextEntry={!showPassword}
-                            />
-                            <Pressable onPress={() => setShowPassword(!showPassword)} style={[styles.eyeIcon, { backgroundColor: theme.uiBackground }]}>
-                                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={theme.iconColor} />
-                            </Pressable>
-                        </View>
+                        <ThemedPasswordInput
+                            placeholder="Enter password"
+                            value={formData.password}
+                            onChangeText={(text) => handleChange('password', text)}
+                        />
 
                         <Spacer height={15} />
                         <ThemedText style={styles.label}>Confirm Password</ThemedText>
-                        <View style={styles.passwordContainer}>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor, paddingRight: 40 }]}
-                                placeholder="Confirm password"
-                                placeholderTextColor={theme.iconColor}
-                                value={formData.confirmPassword}
-                                onChangeText={(text) => handleChange('confirmPassword', text)}
-                                secureTextEntry={!showConfirmPassword}
-                            />
-                            <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={[styles.eyeIcon, { backgroundColor: theme.uiBackground }]}>
-                                <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={theme.iconColor} />
-                            </Pressable>
-                        </View>
+                        <ThemedPasswordInput
+                            placeholder="Confirm password"
+                            value={formData.confirmPassword}
+                            onChangeText={(text) => handleChange('confirmPassword', text)}
+                        />
 
                         <Spacer height={25} />
                         <View style={styles.buttonRow}>
@@ -518,12 +483,10 @@ const Register = () => {
                         </View>
                     </>
                 )}
-
+                <Link href='/login' style={styles.link}>
+                    <ThemedText style={{ textAlign: 'center', marginBottom: 50 }}>Already have an account? Login Instead</ThemedText>
+                </Link>
             </ScrollView>
-            <Link href='/login' style={styles.link}>
-                <ThemedText style={{ textAlign: 'center', marginBottom: 50 }}>Already have an account? Login Instead</ThemedText>
-            </Link>
-            <Spacer height={30} />
 
             <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
 
@@ -584,14 +547,6 @@ const styles = StyleSheet.create({
     halfInput: {
         flex: 1,
     },
-
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        fontSize: 16,
-    },
     backButtonContainer: {
         alignItems: 'flex-start',
     },
@@ -625,24 +580,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginVertical: 10,
     },
-    passwordContainer: {
-        position: 'relative',
-    },
-    eyeIcon: {
-        position: 'absolute',
-        right: 10,
-        top: 12,
-        padding: 5,
-        borderRadius: 15,
-    },
     button: {
         width: '48%',
         alignItems: 'center',
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: Colors.primary,
     },
     buttonRow: {
         flexDirection: 'row',

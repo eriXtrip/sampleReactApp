@@ -1,22 +1,30 @@
 import { Stack } from "expo-router"
-import { useColorScheme } from "react-native"
+import { useColorScheme, View, Platform, StatusBar } from "react-native"
 import { Colors } from "../../constants/Colors"
-import { StatusBar } from "expo-status-bar"
+import { useEffect } from "react";
+import * as NavigationBar from 'expo-navigation-bar';
+
 
 export default function AuthLayout() {
     const colorScheme = useColorScheme()
     const theme = Colors[colorScheme] ?? Colors.light   
-    const statusBarStyle = colorScheme === "dark" ? "light" : "dark"
-
-    // Determine if we need inverted status bar for light theme
     const needsInvertedStatusBar = colorScheme === "light"
 
     return (
         <>
-            <StatusBar 
-                style={needsInvertedStatusBar ? "dark" : "light"} 
-                backgroundColor={theme.navBackground}
-            />
+            {/* Android-specific status bar handling */}
+            {Platform.OS === 'android' && (
+            <View style={{
+                height: StatusBar.currentHeight,
+                backgroundColor: theme.navBackground
+            }}>
+                <StatusBar 
+                translucent
+                backgroundColor="transparent"
+                barStyle={needsInvertedStatusBar ? "dark-content" : "light-content"}
+                />
+            </View>
+            )}
             <Stack screenOptions={{
                 headerShown: false,
                 animation: "none",
@@ -26,6 +34,7 @@ export default function AuthLayout() {
                 headerTintColor: theme.title,
                 statusBarStyle: needsInvertedStatusBar ? "dark" : "light",
                 statusBarColor: theme.navBackground, // Android specific
+                statusBarColor: "transparent",
             }} />
         </>
     )

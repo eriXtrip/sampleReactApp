@@ -1,20 +1,19 @@
 import { useState } from 'react'
-import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { Link, useRouter } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { useColorScheme } from 'react-native'
+import { Colors } from '../../constants/Colors'
+
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
 import ThemedText from '../../components/ThemedText'
 import ThemedButton from '../../components/ThemedButton'
 import ThemedAlert from '../../components/ThemedAlert'
-import { useColorScheme } from 'react-native'
-import { Colors } from '../../constants/Colors'
+import ThemedTextInput from '../../components/ThemedTextInput'
+import ThemedPasswordInput from '../../components/ThemedPasswordInput'
 
-const Login = () => {
+const login = () => {
     const router = useRouter()
-    const colorScheme = useColorScheme()
-    const theme = Colors[colorScheme] ?? Colors.light
-    const [showPassword, setShowPassword] = useState(false)
 
     const [emailOrLrn, setEmailOrLrn] = useState('');
     const [password, setPassword] = useState('');
@@ -33,58 +32,36 @@ const Login = () => {
         router.replace('/home');
     };
 
-
     return (
         <ThemedView style={styles.container} safe={true}>
-            <Spacer height={40} />
-            
-            <ThemedText title={true} style={styles.title}>Login to Your Account</ThemedText>
+            {/* Welcome Message */}
+            <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
+            <ThemedText style={styles.subtitle}>Please log in to your account</ThemedText>
             
             <Spacer height={30} />
             
             <ThemedText style={styles.label}>Email</ThemedText>
-            <TextInput
-                style={[styles.input, { 
-                    backgroundColor: theme.uiBackground,
-                    color: theme.text,
-                    borderColor: theme.iconColor
-                }]}
-                placeholder="Enter email"
-                placeholderTextColor={theme.iconColor}
-                autoCapitalize="none"
-                keyboardType="email-address"
+            <ThemedTextInput
                 value={emailOrLrn}
                 onChangeText={setEmailOrLrn}
+                placeholder="Enter email"
+                keyboardType="email-address"
+                autoCapitalize="none"
             />
             
             <Spacer height={20} />
             
-            <ThemedText style={styles.label}>Password</ThemedText>
-            <View style={styles.passwordContainer}>
-                <TextInput
-                    style={[styles.input, { 
-                        backgroundColor: theme.uiBackground,
-                        color: theme.text,
-                        borderColor: theme.iconColor,
-                        paddingRight: 40 // Make space for the eye icon
-                    }]}
-                    placeholder="Enter password"
-                    placeholderTextColor={theme.iconColor}
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                />
-                <Pressable 
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={[styles.eyeIcon, { backgroundColor: theme.uiBackground }]}
-                >
-                    <Ionicons 
-                        name={showPassword ? 'eye-off' : 'eye'} 
-                        size={20} 
-                        color={theme.iconColor} 
-                    />
-                </Pressable>
+            {/* Password with Forgot Password link */}
+            <View style={styles.passwordHeader}>
+                <ThemedText style={styles.label}>Password</ThemedText>
+                <Link href="/forgot-password" style={styles.forgotPassword}>
+                    <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
+                </Link>
             </View>
+            <ThemedPasswordInput
+                value={password}
+                onChangeText={setPassword}
+            />
             
             <Spacer height={30} />
             
@@ -99,46 +76,46 @@ const Login = () => {
             </Link>
 
             <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
-
         </ThemedView>
     )
 }
 
-export default Login
+export default login
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
     },
-    title: {
-        fontSize: 24,
+    welcome: {
+        fontSize: 28,
         fontWeight: 'bold',
         textAlign: 'center',
-        marginBottom: 10,
-        marginTop: 20,
+        marginTop: 40,
+        marginBottom: 5,
+    },
+    subtitle: {
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 30,
+    },
+    passwordHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
     label: {
         fontSize: 16,
-        marginBottom: 8,
         marginLeft: 5,
+        marginBottom: 8,
     },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        fontSize: 16,
+    forgotPassword: {
+        marginRight: 5,
     },
-    passwordContainer: {
-        position: 'relative',
-    },
-    eyeIcon: {
-        position: 'absolute',
-        right: 10,
-        top: 12,
-        padding: 5,
-        borderRadius: 15,
+    forgotPasswordText: {
+        color: '#007AFF', // iOS-like blue link color
+        fontSize: 14,
     },
     button: {
         width: '100%',
