@@ -248,6 +248,7 @@ const Register = () => {
         Object.entries(formData).forEach(([key, value]) => {
             console.log(`${key}: ${value}`);
         });
+        console.log('Verification Code:', verificationCode.join(''));
 
         router.replace('/home');
     };
