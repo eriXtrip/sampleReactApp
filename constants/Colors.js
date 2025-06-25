@@ -15,6 +15,7 @@ export const Colors = {
         cardBorder: "#E9F0FE",
         alertBackground: "5289F6",
         tint: '#3364ff',
+        buttonText: "#f2f2f2",
     },
 
     light: {
@@ -30,6 +31,7 @@ export const Colors = {
         cardBorder: "#E9F0FE",
         alertBackground: "#fff",
         tint: '#c2d0ff',
+        buttonText: "#f2f2f2",
     },
 
 }

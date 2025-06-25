@@ -36,7 +36,7 @@ const login = () => {
         <ThemedView style={styles.container} safe={true}>
             {/* Welcome Message */}
             <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
-            <ThemedText style={styles.subtitle}>Please log in to your account</ThemedText>
+            <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
             
             <Spacer height={30} />
             

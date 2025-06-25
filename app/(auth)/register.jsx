@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react'
 import { StyleSheet, Text, TextInput, View, Pressable, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import ThemedButton from '../../components/ThemedButton';
 import ThemedAlert from '../../components/ThemedAlert';
 import ThemedTextInput from '../../components/ThemedTextInput';
 import ThemedPasswordInput from '../../components/ThemedPasswordInput';
+import ThemedCodeInput from '../../components/ThemedCodeInput';
 
 
 const Register = () => {
@@ -21,9 +22,13 @@ const Register = () => {
     const theme = Colors[colorScheme] ?? Colors.light;
 
     const [step, setStep] = useState(0); // Step 0 = Role select
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
+    const [attempts, setAttempts] = useState(0)
+    const MAX_ATTEMPTS = 3
+    
+    const inputRefs = useRef(Array(6).fill(null))
 
     const [alert, setAlert] = useState({ visible: false, message: '' });
 
@@ -90,6 +95,7 @@ const Register = () => {
         setStep(6);
     };
 
+    const handleBack6 = () => setStep(6);
     const handleBack5 = () => setStep(5);
     const handleBack4 = () => setStep(4);
     const handleBack3 = () => setStep(3);
@@ -154,6 +160,85 @@ const Register = () => {
         }
     };
 
+    const handleVerificationChange = (text, index) => {
+        // Only allow numeric input
+        const numericValue = text.replace(/[^0-9]/g, '')
+        
+        // If empty (backspace), update and focus previous
+        if (numericValue === '') {
+            const newCode = [...verificationCode]
+            newCode[index] = ''
+            setVerificationCode(newCode)
+            return
+        }
+        
+        // Take only the first character if pasted multiple digits
+        const digit = numericValue.charAt(0)
+        
+        const newCode = [...verificationCode]
+        newCode[index] = digit
+        setVerificationCode(newCode)
+        
+        // Auto focus next input if available
+        if (digit && index < 5 && inputRefs.current[index + 1]) {
+            inputRefs.current[index + 1].focus()
+        }
+        
+        // Submit if last digit is entered
+        if (index === 5 && digit) {
+            setTimeout(() => {
+                // Combine all digits into a string
+                const enteredCode = newCode.join('')
+                const correctCode = '808080' // Your verification code
+                
+                if (enteredCode === correctCode) {
+                    // Code is correct, proceed to next step
+                    setStep(7)
+                    setAttempts(0) // Reset attempts on success
+                } else {
+                    // Increment attempt counter
+                    const newAttempts = attempts + 1
+                    setAttempts(newAttempts)
+
+                    if (newAttempts >= MAX_ATTEMPTS) {
+                        showAlert(`Too many attempts. Please request a new code.`)
+                        setStep(1) // Go back to email entry
+                        setAttempts(0)
+                    } else {
+                        showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS} attempts)`)
+                        setVerificationCode(['', '', '', '', '', ''])
+                        // Focus first input
+                        if (inputRefs.current[0]) {
+                            inputRefs.current[0].focus()
+                        }
+                    }
+                }
+            }, 500)
+        }
+    }
+
+    const handleResendCode = () => {
+        if (attempts >= MAX_ATTEMPTS) {
+            showAlert('Please wait before requesting a new code.')
+            return
+        }
+        
+        // Here you would typically call your API to resend the code
+        showAlert('New verification code sent to your email')
+        console.log('Resending code to:', formData.email)
+        setVerificationCode(['', '', '', '', '', ''])
+        setAttempts(0)
+        if (inputRefs.current[0]) {
+            inputRefs.current[0].focus()
+        }
+    }
+
+    const handleKeyPress = (e, index) => {
+        if (e.nativeEvent.key === 'Backspace' && !verificationCode[index] && index > 0 && inputRefs.current[index - 1]) {
+            inputRefs.current[index - 1].focus()
+        }
+    }
+
     const handleSubmit = () => {
         if (!validateStep(6)) {
             return showAlert('Please enter a valid and matching passwords.');
@@ -173,13 +258,14 @@ const Register = () => {
 
                 {/* Progress indicator */}
                 <View style={styles.progressContainer}>
-                    <View style={[styles.progressLine, step >= -1 && styles.activeLine]} />
+                    <View style={[styles.progressLine, step >= 0 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 1 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 2 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 3 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 4 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 5 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 6 && styles.activeLine]} />
+                    <View style={[styles.progressLine, step >= 7 && styles.activeLine]} />
                 </View>
 
                 {/* Step 0: Role Selection */}
@@ -443,10 +529,66 @@ const Register = () => {
                         </ThemedButton>
                         </View>
                     </>
+                    ) : step === 6 ? (
+                    <>
+                        {/* Back button */}
+                        <View style={{ alignItems: 'flex-start', marginBottom: 20 }}>
+                            <Pressable onPress={handleBack5}>
+                                <Ionicons name="arrow-back" size={24} color={theme.text} />
+                            </Pressable>
+                        </View>
+
+                        {/* Title */}
+                        <ThemedText title={true} style={[styles.title, { textAlign: 'left' }]}>Verification Code</ThemedText>
+                        
+                        {/* Instructions */}
+                        <ThemedText style={styles.instructions}>
+                            Enter the 6-digit code sent to {formData.email}
+                        </ThemedText>
+
+                        <Spacer height={30} />
+                        
+                        {/* Verification Code Input */}
+                        <View style={styles.codeContainer}>
+                            {[0, 1, 2, 3, 4, 5].map((index) => (
+                                <ThemedCodeInput
+                                    key={index}
+                                    ref={(el) => (inputRefs.current[index] = el)}
+                                    style={styles.codeInput}
+                                    value={verificationCode[index]}
+                                    onChangeText={(text) => handleVerificationChange(text, index)}
+                                    onKeyPress={(e) => handleKeyPress(e, index)}
+                                    keyboardType="number-pad"
+                                    maxLength={1}
+                                    textAlign="center"
+                                    selectTextOnFocus
+                                />
+                            ))}
+                        </View>
+                        
+                        <Spacer height={30} />
+                        
+                        {/* Resend Code */}
+                        <View style={{ alignItems: 'center' }}>
+                            <ThemedText style={{ textAlign: 'center' }}>
+                                Didn't receive code? Check your spam,
+                            </ThemedText>
+                            <Pressable onPress={handleResendCode}>
+                                <ThemedText style={{ textAlign: 'center', color: Colors.primary, fontWeight: 'bold' }}>
+                                    Resend Code
+                                </ThemedText>
+                            </Pressable>
+                            {attempts > 0 && (
+                                <ThemedText style={{ textAlign: 'center', marginTop: 10, color: theme.textSecondary }}>
+                                    Attempts: {attempts}/{MAX_ATTEMPTS}
+                                </ThemedText>
+                            )}
+                        </View>
+                    </>
                     ) : (
                     <>
                         <View style={{ alignItems: 'flex-start' }}>
-                        <Pressable onPress={handleBack5}>
+                        <Pressable onPress={handleBack6}>
                             <Ionicons name="arrow-back" size={24} color={theme.text} />
                         </Pressable>
                         </View>
@@ -483,9 +625,9 @@ const Register = () => {
                         </View>
                     </>
                 )}
-                <Link href='/login' style={styles.link}>
+                {/* <Link href='/login' style={styles.link}>
                     <ThemedText style={{ textAlign: 'center', marginBottom: 50 }}>Already have an account? Login Instead</ThemedText>
-                </Link>
+                </Link> */}
             </ScrollView>
 
             <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
@@ -527,7 +669,7 @@ const styles = StyleSheet.create({
     },
     progressLine: {
         height: 2,
-        width: 47,
+        width: '12.5%',
         backgroundColor: '#ddd',
         marginHorizontal: 0,
     },
@@ -579,6 +721,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         justifyContent: 'center',
         marginVertical: 10,
+    },
+    codeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginHorizontal: 10,
+    },
+    codeInput: {
+        width: 45,
+        height: 50,
+        fontSize: 20,
+        borderRadius: 8,
+        borderWidth: 1,
     },
     button: {
         width: '48%',
