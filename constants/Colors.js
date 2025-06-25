@@ -1,6 +1,6 @@
 export const Colors = {
     primary: "#3364ff",
-    warning: "#cc475a",
+    warning: "#8c8c8c",
 
     dark: {
         text: "#fcfbfd",
@@ -13,7 +13,7 @@ export const Colors = {
         uiBackground: "#e1e6ed",
         cardBackground: "#b5bdc9",
         cardBorder: "#E9F0FE",
-        alertBackground: "5289F6",
+        alertBackground: "#131150",
         tint: '#3364ff',
         buttonText: "#f2f2f2",
     },

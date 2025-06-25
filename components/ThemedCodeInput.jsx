@@ -7,19 +7,24 @@ const ThemedCodeInput = React.forwardRef((props, ref) => {
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme] ?? Colors.light
   
+  // Create dynamic styles object
+  const inputStyles = {
+    width: 45,
+    height: 50,
+    fontSize: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: 4,
+    color: theme.text,
+    borderColor: theme.iconColor,
+    backgroundColor: theme.uiBackground,
+  }
+
   return (
     <TextInput
       ref={ref}
-      style={[
-        styles.codeInput,
-        { 
-          color: theme.text,
-          borderColor: theme.border,
-          backgroundColor: theme.inputBackground,
-          // Add any additional theme-specific styles here
-        }
-      ]}
-      placeholderTextColor={theme.placeholder}
+      style={[inputStyles, props.style]} // Merge with any passed styles
+      placeholderTextColor={theme.placeholder || '#9ca3af'} // Added fallback
       keyboardType="number-pad"
       maxLength={1}
       textAlign="center"
@@ -30,14 +35,3 @@ const ThemedCodeInput = React.forwardRef((props, ref) => {
 })
 
 export default ThemedCodeInput
-
-const styles = StyleSheet.create({
-  codeInput: {
-    width: 45,
-    height: 50,
-    fontSize: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginHorizontal: 4,
-  },
-})

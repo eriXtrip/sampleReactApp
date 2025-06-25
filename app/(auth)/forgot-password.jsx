@@ -359,5 +359,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         borderRadius: 8,
         borderWidth: 1,
+        backgroundColor: Colors.light.uiBackground,
+        borderColor: Colors.light.iconColor,
     },
 })
