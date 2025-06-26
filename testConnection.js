@@ -1,21 +1,19 @@
-// testConnection.js
-import db from './server/db.js';  // Import the default export
+import * as dotenv from 'dotenv';
+dotenv.config({ path: './my-app-backend/.env' }); // Explicit path
+
+import db from './my-app-backend/services/db.js';
 
 async function testConnection() {
   let connection;
   try {
-    // Access pool through the db object
-    connection = await db.pool.getConnection();
+    connection = await db.getConnection();
     const [rows] = await connection.query('SELECT 1 + 1 AS solution');
-    console.log('✅ Connection successful! Result:', rows[0].solution);
-    
-    // Test database version (optional)
-    const [version] = await connection.query('SELECT VERSION() AS version');
-    console.log('🔍 Database version:', version[0].version);
+    console.log('✅ Connection test passed. Result:', rows[0].solution);
   } catch (error) {
     console.error('❌ Connection failed:', error.message);
   } finally {
-    if (connection) connection.release();
+    if (connection) await connection.release();
+    process.exit();
   }
 }
 

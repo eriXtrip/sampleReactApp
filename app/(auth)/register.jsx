@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react'
+// SAMPLEREACTAPP/app/auth/register.jsx
+import React, { useState, useRef, useContext  } from 'react'
 import { StyleSheet, Text, TextInput, View, Pressable, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { UserContext } from '../../contexts/UserContext';
 
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
@@ -18,6 +20,8 @@ import ThemedCodeInput from '../../components/ThemedCodeInput';
 
 const Register = () => {
     const router = useRouter();
+    const { register } = useContext(UserContext);
+
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -239,15 +243,38 @@ const Register = () => {
         }
     }
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!validateStep(6)) {
             return showAlert('Please enter a valid and matching passwords.');
         }
 
-        console.log('--- Registration Data ---');
-        Object.entries(formData).forEach(([key, value]) => {
-            console.log(`${key}: ${value}`);
-        });
+        try {
+            // Convert role to number (1 for Pupil, 2 for Teacher, etc.)
+            const roleId = formData.role === 'Teacher' ? 2 : 1;
+            
+            const result = await register(
+                roleId,
+                formData.firstName,
+                formData.middleName,
+                formData.lastName,
+                formData.suffix,
+                formData.gender,
+                formData.birthday,
+                formData.lrn,
+                formData.teacher_id,
+                formData.email
+            );
+
+            if (result.success) {
+                console.log('Registration successful! User ID:', result.userId);
+                router.replace('/home');
+            } else {
+                showAlert(result.message);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            showAlert('Registration failed. Please try again.');
+        }
         console.log('Verification Code:', verificationCode.join(''));
 
         router.replace('/home');
@@ -285,14 +312,14 @@ const Register = () => {
                             Please choose your role to continue the registration.
                         </ThemedText>
 
-                        <ThemedButton onPress={() => handleRoleSelect('Pupil')} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>I am a Pupil</Text>
+                        <ThemedButton onPress={() => handleRoleSelect('Pupil')}>
+                            I am a Pupil
                         </ThemedButton>
 
                         <Spacer height={10} />
 
-                        <ThemedButton onPress={() => handleRoleSelect('Teacher')} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>I am a Teacher</Text>
+                        <ThemedButton onPress={() => handleRoleSelect('Teacher')}>
+                            I am a Teacher
                         </ThemedButton>
                     </>
                 ) : step === 1 ? (
@@ -361,11 +388,9 @@ const Register = () => {
                         </View>
 
                         <Spacer height={25} />
-                        <View style={styles.buttonRow}>
-                            <ThemedButton onPress={handleNext} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Next</Text>
+                            <ThemedButton onPress={handleNext}>
+                                Next
                             </ThemedButton>
-                        </View>
                         </>
                 ) : step === 2 ? (
                     <>
@@ -404,11 +429,9 @@ const Register = () => {
 
                         <Spacer height={25} />
 
-                        <View style={styles.buttonRow}>
-                        <ThemedButton onPress={handleNext1} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Next</Text>
+                        <ThemedButton onPress={handleNext1} >
+                            Next
                         </ThemedButton>
-                        </View>
                     </>
 
                 ) : step === 3 ? (
@@ -453,11 +476,9 @@ const Register = () => {
 
                         <Spacer height={25} />
 
-                        <View style={styles.buttonRow}>
-                        <ThemedButton onPress={handleNext2} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Next</Text>
+                        <ThemedButton onPress={handleNext2} >
+                            Next
                         </ThemedButton>
-                        </View>
                     </>
                 ) : step === 4 ? (
                     <>
@@ -491,11 +512,9 @@ const Register = () => {
 
                         <Spacer height={25} />
 
-                        <View style={styles.buttonRow}>
-                        <ThemedButton onPress={handleNext3} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Next</Text>
+                        <ThemedButton onPress={handleNext3} >
+                            Next
                         </ThemedButton>
-                        </View>
                     </>
                 ) : step === 5 ? (
                     <>
@@ -524,11 +543,9 @@ const Register = () => {
 
                         <Spacer height={25} />
 
-                        <View style={styles.buttonRow}>
-                        <ThemedButton onPress={handleNext4} style={[styles.button, { width: '100%' }]}>
-                            <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Next</Text>
+                        <ThemedButton onPress={handleNext4} >
+                            Next
                         </ThemedButton>
-                        </View>
                     </>
                     ) : step === 6 ? (
                     <>
@@ -619,11 +636,9 @@ const Register = () => {
                         />
 
                         <Spacer height={25} />
-                        <View style={styles.buttonRow}>
-                            <ThemedButton onPress={handleSubmit} style={[styles.button, { width: '100%' }]}>
-                                <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Register</Text>
+                            <ThemedButton onPress={handleSubmit} >
+                                Register
                             </ThemedButton>
-                        </View>
                     </>
                 )}
                 {/* <Link href='/login' style={styles.link}>
@@ -734,15 +749,6 @@ const styles = StyleSheet.create({
         fontSize: 20,
         borderRadius: 8,
         borderWidth: 1,
-    },
-    button: {
-        width: '48%',
-        alignItems: 'center',
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 10,
     },
     link: {
         marginTop: 10,

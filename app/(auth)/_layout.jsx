@@ -3,6 +3,7 @@ import { useColorScheme, View, Platform, StatusBar } from "react-native"
 import { Colors } from "../../constants/Colors"
 import { useEffect } from "react";
 import * as NavigationBar from 'expo-navigation-bar';
+import { UserProvider } from "../../contexts/UserContext";
 
 
 export default function AuthLayout() {
@@ -11,7 +12,7 @@ export default function AuthLayout() {
     const needsInvertedStatusBar = colorScheme === "light"
 
     return (
-        <>
+        <UserProvider>
             {/* Android-specific status bar handling */}
             {Platform.OS === 'android' && (
             <View style={{
@@ -36,6 +37,6 @@ export default function AuthLayout() {
                 statusBarColor: theme.navBackground, // Android specific
                 statusBarColor: "transparent",
             }} />
-        </>
+        </UserProvider>
     )
 }

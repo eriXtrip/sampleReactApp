@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { use, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Link, useRouter } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
+import { useUser } from '../../hooks/useUser'
 
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
@@ -22,12 +23,15 @@ const login = () => {
     const showAlert = (msg) => setAlert({ visible: true, message: msg });
     const closeAlert = () => setAlert({ ...alert, visible: false });
 
-    const handleSubmit = () => {
-        if (!emailOrLrn.trim() || !password) {
-            showAlert('Please enter both Email and Password.');
-            return;
-        }
+    const { user } = useUser();
 
+    const handleSubmit = () => {
+        // if (!emailOrLrn.trim() || !password) {
+        //     showAlert('Please enter both Email and Password.');
+        //     return;
+        // }
+
+        console.log('current user:', user);
         console.log('Login submitted:', { emailOrLrn, password });
         router.replace('/home');
     };
@@ -65,15 +69,15 @@ const login = () => {
             
             <Spacer height={30} />
             
-            <ThemedButton onPress={handleSubmit} style={styles.button}>
-                <Text style={{ color: '#f2f2f2', fontWeight: 'bold' }}>Login</Text>
-            </ThemedButton>
+            <ThemedButton onPress={handleSubmit} > Login </ThemedButton>
             
             <Spacer height={20} />
             
-            <Link href='/register' style={styles.link}>
-                <ThemedText style={{ textAlign: 'center' }}>Don't have an account? Register Instead</ThemedText>
-            </Link>
+            <ThemedText style={{ textAlign: 'center' }}>Don't have an account? {''}
+                <Link href='/register' style={styles.link}>
+                    Register Instead
+                </Link>
+            </ThemedText>
 
             <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
         </ThemedView>
@@ -117,11 +121,9 @@ const styles = StyleSheet.create({
         color: '#007AFF', // iOS-like blue link color
         fontSize: 14,
     },
-    button: {
-        width: '100%',
-        alignItems: 'center',
-    },
     link: {
         marginTop: 10,
+        color: Colors.primary,
+        fontWeight: 'bold',
     },
 })
