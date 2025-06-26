@@ -2,8 +2,6 @@
 import mysql from 'mysql2/promise';
 import config from '../config.js';
 
-console.log('DB Config:', config.db); // Debug output
-
 const pool = mysql.createPool(config.db);
 
 // Test connection

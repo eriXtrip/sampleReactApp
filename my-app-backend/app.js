@@ -1,19 +1,32 @@
-// my-app-backend/app.js
+// my-app-backend/app.js  
+// To start backend server: cd my-app-backend npm run dev 
+// To stop backend serve: Ctrl + C
+
 import express from 'express';
 import cors from 'cors';
-import { register } from './controllers/authController.js';
+import { 
+  startRegistration,
+  verifyCode,
+  completeRegistration, 
+  login,
+  logout
+} from './controllers/authController.js';
 import config from './config.js';
 import os from 'os';
 
 const app = express();
-const PORT = config.port || 3001;
+const PORT = config.port;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.post('/api/auth/register', register);
+app.post('/api/auth/start-registration', startRegistration);
+app.post('/api/auth/verify-code', verifyCode);
+app.post('/api/auth/complete-registration', completeRegistration);
+app.post('/api/auth/login', login);
+app.post('/api/auth/logout', logout);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -39,3 +52,20 @@ function getLocalIp() {
   }
   return 'localhost';
 }
+
+// Handle process termination
+process.on('SIGTERM', () => {
+  pool.end(() => {
+    console.log('MySQL pool closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  pool.end(() => {
+    console.log('MySQL pool closed');
+    process.exit(0);
+  });
+});
+
+export default app;

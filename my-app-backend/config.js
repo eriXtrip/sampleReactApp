@@ -25,5 +25,5 @@ export default {
     queueLimit: 0,
     ssl: process.env.DB_SSL === 'true' 
   },
-  port: process.env.PORT || 3001
+  port: process.env.PORT
 };

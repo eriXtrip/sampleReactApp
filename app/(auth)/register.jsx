@@ -20,14 +20,20 @@ import ThemedCodeInput from '../../components/ThemedCodeInput';
 
 const Register = () => {
     const router = useRouter();
-    const { register } = useContext(UserContext);
+    const { 
+        startRegistration, 
+        verifyCode, 
+        completeRegistration, 
+        registrationData 
+    } = useContext(UserContext);
+    const [loading, setLoading] = useState(false);
 
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
-    const [step, setStep] = useState(0); // Step 0 = Role select
+    const [step, setStep] = useState(0); // Step 0 = Role select so on to other steps
     const [showDatePicker, setShowDatePicker] = useState(false);
-
+    
     const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
     const [attempts, setAttempts] = useState(0)
     const MAX_ATTEMPTS = 3
@@ -72,7 +78,6 @@ const Register = () => {
         setStep(2);
     };
 
-
     const handleNext1 = () => {
         if (!validateStep(2)) return showAlert('Please select your gender.');
         setStep(3);
@@ -89,8 +94,7 @@ const Register = () => {
             formData.role === 'Teacher'
                 ? 'Teacher ID must be exactly 10 digits.'
                 : 'LRN must be exactly 12 digits.'
-            );
-        }
+            )}
         setStep(5);
     };
 
@@ -142,7 +146,7 @@ const Register = () => {
 
 
             case 4:
-                if (role === 'Teacher') {
+                if (role === 'teacher') {
                     return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
                 } else {
                     return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
@@ -190,50 +194,16 @@ const Register = () => {
         
         // Submit if last digit is entered
         if (index === 5 && digit) {
-            setTimeout(() => {
-                // Combine all digits into a string
-                const enteredCode = newCode.join('')
-                const correctCode = '808080' // Your verification code
-                
-                if (enteredCode === correctCode) {
-                    // Code is correct, proceed to next step
-                    setStep(7)
-                    setAttempts(0) // Reset attempts on success
-                } else {
-                    // Increment attempt counter
-                    const newAttempts = attempts + 1
-                    setAttempts(newAttempts)
-
-                    if (newAttempts >= MAX_ATTEMPTS) {
-                        showAlert(`Too many attempts. Please request a new code.`)
-                        setStep(1) // Go back to email entry
-                        setAttempts(0)
-                    } else {
-                        showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS} attempts)`)
-                        setVerificationCode(['', '', '', '', '', ''])
-                        // Focus first input
-                        if (inputRefs.current[0]) {
-                            inputRefs.current[0].focus()
-                        }
-                    }
-                }
-            }, 500)
-        }
-    }
-
-    const handleResendCode = () => {
-        if (attempts >= MAX_ATTEMPTS) {
-            showAlert('Please wait before requesting a new code.')
-            return
-        }
-        
-        // Here you would typically call your API to resend the code
-        showAlert('New verification code sent to your email')
-        console.log('Resending code to:', formData.email)
-        setVerificationCode(['', '', '', '', '', ''])
-        setAttempts(0)
-        if (inputRefs.current[0]) {
-            inputRefs.current[0].focus()
+            const fullCode = [...newCode].join(''); // Get the complete code
+            console.log('Verification Code Submitted:', {
+                code: fullCode,
+                email: formData.email, // Also log the associated email
+                timestamp: new Date().toISOString()
+            });
+            
+           setTimeout(() => {
+                handleVerifyCode(fullCode)
+           }, 500)
         }
     }
 
@@ -243,42 +213,165 @@ const Register = () => {
         }
     }
 
-    const handleSubmit = async () => {
-        if (!validateStep(6)) {
-            return showAlert('Please enter a valid and matching passwords.');
-        }
 
+    // Step 1: Start Registration with backend
+    const handleStartRegistration = async () => {
+        if (!validateStep(1)) return showAlert('First and Last Name are required.');
+        
+        setLoading(true);
         try {
-            // Convert role to number (1 for Pupil, 2 for Teacher, etc.)
-            const roleId = formData.role === 'Teacher' ? 2 : 1;
-            
-            const result = await register(
-                roleId,
-                formData.firstName,
-                formData.middleName,
-                formData.lastName,
-                formData.suffix,
-                formData.gender,
-                formData.birthday,
-                formData.lrn,
-                formData.teacher_id,
-                formData.email
-            );
+            const result = await startRegistration({
+                email: formData.email,
+                role: formData.role.toLowerCase(), // backend expects 'pupil' or 'teacher'
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                middleName: formData.middleName,
+                suffix: formData.suffix,
+                gender: formData.gender,
+                birthday: formData.birthday,
+                lrn: formData.role === 'Pupil' ? formData.lrn : null,
+                teacherId: formData.role === 'Teacher' ? formData.teacherId : null
+            });
 
             if (result.success) {
-                console.log('Registration successful! User ID:', result.userId);
-                router.replace('/home');
+                setStep(6); // Move to verification step
+                console.log('DEBUG - Registration Started:', {
+                    email: formData.email,
+                    role: formData.role,
+                    firstName: formData.firstName,
+                    middleName: formData.middleName,
+                    lastName: formData.lastName,
+                    suffix: formData.suffix,
+                    gender: formData.gender,
+                    birthday: formData.birthday,
+                    lrn: formData.lrn,
+                    teacherId: formData.teacherId,
+                });
             } else {
-                showAlert(result.message);
+                showAlert(result.error || 'Registration failed');
+            }
+        } catch (error) {
+            showAlert('Network error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Step 2: Verify Code with backend
+    const handleVerifyCode = async (code) => {
+        if (code.length !== 6) return showAlert('Please enter a 6-digit code');
+
+        // Debug output
+        console.log('DEBUG - Verification Attempt:', {
+            email: formData.email,
+            verificationCode: code,
+            timestamp: new Date().toISOString()
+        });
+
+        setLoading(true);
+        try {
+            const result = await verifyCode(formData.email, code);
+            if (result.success) {
+                setStep(7); // Move to password step
+            } else {
+                // Handle failed attempts
+                // const newAttempts = attempts + 1;
+                // setAttempts(newAttempts);
+                
+                // if (newAttempts >= MAX_ATTEMPTS) {
+                //     showAlert('Too many attempts. Please start over.');
+                //     setStep(0);
+                //     setAttempts(0);
+                // } else {
+                //     showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS} attempts)`);
+                //     setVerificationCode(['', '', '', '', '', '']);
+                //     if (inputRefs.current[0]) inputRefs.current[0].focus();
+                // }
+            }
+        } catch (error) {
+            showAlert('Verification failed. Please try again.');
+            console.error('Verification Error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Step 3: Complete Registration with backend
+    const handleCompleteRegistration = async () => {
+        setLoading(true);
+        try {
+            // Validate all required fields
+            const requiredFields = {
+            password: formData.password,
+            confirmPassword: formData.confirmPassword,
+            role: formData.role,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            gender: formData.gender,
+            birthday: formData.birthday
+            };
+
+            const missingFields = Object.entries(requiredFields)
+            .filter(([_, value]) => !value)
+            .map(([key]) => key);
+
+            if (missingFields.length > 0) {
+            showAlert(`Missing required fields: ${missingFields.join(', ')}`);
+            return;
+            }
+
+            if (formData.password !== formData.confirmPassword) {
+            showAlert('Passwords do not match');
+            return;
+            }
+
+            const result = await completeRegistration(formData);
+
+            if (result.success) {
+            router.replace('/home');
+            } else {
+            showAlert(result.error || 'Registration failed');
             }
         } catch (error) {
             console.error('Registration error:', error);
-            showAlert('Registration failed. Please try again.');
+            showAlert(error.message || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        console.log('Verification Code:', verificationCode.join(''));
-
-        router.replace('/home');
     };
+
+    // Handle resend verification code
+    const handleResendCode = async () => {
+        if (attempts >= MAX_ATTEMPTS) {
+            showAlert('Please wait before requesting a new code.');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            const result = await startRegistration({
+                email: formData.email,
+                role: formData.role.toLowerCase(),
+                // Include other required fields that backend might need for resend
+                firstName: formData.firstName,
+                lastName: formData.lastName
+            });
+
+            if (result.success) {
+                showAlert('New verification code sent to your email');
+                setVerificationCode(['', '', '', '', '', '']);
+                setAttempts(0);
+                if (inputRefs.current[0]) inputRefs.current[0].focus();
+            } else {
+                showAlert(result.error || 'Failed to resend code');
+            }
+        } catch (error) {
+            showAlert('Failed to resend code. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
 
     return (
         <ThemedView style={styles.container} safe={true}>
@@ -451,8 +544,8 @@ const Register = () => {
                         </ThemedText>
 
                         <Pressable
-                        onPress={() => setShowDatePicker(true)}
-                        style={[styles.datePicker, { backgroundColor: theme.uiBackground, borderColor: theme.iconColor }]}
+                            onPress={() => setShowDatePicker(true)}
+                            style={[styles.datePicker, { backgroundColor: theme.uiBackground, borderColor: theme.iconColor }]}
                         >
                         <Text style={{ color: theme.text, fontSize: 16 }}>
                             {formData.birthday ? new Date(formData.birthday).toLocaleDateString() : 'Select Date'}
@@ -467,9 +560,9 @@ const Register = () => {
                             maximumDate={new Date()}
                             onChange={(event, selectedDate) => {
                             setShowDatePicker(false);
-                            if (selectedDate) {
-                                handleChange('birthday', selectedDate.toISOString());
-                            }
+                                if (selectedDate) {
+                                    handleChange('birthday', selectedDate.toISOString().split('T')[0]);
+                                }
                             }}
                         />
                         )}
@@ -543,8 +636,12 @@ const Register = () => {
 
                         <Spacer height={25} />
 
-                        <ThemedButton onPress={handleNext4} >
-                            Next
+                        <ThemedButton 
+                            onPress={handleStartRegistration} 
+                            disabled={!formData.email || loading}
+                            loading={loading}
+                        >
+                            Send Verification Code
                         </ThemedButton>
                     </>
                     ) : step === 6 ? (
@@ -636,9 +733,13 @@ const Register = () => {
                         />
 
                         <Spacer height={25} />
-                            <ThemedButton onPress={handleSubmit} >
-                                Register
-                            </ThemedButton>
+                        <ThemedButton 
+                            onPress={handleCompleteRegistration}
+                            disabled={loading || !formData.password || formData.password !== formData.confirmPassword}
+                            loading={loading}
+                        >
+                            Complete Registration
+                        </ThemedButton>
                     </>
                 )}
                 {/* <Link href='/login' style={styles.link}>
@@ -651,7 +752,7 @@ const Register = () => {
         </ThemedView>
 
         
-    );
+    )
 };
 
 export default Register;
