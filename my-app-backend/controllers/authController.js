@@ -28,7 +28,7 @@ export const startRegistration = async (req, res) => {
     do {
       verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       [codeExists] = await pool.query(
-        'SELECT 1 FROM registration_users WHERE verification_code = ?',
+        'SELECT 1 FROM users_verification_code WHERE verification_code = ?',
         [verificationCode]
       );
     } while (codeExists.length > 0);
@@ -36,14 +36,20 @@ export const startRegistration = async (req, res) => {
     // Store in verification table
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
     await pool.query(
-      `INSERT INTO registration_users 
-      (email, verification_code, verification_expires) 
-      VALUES (?, ?, ?)`,
+      `INSERT INTO users_verification_code 
+      (email, verification_code, verification_expires, type) 
+      VALUES (?, ?, ?, 'registration')`,
       [email, verificationCode, expiresAt]
     );
 
     // Send email
-    await sendVerificationEmail(email, verificationCode);
+    await sendVerificationEmail(
+      email,
+      verificationCode,
+      'Email Verification Request',
+      'Your email verification code. Use the code below to proceed:'
+    );
+
 
     res.status(200).json({ 
       success: true,
@@ -66,7 +72,7 @@ export const verifyCode = async (req, res) => {
 
     // Check verification code
     const [result] = await pool.query(
-      `SELECT 1 FROM registration_users 
+      `SELECT 1 FROM users_verification_code 
        WHERE email = ? AND verification_code = ? 
        AND verification_expires > NOW()`,
       [email, code]
@@ -78,7 +84,7 @@ export const verifyCode = async (req, res) => {
 
     // Mark as verified
     await pool.query(
-      `UPDATE registration_users 
+      `UPDATE users_verification_code 
        SET is_verified = TRUE 
        WHERE email = ?`,
       [email]
@@ -129,7 +135,7 @@ export const completeRegistration = async (req, res) => {
 
     // Check if email is verified in temporary table
     const [verified] = await pool.query(
-      `SELECT is_verified FROM registration_users WHERE email = ? AND is_verified = TRUE`,
+      `SELECT is_verified FROM users_verification_code WHERE email = ? AND is_verified = TRUE`,
       [email]
     );
 
@@ -139,7 +145,7 @@ export const completeRegistration = async (req, res) => {
 
     // Get initial registration data
     const [regData] = await pool.query(
-      `SELECT * FROM registration_users WHERE email = ?`,
+      `SELECT * FROM users_verification_code WHERE email = ?`,
       [email]
     );
 
@@ -196,7 +202,7 @@ export const completeRegistration = async (req, res) => {
     );
 
     // Cleanup: remove from temp table
-    await pool.query(`DELETE FROM registration_users WHERE email = ?`, [email]);
+    await pool.query(`DELETE FROM users_verification_code WHERE email = ?`, [email]);
 
     // Send success response
     res.status(201).json({
@@ -297,5 +303,112 @@ export const logout = async (req, res) => {
       error: 'Logout failed',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+};
+
+export const startPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if user exists
+    const [users] = await pool.query(
+      'SELECT email, password_hash FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No account found with that email' });
+    }
+
+    // Generate unique 6-digit verification code
+    let verificationCode;
+    let codeExists;
+    do {
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      [codeExists] = await pool.query(
+        'SELECT 1 FROM users_verification_code WHERE verification_code = ?',
+        [verificationCode]
+      );
+    } while (codeExists.length > 0);
+
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    // Insert code into password_reset table
+    await pool.query(
+      `INSERT INTO users_verification_code (email, verification_code, verification_expires, type)
+       VALUES (?, ?, ?, 'password_reset')`,
+      [email, verificationCode, expiresAt]
+    );
+
+    // Send verification code to email
+    await sendVerificationEmail(
+      email,
+      verificationCode,
+      'Password Reset Request',
+      'You recently requested to reset your password. Use the code below to proceed:'
+    );
+
+
+    res.status(200).json({ success: true, message: 'Verification code sent' });
+
+  } catch (error) {
+    console.error('startPasswordReset error:', error);
+    res.status(500).json({ error: 'Failed to initiate password reset' });
+  }
+};
+
+export const verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code are required' });
+    }
+
+    const [records] = await pool.query(
+      `SELECT * FROM users_verification_code
+       WHERE email = ? AND verification_code = ? AND verification_expires > NOW()`,
+      [email, code]
+    );
+
+    if (records.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    res.status(200).json({ success: true, message: 'Code verified' });
+
+  } catch (error) {
+    console.error('verifyResetCode error:', error);
+    res.status(500).json({ error: 'Failed to verify code' });
+  }
+};
+
+export const completePasswordReset = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and new password are required' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      'UPDATE users SET password_hash = ? WHERE email = ?',
+      [hashedPassword, email]
+    );
+
+    // Optionally delete all password reset codes for this email
+    await pool.query('DELETE FROM users_verification_code WHERE email = ?', [email]);
+
+    res.status(200).json({ success: true, message: 'Password reset successful' });
+
+  } catch (error) {
+    console.error('completePasswordReset error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 };

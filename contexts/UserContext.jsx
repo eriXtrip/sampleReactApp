@@ -142,6 +142,43 @@ export function UserProvider({ children }) {
     return user !== null;
   };
 
+  const startPasswordReset = async (data) => {
+    const response = await fetch(`${API_URL}/auth/start-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Account not found');
+    }
+    
+    return await response.json();
+  };
+
+  const verifyResetCode = async (email, code) => {
+    const response = await fetch(`${API_URL}/auth/verify-reset-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code })
+    });
+    return await response.json();
+  };
+
+  const completePasswordReset = async (data) => {
+    const response = await fetch(`${API_URL}/auth/complete-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Faild to Reset Password');
+    }
+    
+    return await response.json();
+  };
+
   return (
     <UserContext.Provider value={{ 
       user,
@@ -152,7 +189,10 @@ export function UserProvider({ children }) {
       completeRegistration,
       login,
       logout,
-      isAuthenticated
+      isAuthenticated,
+      startPasswordReset,
+      verifyResetCode,  
+      completePasswordReset
     }}>
       {children}
     </UserContext.Provider>

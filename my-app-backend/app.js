@@ -9,7 +9,10 @@ import {
   verifyCode,
   completeRegistration, 
   login,
-  logout
+  logout,
+  startPasswordReset,
+  verifyResetCode,
+  completePasswordReset
 } from './controllers/authController.js';
 import config from './config.js';
 import os from 'os';
@@ -27,6 +30,9 @@ app.post('/api/auth/verify-code', verifyCode);
 app.post('/api/auth/complete-registration', completeRegistration);
 app.post('/api/auth/login', login);
 app.post('/api/auth/logout', logout);
+app.post('/api/auth/start-password-reset', startPasswordReset);
+app.post('/api/auth/verify-reset-code', verifyResetCode);
+app.post('/api/auth/complete-password-reset', completePasswordReset);
 
 // Health check
 app.get('/api/health', (req, res) => {

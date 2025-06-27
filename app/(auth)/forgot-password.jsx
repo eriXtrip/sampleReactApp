@@ -1,9 +1,12 @@
-import React, { useState, useRef } from 'react'
+// SAMPLEREACTAPP/app/auth/forgot-password.jsx
+
+import React, { useState, useRef, useContext } from 'react'
 import { StyleSheet, Text, View, Pressable, TextInput } from 'react-native'
 import { Link, useRouter } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
 import { Ionicons } from '@expo/vector-icons'
+import { UserContext } from '../../contexts/UserContext';
 
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
@@ -18,6 +21,12 @@ const ForgotPassword = () => {
     const router = useRouter()
     const colorScheme = useColorScheme()
     const theme = Colors[colorScheme] ?? Colors.light
+
+    const {
+        startPasswordReset,
+        verifyResetCode,
+        completePasswordReset
+    } = useContext(UserContext);
 
     const [step, setStep] = useState(1) // 1: email, 2: verification, 3: new password
     const [email, setEmail] = useState('')
@@ -68,52 +77,42 @@ const ForgotPassword = () => {
         
         // Submit if last digit is entered
         if (index === 5 && digit) {
-            setTimeout(() => {
-                // Combine all digits into a string
-                const enteredCode = newCode.join('')
-                const correctCode = '808080' // Your verification code
-                
-                if (enteredCode === correctCode) {
-                    // Code is correct, proceed to next step
-                    setStep(3)
-                    setAttempts(0) // Reset attempts on success
-                } else {
-                    // Increment attempt counter
-                    const newAttempts = attempts + 1
-                    setAttempts(newAttempts)
-
-                    if (newAttempts >= MAX_ATTEMPTS) {
-                        showAlert(`Too many attempts. Please request a new code.`)
-                        setStep(1) // Go back to email entry
-                        setAttempts(0)
-                    } else {
-                        showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS} attempts)`)
-                        setVerificationCode(['', '', '', '', '', ''])
-                        // Focus first input
-                        if (inputRefs.current[0]) {
-                            inputRefs.current[0].focus()
-                        }
-                    }
-                }
-            }, 500)
+        setTimeout(() => handleVerifyCode(newCode.join('')), 500);
         }
     }
+
+    const handleVerifyCode = async (code) => {
+        try {
+        const result = await verifyResetCode(email, code);
+        console.log('email:', email, 'code:', code);
+            if (result.success) {
+                setStep(3);
+                setAttempts(0);
+            } else {
+                throw new Error('Invalid or expired code');
+            }
+        } catch (error) {
+            // const newAttempts = attempts + 1;
+            // setAttempts(newAttempts);
+            // if (newAttempts >= MAX_ATTEMPTS) {
+            //     showAlert(`Too many attempts. Please request a new code.`);
+            //     setStep(1);
+            //     setAttempts(0);
+            // } else {
+            //     showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS})`);
+            //     setVerificationCode(['', '', '', '', '', '']);
+            //     if (inputRefs.current[0]) inputRefs.current[0].focus();
+            // }
+        }
+    };
 
     const handleResendCode = () => {
         if (attempts >= MAX_ATTEMPTS) {
-            showAlert('Please wait before requesting a new code.')
-            return
+            showAlert('Please wait before requesting a new code.');
+        return;
         }
-        
-        // Here you would typically call your API to resend the code
-        console.log('Resending code to:', email)
-        showAlert('New verification code sent to your email')
-        setVerificationCode(['', '', '', '', '', ''])
-        setAttempts(0)
-        if (inputRefs.current[0]) {
-            inputRefs.current[0].focus()
-        }
-    }
+        handleSubmitEmail(); // Reuse the same function
+    };
 
     const handleKeyPress = (e, index) => {
         if (e.nativeEvent.key === 'Backspace' && !verificationCode[index] && index > 0 && inputRefs.current[index - 1]) {
@@ -121,40 +120,32 @@ const ForgotPassword = () => {
         }
     }
 
-    const handleSubmitEmail = () => {
-        if (!email.trim()) {
-            showAlert('Please enter your email address')
-            return
-        }
+    const handleSubmitEmail = async () => {
+        if (!email.trim()) return showAlert('Please enter your email');
 
-        // Here you would typically call your API to send verification code
-        console.log('Reset password requested for:', email)
-        setStep(2)
-    }
+        try {
+            console.log('Submitting email:', email);
+            await startPasswordReset({ email });
+            setStep(2);
+        } catch (error) {
+            showAlert(error.message || 'Account not found');
+        }
+    };
 
-    const handleSubmitPassword = () => {
-        if (!formData.password.trim()) {
-            showAlert('Please enter a password')
-            return
-        }
-        
-        if (formData.password !== formData.confirmPassword) {
-            showAlert('Passwords do not match')
-            return
-        }
-        
-        if (formData.password.length < 6) {
-            showAlert('Password must be at least 6 characters')
-            return
-        }
+    const handleSubmitPassword = async () => {
+        if (!formData.password.trim()) return showAlert('Please enter a password');
+        if (formData.password !== formData.confirmPassword) return showAlert('Passwords do not match');
+        if (formData.password.length < 6) return showAlert('Password must be at least 6 characters');
 
-        // Here you would typically call your API to reset password
-        showAlert('Password has been reset successfully')
-        console.log('Reset password:', formData.password, 'email:', email)
-        setTimeout(() => {
-            router.push('/login')
-        }, 1500)
-    }
+        try {
+            await completePasswordReset({ email, password: formData.password });
+            console.log('email:', email, 'password:', formData.password);
+            showAlert('Password has been reset successfully');
+            setTimeout(() => router.push('/login'), 1500);
+        } catch (error) {
+            showAlert(error.message || 'Failed to reset password');
+        }
+    };
 
     const handleBack = () => {
         if (step === 2) {
