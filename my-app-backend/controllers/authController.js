@@ -235,7 +235,7 @@ export const login = async (req, res) => {
         );
 
         if (users.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'No account found' });
         }
 
         const user = users[0];

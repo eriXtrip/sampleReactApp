@@ -144,9 +144,8 @@ const Register = () => {
                 new Date(birthday) < new Date()
             );
 
-
             case 4:
-                if (role === 'teacher') {
+                if (role === 'Teacher') {
                     return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
                 } else {
                     return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
