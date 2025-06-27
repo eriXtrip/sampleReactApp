@@ -1,15 +1,15 @@
 {
   "expo": {
-    "scheme": "samplereactapp",
-    "name": "sampleReactApp",
-    "slug": "sampleReactApp",
+    "scheme": "MQuest",
+    "name": "MQuest",
+    "slug": "MQuest",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/img/MQuest_light_logo.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/img/Login_Logo.png",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/img/MQuest_light_logo.png",
+      "image": "./assets/img/Login_Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/img/MQuest_light_logo.png",
+        "foregroundImage": "./assets/img/Login_Logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
