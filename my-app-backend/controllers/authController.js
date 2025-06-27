@@ -1,3 +1,4 @@
+// SAMPLEREACTAPP/my-app-backend/controllers/authController.js
 import { sendVerificationEmail } from '../utils/email.js';
 import pool from '../services/db.js';
 import bcrypt from 'bcryptjs';
@@ -97,8 +98,6 @@ export const verifyCode = async (req, res) => {
 
 export const completeRegistration = async (req, res) => {
   try {
-
-    console.log("Raw request body:", req.body);
     const {
       email,
       password,
@@ -113,12 +112,6 @@ export const completeRegistration = async (req, res) => {
       lrn,
       teacherId
     } = req.body;
-
-
-    console.log("Destructured fields:", {
-      email, password, confirmPassword, role, firstName, 
-      lastName, gender, birthday // Log the critical fields
-    });
     
     if ( !password || !confirmPassword || !role || 
         !firstName || !lastName || !gender || !birthday) {
@@ -228,18 +221,10 @@ export const login = async (req, res) => {
         // Find user by email
         const [users] = await pool.query(
             `SELECT 
-                u.id, 
                 u.email, 
-                u.password_hash, 
-                u.role_id,
-                r.name as role,
-                u.first_name,
-                u.last_name,
-                u.lrn,
-                u.teacher_id
+                u.password_hash 
             FROM users u
-            JOIN roles r ON u.role_id = r.id
-            WHERE u.email = ?`,
+            WHERE u.email = ?;`,
             [email]
         );
 
@@ -271,19 +256,13 @@ export const login = async (req, res) => {
             success: true,
             token,
             user: {
-                id: user.id,
                 email: user.email,
-                firstName: user.first_name,
-                lastName: user.last_name,
-                role: user.role,
-                lrn: user.lrn,
-                teacherId: user.teacher_id
             }
         });
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed. Please try again.' });
+        res.status(500).json({ error: 'Login failed. Please try again. backend' });
     }
 };
 

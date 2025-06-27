@@ -1,3 +1,5 @@
+// SAMPLEREACTAPP/contexts/UserContext.jsx
+
 import { createContext, useState, useEffect } from "react";
 import * as SecureStore from 'expo-secure-store';
 
@@ -93,6 +95,7 @@ export function UserProvider({ children }) {
     } catch (error) {
       console.error('Login error:', error);
       // Clear any partial authentication data on failure
+
       await Promise.all([
         SecureStore.deleteItemAsync('authToken'),
         SecureStore.deleteItemAsync('userData')

@@ -1,9 +1,11 @@
-import { use, useState } from 'react'
+// SAMPLEREACTAPP/app/(auth)/login.jsx
+import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View } from 'react-native'
 import { Link, useRouter } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
 import { useUser } from '../../hooks/useUser'
+import { UserContext } from '../../contexts/UserContext';
 
 import ThemedView from '../../components/ThemedView'
 import Spacer from '../../components/Spacer'
@@ -15,7 +17,9 @@ import ThemedPasswordInput from '../../components/ThemedPasswordInput'
 
 const login = () => {
     const router = useRouter()
-
+    const {
+        login,
+    } = useContext(UserContext);
     const [emailOrLrn, setEmailOrLrn] = useState('');
     const [password, setPassword] = useState('');
     const [alert, setAlert] = useState({ visible: false, message: '' });
@@ -26,33 +30,14 @@ const login = () => {
     const { user } = useUser();
 
     const handleSubmit = async () => {
-        if (!emailOrLrn.trim() || !password) {
-            showAlert('Please enter both Email and Password.');
-            return;
-        }
-
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
-            }
-
-            // Save token and user data (implementation depends on your storage solution)
-            await SecureStore.setItemAsync('authToken', data.token);
-            setUser(data.user);
-
+            const result = await login(emailOrLrn, password); // Use login from context
             router.replace('/home');
         } catch (error) {
-            console.error('Login error:', error);
-            showAlert(error.message || 'Login failed. Please try again.');
+            console.error('Login error frontend:', error);
+            console.log(emailOrLrn, password);
+            showAlert(error.message);
         } finally {
             setLoading(false);
         }

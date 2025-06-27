@@ -25,5 +25,6 @@ export default {
     queueLimit: 0,
     ssl: process.env.DB_SSL === 'true' 
   },
-  port: process.env.PORT
+  port: process.env.PORT,
+  apiUrl: process.env.API_URL,
 };
