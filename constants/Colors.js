@@ -21,7 +21,7 @@ export const Colors = {
     light: {
         text: "#112954",
         title: "#201e2b",
-        background: "#fff",
+        background: "#f5f8fc",
         navBackground: "#fff",
         iconColor:"#888a94",
         iconColorFocused: "#3364ff",
