@@ -6,11 +6,11 @@ import jwt from 'jsonwebtoken';
 
 export const startRegistration = async (req, res) => {
   try {
-    const { email, role, firstName, lastName, middleName, suffix, 
-            gender, birthday, lrn, teacherId } = req.body;
+    const { email, role, fullName, gender,
+             birthday, lrn, teacherId } = req.body;
 
     // Validate required fields
-    if (!email || !role || !firstName || !lastName || !gender || !birthday) {
+    if (!email || !role || !fullName || !gender || !birthday) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -74,7 +74,7 @@ export const verifyCode = async (req, res) => {
     const [result] = await pool.query(
       `SELECT 1 FROM users_verification_code 
        WHERE email = ? AND verification_code = ? 
-       AND verification_expires > NOW()`,
+       AND verification_expires > NOW() AND is_verified = 0`,
       [email, code]
     );
 
@@ -109,10 +109,7 @@ export const completeRegistration = async (req, res) => {
       password,
       confirmPassword,
       role,
-      firstName,
-      lastName,
-      middleName,
-      suffix,
+      fullName,
       gender,
       birthday,
       lrn,
@@ -120,7 +117,7 @@ export const completeRegistration = async (req, res) => {
     } = req.body;
     
     if ( !password || !confirmPassword || !role || 
-        !firstName || !lastName || !gender || !birthday) {
+        !fullName || !gender || !birthday) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -183,17 +180,13 @@ export const completeRegistration = async (req, res) => {
     // Insert into users table
     await pool.query(
       `INSERT INTO users (
-        email, password_hash, role_id, first_name, middle_name, 
-        last_name, suffix, gender, birth_date, lrn, teacher_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        email, password_hash, role_id, full_name, gender, birth_date, lrn, teacher_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         email,
         hashedPassword,
         role_id,
-        firstName,
-        middleName,
-        lastName,
-        suffix,
+        fullName,
         gender,
         birthday,
         finalLrn,
