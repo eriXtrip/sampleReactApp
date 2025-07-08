@@ -50,7 +50,10 @@ const Register = () => {
         role: '',
         lrn: '',
         teacherId: '',
-        fullName: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        suffix: '',
         gender: '',
         birthday: '',
         email: '',
@@ -71,7 +74,7 @@ const Register = () => {
     };
 
     const handleNext = () => {
-        if (!validateStep(1)) return showAlert('Full Name is required.');
+        if (!validateStep(1)) return showAlert('First and Last Name are required.');
         setStep(2);
     };
 
@@ -113,7 +116,8 @@ const Register = () => {
     const validateStep = (step) => {
         const {
             role,
-            fullName,
+            firstName,
+            lastName,
             gender,
             birthday,
             lrn,
@@ -128,7 +132,7 @@ const Register = () => {
             return !!role;
 
             case 1:
-            return !!fullName.trim();
+            return !!firstName.trim() && !!lastName.trim();
 
             case 2:
             return !!gender;
@@ -140,8 +144,9 @@ const Register = () => {
                 new Date(birthday) < new Date()
             );
 
+
             case 4:
-                if (role === 'Teacher') {
+                if (role === 'teacher') {
                     return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
                 } else {
                     return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
@@ -211,14 +216,17 @@ const Register = () => {
 
     // Step 1: Start Registration with backend
     const handleStartRegistration = async () => {
-        if (!validateStep(1)) return showAlert('Full Name is required.');
+        if (!validateStep(1)) return showAlert('First and Last Name are required.');
         
         setLoading(true);
         try {
             const result = await startRegistration({
                 email: formData.email,
                 role: formData.role.toLowerCase(), // backend expects 'pupil' or 'teacher'
-                fullName: formData.fullName,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                middleName: formData.middleName,
+                suffix: formData.suffix,
                 gender: formData.gender,
                 birthday: formData.birthday,
                 lrn: formData.role === 'Pupil' ? formData.lrn : null,
@@ -230,7 +238,10 @@ const Register = () => {
                 console.log('DEBUG - Registration Started:', {
                     email: formData.email,
                     role: formData.role,
-                    fullName: formData.fullName,
+                    firstName: formData.firstName,
+                    middleName: formData.middleName,
+                    lastName: formData.lastName,
+                    suffix: formData.suffix,
                     gender: formData.gender,
                     birthday: formData.birthday,
                     lrn: formData.lrn,
@@ -294,7 +305,8 @@ const Register = () => {
             password: formData.password,
             confirmPassword: formData.confirmPassword,
             role: formData.role,
-            fullName: formData.fullName,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
             gender: formData.gender,
             birthday: formData.birthday
             };
@@ -340,6 +352,9 @@ const Register = () => {
             const result = await startRegistration({
                 email: formData.email,
                 role: formData.role.toLowerCase(),
+                // Include other required fields that backend might need for resend
+                firstName: formData.firstName,
+                lastName: formData.lastName
             });
 
             if (result.success) {
@@ -415,13 +430,55 @@ const Register = () => {
                             Enter the name you use in real life.
                         </ThemedText>
 
-                        <ThemedText style={styles.label}>Full Name</ThemedText>
-                        <ThemedTextInput
-                            placeholder="Full name"
-                            value={formData.fullName}
-                            onChangeText={(text) => handleChange('fullName', text)}
-                            autoCapitalize="words"
-                        />
+                        {/* First and Middle Name Row */}
+                        <View style={styles.row}>
+                            <View style={styles.halfInput}>
+                            <ThemedText style={styles.label}>First Name</ThemedText>
+                            <ThemedTextInput
+                                placeholder="First name"
+                                value={formData.firstName}
+                                onChangeText={(text) => handleChange('firstName', text)}
+                                autoCapitalize="words"
+                            />
+
+                            </View>
+
+                            <View style={styles.halfInput}>
+                            <ThemedText style={styles.label}>Middle Name</ThemedText>
+                            <ThemedTextInput
+                                placeholder="Middle name"
+                                value={formData.middleName}
+                                onChangeText={(text) => handleChange('middleName', text)}
+                                autoCapitalize="words"
+                            />
+                            </View>
+                            
+                        </View>
+
+                        {/* Last Name and Suffix Row */}
+                        <Spacer height={15} />
+                        <View style={styles.row}>
+                            <View style={styles.halfInput}>
+                            <ThemedText style={styles.label}>Last Name</ThemedText>
+                            <ThemedTextInput
+                                placeholder="Last name"
+                                value={formData.lastName}
+                                onChangeText={(text) => handleChange('lastName', text)}
+                                autoCapitalize="words"
+                            />
+                            </View>
+
+                            <View style={styles.halfInput}>
+                            <ThemedText style={styles.label}>Suffix (Optional)</ThemedText>
+                            <ThemedTextInput
+                                placeholder="e.g. Jr, Sr, III"
+                                value={formData.suffix}
+                                onChangeText={(text) => handleChange('suffix', text)}
+                                autoCapitalize="characters"
+                            />
+                            </View>
+                            
+                        </View>
 
                         <Spacer height={25} />
                             <ThemedButton onPress={handleNext}>
@@ -437,11 +494,11 @@ const Register = () => {
                         </View>
 
                         <ThemedText title={true} style={[styles.title, { textAlign: 'left' }]}>
-                            What's your gender?
+                        What's your gender?
                         </ThemedText>
 
                         <ThemedText style={styles.subtitle}>
-                            Select your gender.
+                        Select your gender.
                         </ThemedText>
 
                         <View style={[styles.genderList, {backgroundColor: theme.Background, borderColor: theme.iconColor,}]}>
@@ -490,7 +547,7 @@ const Register = () => {
                             onPress={() => setShowDatePicker(true)}
                             style={[styles.datePicker, { backgroundColor: theme.uiBackground, borderColor: theme.iconColor }]}
                         >
-                        <Text style={{ fontSize: 16 }}>
+                        <Text style={{ color: theme.text, fontSize: 16 }}>
                             {formData.birthday ? new Date(formData.birthday).toLocaleDateString() : 'Select Date'}
                         </Text>
                         </Pressable>
@@ -612,6 +669,7 @@ const Register = () => {
                                 <ThemedCodeInput
                                     key={index}
                                     ref={(el) => (inputRefs.current[index] = el)}
+                                    style={styles.codeInput}
                                     value={verificationCode[index]}
                                     onChangeText={(text) => handleVerificationChange(text, index)}
                                     onKeyPress={(e) => handleKeyPress(e, index)}
@@ -785,6 +843,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginHorizontal: 10,
+    },
+    codeInput: {
+        width: 45,
+        height: 50,
+        fontSize: 20,
+        borderRadius: 8,
+        borderWidth: 1,
     },
     link: {
         marginTop: 10,

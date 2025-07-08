@@ -1,3 +1,5 @@
+// app/(auth)/_layout.jsx
+
 import { Stack } from "expo-router"
 import { useColorScheme, View, Platform, StatusBar } from "react-native"
 import { Colors } from "../../constants/Colors"

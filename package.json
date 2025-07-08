@@ -20,6 +20,8 @@
     "expo-linking": "~7.1.5",
     "expo-navigation-bar": "~4.2.6",
     "expo-router": "~5.1.0",
+    "expo-secure-store": "~14.2.3",
+    "expo-sqlite": "~15.2.14",
     "expo-status-bar": "~2.2.3",
     "express-rate-limit": "^7.5.1",
     "mysql2": "^3.14.1",
@@ -29,7 +31,7 @@
     "react-native-bcrypt": "^2.4.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "expo-secure-store": "~14.2.3"
+    "react-native-sqlite-storage": "^6.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

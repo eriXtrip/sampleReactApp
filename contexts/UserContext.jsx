@@ -2,24 +2,39 @@
 
 import { createContext, useState, useEffect } from "react";
 import * as SecureStore from 'expo-secure-store';
-
+import { UserService } from '../local-database/services/userService';
 export const UserContext = createContext();
 
 export function UserProvider({ children }) {
   const [registrationData, setRegistrationData] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const API_URL = "http://192.168.0.124:3001/api";
+  const API_URL = "http://192.168.0.118:3001/api";
 
   // Load user session on initial render
   useEffect(() => {
     const loadUserSession = async () => {
       try {
         const token = await SecureStore.getItemAsync('authToken');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        // First try to get user from SQLite
+        const dbUser = await UserService.getCurrentUser();
+        if (dbUser) {
+          setUser(dbUser);
+          setLoading(false);
+          return;
+        }
+
         const userData = await SecureStore.getItemAsync('userData');
-        
-        if (token && userData) {
-          setUser(JSON.parse(userData));
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          // Sync to SQLite for next time
+          await UserService.syncUser(parsedUser, token);
         }
       } catch (error) {
         console.error('Failed to load user session:', error);
@@ -86,7 +101,8 @@ export function UserProvider({ children }) {
       // Store authentication data
       await Promise.all([
         SecureStore.setItemAsync('authToken', data.token),
-        SecureStore.setItemAsync('userData', JSON.stringify(data.user))
+        SecureStore.setItemAsync('userData', JSON.stringify(data.user)),
+        UserService.syncUser(data.user, data.token)
       ]);
       
       setUser(data.user);

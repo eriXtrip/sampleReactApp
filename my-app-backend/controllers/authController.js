@@ -6,11 +6,11 @@ import jwt from 'jsonwebtoken';
 
 export const startRegistration = async (req, res) => {
   try {
-    const { email, role, fullName, gender,
-             birthday, lrn, teacherId } = req.body;
+    const { email, role, firstName, lastName, middleName, suffix, 
+            gender, birthday, lrn, teacherId } = req.body;
 
     // Validate required fields
-    if (!email || !role || !fullName || !gender || !birthday) {
+    if (!email || !role || !firstName || !lastName || !gender || !birthday) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -43,13 +43,7 @@ export const startRegistration = async (req, res) => {
     );
 
     // Send email
-    await sendVerificationEmail(
-      email,
-      verificationCode,
-      'Email Verification Request',
-      'Your email verification code. Use the code below to proceed:'
-    );
-
+    await sendVerificationEmail(email, verificationCode);
 
     res.status(200).json({ 
       success: true,
@@ -104,20 +98,31 @@ export const verifyCode = async (req, res) => {
 
 export const completeRegistration = async (req, res) => {
   try {
+
+    console.log("Raw request body:", req.body);
     const {
       email,
       password,
       confirmPassword,
       role,
-      fullName,
+      firstName,
+      lastName,
+      middleName,
+      suffix,
       gender,
       birthday,
       lrn,
       teacherId
     } = req.body;
+
+
+    console.log("Destructured fields:", {
+      email, password, confirmPassword, role, firstName, 
+      lastName, gender, birthday // Log the critical fields
+    });
     
     if ( !password || !confirmPassword || !role || 
-        !fullName || !gender || !birthday) {
+        !firstName || !lastName || !gender || !birthday) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -180,13 +185,17 @@ export const completeRegistration = async (req, res) => {
     // Insert into users table
     await pool.query(
       `INSERT INTO users (
-        email, password_hash, role_id, full_name, gender, birth_date, lrn, teacher_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        email, password_hash, role_id, first_name, middle_name, 
+        last_name, suffix, gender, birth_date, lrn, teacher_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         email,
         hashedPassword,
         role_id,
-        fullName,
+        firstName,
+        middleName,
+        lastName,
+        suffix,
         gender,
         birthday,
         finalLrn,
@@ -213,6 +222,7 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Validate input
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
@@ -220,15 +230,23 @@ export const login = async (req, res) => {
         // Find user by email
         const [users] = await pool.query(
             `SELECT 
+                u.user_id as id, 
                 u.email, 
-                u.password_hash 
+                u.password_hash, 
+                u.role_id,
+                r.role_name as role,
+                u.first_name,
+                u.last_name,
+                u.lrn,
+                u.teacher_id
             FROM users u
-            WHERE u.email = ?;`,
+            JOIN roles r ON u.role_id = r.role_id
+            WHERE u.email = ?`,
             [email]
         );
 
-        if (users.length === 0) {
-            return res.status(401).json({ error: 'No account found' });
+        if (!users || users.length === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const user = users[0];
@@ -255,15 +273,28 @@ export const login = async (req, res) => {
             success: true,
             token,
             user: {
+                id: user.id,
                 email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role,
+                lrn: user.lrn,
+                teacherId: user.teacher_id
             }
         });
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed. Please try again. backend' });
+        
+        // More specific error messages
+        if (error.code === 'ECONNREFUSED') {
+            return res.status(500).json({ error: 'Database connection failed' });
+        }
+        
+        res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 };
+
 
 
 
