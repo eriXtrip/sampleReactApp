@@ -15,12 +15,44 @@ export const startRegistration = async (req, res) => {
     }
 
     // Role-specific validation
-    if (role === 'pupil' && !lrn) {
+    if (role === 'Pupil' && !lrn) {
       return res.status(400).json({ error: 'LRN is required for pupils' });
     }
-    if (role === 'teacher' && !teacherId) {
+    if (role === 'Teacher' && !teacherId) {
       return res.status(400).json({ error: 'Teacher ID is required' });
     }
+
+    // Map role to role_id
+    const roleMap = {
+      'admin': 1,
+      'teacher': 2,
+      'pupil': 3
+    };
+
+    const normalizedRole = role.toLowerCase(); // Make sure it's lowercase
+    const role_id = roleMap[normalizedRole];
+
+    if (!role_id) {
+      return res.status(400).json({ error: 'Invalid user role' });
+    }
+
+    // Check email if exists in users table
+    try {
+      const [existingUser] = await pool.query(
+        `SELECT 1 FROM users 
+        WHERE email = ? 
+        AND role_id = ?`,
+        [email, role_id]
+      );
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: 'Please use another email.' });
+      }
+    } catch (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+
 
     // Generate unique verification code
     let verificationCode;
@@ -176,9 +208,9 @@ export const completeRegistration = async (req, res) => {
     let finalLrn = null;
     let finalTeacherId = null;
 
-    if (normalizedRole === 'pupil') {
+    if (normalizedRole === 'Pupil') {
       finalLrn = lrn || null;
-    } else if (normalizedRole === 'teacher') {
+    } else if (normalizedRole === 'Teacher') {
       finalTeacherId = teacherId || null;
     }
 
@@ -228,22 +260,35 @@ export const login = async (req, res) => {
         }
 
         // Find user by email
+        console.log('Querying database for user...');
         const [users] = await pool.query(
             `SELECT 
                 u.user_id as id, 
+                u.role_id,
+                u.first_name,
+                u.middle_name,
+                u.last_name,
+                u.suffix,
+                u.gender,
+                u.birth_date,
                 u.email, 
                 u.password_hash, 
-                u.role_id,
-                r.role_name as role,
-                u.first_name,
-                u.last_name,
                 u.lrn,
                 u.teacher_id
             FROM users u
-            JOIN roles r ON u.role_id = r.role_id
             WHERE u.email = ?`,
             [email]
         );
+
+        console.log('Database query results:', {
+            userCount: users?.length,
+            firstUser: users?.[0] ? {
+                id: users[0].id,
+                email: users[0].email,
+                role_id: users[0].role_id,
+                role: users[0].role
+            } : null
+        });
 
         if (!users || users.length === 0) {
             return res.status(401).json({ error: 'Invalid credentials' });
@@ -277,7 +322,7 @@ export const login = async (req, res) => {
                 email: user.email,
                 firstName: user.first_name,
                 lastName: user.last_name,
-                role: user.role,
+                role: user.role_id,
                 lrn: user.lrn,
                 teacherId: user.teacher_id
             }

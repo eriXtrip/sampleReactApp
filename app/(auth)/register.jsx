@@ -99,8 +99,13 @@ const Register = () => {
     };
 
     const handleNext4 = () => {
-        if (!validateStep(5)) return showAlert('Email is required.');
-        setStep(6);
+        if (!formData.email) {
+            return showAlert('Email is required.');
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            return showAlert('Invalid email format.');
+        }
+        handleStartRegistration(); // Proceed if email is valid
     };
 
     const handleBack6 = () => setStep(6);
@@ -146,7 +151,7 @@ const Register = () => {
 
 
             case 4:
-                if (role === 'teacher') {
+                if (role === 'Teacher') {
                     return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
                 } else {
                     return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
@@ -154,7 +159,15 @@ const Register = () => {
 
 
             case 5:
-            return !!email;
+                if (!email) {
+                    return showAlert('Email is required.');
+                }
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    return showAlert('Invalid email format.');
+                }
+    
+    // If validation passes, proceed to backend registration
+    handleStartRegistration();  
         
             case 6:
             return (
@@ -637,7 +650,7 @@ const Register = () => {
                         <Spacer height={25} />
 
                         <ThemedButton 
-                            onPress={handleStartRegistration} 
+                            onPress={handleNext4} 
                             disabled={!formData.email || loading}
                             loading={loading}
                         >
