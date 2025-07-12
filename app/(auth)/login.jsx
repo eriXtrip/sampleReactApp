@@ -1,7 +1,7 @@
 // SAMPLEREACTAPP/app/(auth)/login.jsx
-import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View } from 'react-native'
-import { Link, useRouter } from 'expo-router'
+import React, { useState, useContext, useEffect  } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator} from 'react-native'
+import { Link, useRouter, Redirect } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
 import { useUser } from '../../hooks/useUser'
@@ -27,7 +27,13 @@ const login = () => {
     const showAlert = (msg) => setAlert({ visible: true, message: msg });
     const closeAlert = () => setAlert({ ...alert, visible: false });
     const { setUser } = useUser();
-    const { user } = useUser();
+    const { user, isLoading } = useUser();
+
+    useEffect(() => {
+        if (user) {
+            router.replace('/home');
+        }
+    }, [user]); // Only run when user changes
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -41,7 +47,17 @@ const login = () => {
         } finally {
             setLoading(false);
         }
+       
     };
+
+    // Show loading indicator while checking auth state
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" />
+            </View>
+        );
+    }
 
     return (
         <ThemedView style={styles.container} safe={true}>

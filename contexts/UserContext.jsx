@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/contexts/UserContext.jsx
 
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 import * as SecureStore from 'expo-secure-store';
 import { UserService } from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -11,14 +11,39 @@ export function UserProvider({ children }) {
   const [registrationData, setRegistrationData] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const API_URL = "http://192.168.0.107:3001/api";
+  const [dbInitialized, setDbInitialized] = useState(false);
+  const API_URL = "http://192.168.0.116:3001/api";
   const db = useSQLiteContext();
 
   // Initialize database service
   useEffect(() => {
-    if (db) {
-      UserService.setDatabase(db);
-    }
+    const initializeDatabase = async () => {
+      if (!db) return;
+      
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL,
+            first_name TEXT,
+            last_name TEXT,
+            role_id INTEGER,
+            lrn TEXT,
+            teacher_id INTEGER,
+            token TEXT,
+            last_sync TEXT
+          )
+        `);
+        UserService.setDatabase(db);
+        setDbInitialized(true);
+        console.log('Database initialized successfully');
+      } catch (error) {
+        console.error('Database initialization error:', error);
+        setDbInitialized(true); // Continue anyway
+      }
+    };
+
+    initializeDatabase();
   }, [db]);
 
   // Registration functions (unchanged)
@@ -85,13 +110,17 @@ export function UserProvider({ children }) {
         user_id: data.user.id,
         email: data.user.email,
         first_name: data.user.firstName,
+        middle_name: data.user.middleName || null,
         last_name: data.user.lastName,
+        suffix: data.user.suffix || null,
+        birth_date: data.user.birthDate,
+        gender: data.user.gender,
         role_id: data.user.role, // This should be the numeric role_id from server
         lrn: data.user.lrn || null,
         teacher_id: data.user.teacherId || null
       };
 
-      console.log('Data prepared for SQLite sync:', userDataForSync);
+    
 
       // Store authentication data and sync to SQLite
       await Promise.all([
@@ -151,73 +180,64 @@ export function UserProvider({ children }) {
   };
 
   // Load user session on initial render
-  useEffect(() => {
-    const loadUserSession = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('authToken');
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-
-        // First try to get user from SQLite
-        const dbUser = await UserService.getCurrentUser();
-        if (dbUser) {
-          setUser(dbUser);
-          setLoading(false);
-          
-          // Optional: Verify with server if token is still valid
-          await verifyTokenWithServer(token, dbUser.user_id);
-          return;
-        }
-
-        // Fallback to SecureStore if SQLite doesn't have user
-        const userData = await SecureStore.getItemAsync('userData');
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          // Sync to SQLite for next time
-          await UserService.syncUser(parsedUser, token);
-        }
-      } catch (error) {
-        console.error('Failed to load user session:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserSession();
-  }, []);
-
-  // Verify token with server
-  const verifyTokenWithServer = async (token, userId) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/verify-token`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userId })
-      });
-
-      if (!response.ok) {
-        throw new Error('Token verification failed');
-      }
-    } catch (error) {
-      console.error('Token verification error:', error);
-      await clearAuthData();
-      setUser(null);
-    }
-  };
-
-  // Improved logout function
-  const logout = async () => {
+  const loadUserSession = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('Attempting to load user session...');
+      
+      const token = await SecureStore.getItemAsync('authToken');
+      console.log('Auth token exists:', !!token);
+      
+      if (!token) {
+        console.log('No token found - no active session');
+        setUser(null);
+        return;
+      }
+
+      // Only proceed if database is initialized
+      if (!UserService.db) {
+        console.log('Database not initialized - skipping session load');
+        return;
+      }
+
+      // Direct query without retries since DB is confirmed ready
+      const dbUser = await UserService.getCurrentUser();
+      console.log('User from local DB:', dbUser);
+
+      if (dbUser) {
+        setUser(dbUser);
+      } else {
+        console.log('No user found in database, checking SecureStore backup...');
+        const backup = await SecureStore.getItemAsync('userData');
+        if (backup) {
+          const parsed = JSON.parse(backup);
+          console.log('Restoring from SecureStore backup:', parsed);
+          setUser(parsed);
+          // Queue async sync without waiting
+          UserService.syncUser(parsed, token).catch(e => 
+            console.warn('Background sync failed:', e)
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Session load error:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load session when db is ready or on mount
+  useEffect(() => {
+    if (dbInitialized) {
+      loadUserSession();
+    }
+  }, [dbInitialized, loadUserSession]);
+
+  const logout = async () => {
+    try {
       const token = await SecureStore.getItemAsync('authToken');
       
-      // Optional: Notify backend about logout
       if (token) {
         await fetch(`${API_URL}/auth/logout`, {
           method: 'POST',
@@ -225,21 +245,34 @@ export function UserProvider({ children }) {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        }).catch(e => console.log('Logout notification failed:', e));
+        });
       }
 
-      // Clear local authentication data
       await Promise.all([
         SecureStore.deleteItemAsync('authToken'),
-        SecureStore.deleteItemAsync('userData')
+        SecureStore.deleteItemAsync('userData'),
+        UserService.clearUserData()
       ]);
       
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const verifyTokenSilently = async (token, email) => {
+    try {
+      await fetch(`${API_URL}/auth/verify-token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+    } catch (error) {
+      console.warn('Background verification failed:', error);
     }
   };
 
@@ -297,7 +330,10 @@ export function UserProvider({ children }) {
       isAuthenticated,
       startPasswordReset,
       verifyResetCode,  
-      completePasswordReset
+      completePasswordReset,
+      verifyTokenSilently,
+      clearAuthData,
+      loadUserSession
     }}>
       {children}
     </UserContext.Provider>

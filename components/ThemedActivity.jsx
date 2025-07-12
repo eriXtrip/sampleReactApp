@@ -21,7 +21,7 @@ const ThemedActivity = ({
       styles.activityCard,
       { 
         backgroundColor: theme.Background,
-        borderColor: theme.borderColor || '#e0e0e0'
+        borderColor: theme.cardBorder || '#e0e0e0'
       },
       cardStyle
     ]}>

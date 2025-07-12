@@ -75,7 +75,12 @@ export const startRegistration = async (req, res) => {
     );
 
     // Send email
-    await sendVerificationEmail(email, verificationCode);
+    await sendVerificationEmail(
+      email, 
+      verificationCode,
+      'Email Verification Request',
+      'Your email verification code. Use the code below to proceed:'
+    );
 
     res.status(200).json({ 
       success: true,
@@ -132,20 +137,35 @@ export const completeRegistration = async (req, res) => {
   try {
 
     console.log("Raw request body:", req.body);
+    // Destructure and trim all string fields
     const {
-      email,
-      password,
-      confirmPassword,
-      role,
-      firstName,
-      lastName,
-      middleName,
-      suffix,
-      gender,
-      birthday,
-      lrn,
-      teacherId
+      email: rawEmail,
+      password: rawPassword,
+      confirmPassword: rawConfirmPassword,
+      role: rawRole,
+      firstName: rawFirstName,
+      lastName: rawLastName,
+      middleName: rawMiddleName,
+      suffix: rawSuffix,
+      gender: rawGender,
+      birthday: rawBirthday,
+      lrn: rawLrn,
+      teacherId: rawTeacherId
     } = req.body;
+
+    // Trim all string inputs
+    const email = rawEmail?.trim();
+    const password = rawPassword?.trim();
+    const confirmPassword = rawConfirmPassword?.trim();
+    const role = rawRole?.trim();
+    const firstName = rawFirstName?.trim();
+    const lastName = rawLastName?.trim();
+    const middleName = rawMiddleName?.trim();
+    const suffix = rawSuffix?.trim();
+    const gender = rawGender?.trim();
+    const birthday = rawBirthday?.trim();
+    const lrn = rawLrn?.trim();
+    const teacherId = rawTeacherId?.trim();
 
 
     console.log("Destructured fields:", {
@@ -306,11 +326,9 @@ export const login = async (req, res) => {
         const token = jwt.sign(
             {
                 userId: user.id,
-                email: user.email,
-                role: user.role
+                email: user.email
             },
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
         );
 
         // Return user data without sensitive information
@@ -321,8 +339,12 @@ export const login = async (req, res) => {
                 id: user.id,
                 email: user.email,
                 firstName: user.first_name,
+                middleName: user.middle_name,
                 lastName: user.last_name,
+                suffix: user.suffix,
                 role: user.role_id,
+                birthday: user.birth_date,
+                gender: user.gender,
                 lrn: user.lrn,
                 teacherId: user.teacher_id
             }
@@ -340,40 +362,73 @@ export const login = async (req, res) => {
     }
 };
 
-
-
-
-// Add this to your authController.js
-export const logout = async (req, res) => {
-  try {
-    // Option 1: Simple response (client-side token deletion)
-    // This works if you're using stateless JWT (no server-side session)
-    res.status(200).json({ 
-      success: true,
-      message: 'Logged out successfully' 
-    });
-
-    // Option 2: Token invalidation (if using token blacklist)
-    /*
+// Token revocation middleware
+export const checkTokenRevocation = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-      // Add token to blacklist (requires Redis or database table)
-      await pool.query(
-        'INSERT INTO revoked_tokens (token, expires_at) VALUES (?, ?)',
-        [token, new Date(req.user.exp * 1000)] // Use token expiration
-      );
-    }
-    res.status(200).json({ success: true });
-    */
+    if (!token) return res.status(401).json({ error: 'No token provided' });
 
+    try {
+        const [revoked] = await pool.query(
+            'SELECT 1 FROM revoked_tokens WHERE token = ?',
+            [token]
+        );
+        
+        if (revoked.length > 0) {
+            return res.status(401).json({ error: 'Token revoked' });
+        }
+        
+        next();
+    } catch (error) {
+        console.error('Token revocation check failed:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+};
+
+
+
+// Token verification middleware
+export const verifyToken = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { email } = req.body;
+
+    // Check revocation
+    const [revoked] = await pool.query(
+      'SELECT 1 FROM revoked_tokens WHERE token = ?',
+      [token]
+    );
+    
+    if (revoked.length > 0) {
+      return res.status(401).json({ valid: false });
+    }
+
+    // Verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.json({ valid: decoded.email === email });
   } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ 
-      error: 'Logout failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(401).json({ valid: false });
   }
 };
+
+// New logout endpoint
+export const logout = async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        await pool.query(
+            'UPDATE revoked_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE token = ?',
+            [token]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Logout failed:', error);
+        res.status(500).json({ error: 'Logout failed' });
+    }
+};
+
+
+
 
 export const startPasswordReset = async (req, res) => {
   try {

@@ -28,7 +28,7 @@ export const Colors = {
         iconBackground: "#c2d0ff",
         uiBackground: "#e1e6ed",
         cardBackground: "#5289F6",
-        cardBorder: "#E9F0FE",
+        cardBorder: "#c8caceff",
         alertBackground: "#fff",
         tint: '#c2d0ff',
         buttonText: "#f2f2f2",
