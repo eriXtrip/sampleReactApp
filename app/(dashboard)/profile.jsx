@@ -89,7 +89,10 @@ const Profile = () => {
         {/* APPEARANCE Card */}
         <View style={[styles.card , { backgroundColor: themeColors.navBackground, borderColor: themeColors.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>APPEARANCE</ThemedText>
-          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}>
+          <TouchableOpacity
+            style={[styles.cardItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/(profile)/theme')}
+          >
             <ThemedText>Theme</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
@@ -207,6 +210,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 60,
     marginBottom: 15,
+    borderRadius: 10,
   },
   footerText: {
     fontSize: 14,

@@ -1,9 +1,9 @@
 // SAMPLEREACTAPP/contexts/UserContext.jsx
-
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as SecureStore from 'expo-secure-store';
 import { UserService } from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
+import { initializeDatabase } from '../local-database/services/database';
 
 export const UserContext = createContext();
 
@@ -12,38 +12,26 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
-  const API_URL = "http://192.168.0.116:3001/api";
+  const API_URL = "http://192.168.0.120:3001/api";
   const db = useSQLiteContext();
 
-  // Initialize database service
+  // Initialize database using database.js
   useEffect(() => {
-    const initializeDatabase = async () => {
+    const initDb = async () => {
       if (!db) return;
       
       try {
-        await db.execAsync(`
-          CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            email TEXT NOT NULL,
-            first_name TEXT,
-            last_name TEXT,
-            role_id INTEGER,
-            lrn TEXT,
-            teacher_id INTEGER,
-            token TEXT,
-            last_sync TEXT
-          )
-        `);
+        await initializeDatabase(db);
         UserService.setDatabase(db);
         setDbInitialized(true);
         console.log('Database initialized successfully');
       } catch (error) {
         console.error('Database initialization error:', error);
-        setDbInitialized(true); // Continue anyway
+        setDbInitialized(true); // Continue anyway (consider revising)
       }
     };
 
-    initializeDatabase();
+    initDb();
   }, [db]);
 
   // Registration functions (unchanged)
@@ -82,7 +70,7 @@ export function UserProvider({ children }) {
     return await response.json();
   };
 
-  // Improved login function
+  // Login function (updated for new schema)
   const login = async (email, password) => {
     try {
       setLoading(true);
@@ -105,22 +93,20 @@ export function UserProvider({ children }) {
         throw new Error(data.error || 'Login failed. Please check your credentials.');
       }
 
-      // Transform server data to match SQLite schema
+      // Transform server data to match new SQLite schema
       const userDataForSync = {
-        user_id: data.user.id,
+        server_id: data.user.id,
         email: data.user.email,
-        first_name: data.user.firstName,
+        first_name: data.user.firstName || 'Unknown', // Required field
         middle_name: data.user.middleName || null,
-        last_name: data.user.lastName,
+        last_name: data.user.lastName || 'Unknown', // Required field
         suffix: data.user.suffix || null,
-        birth_date: data.user.birthDate,
-        gender: data.user.gender,
-        role_id: data.user.role, // This should be the numeric role_id from server
+        birth_date: data.user.birthday || 'Unknown',
+        gender: data.user.gender || null,
+        role_id: data.user.role, // Assumes server returns numeric role_id
         lrn: data.user.lrn || null,
         teacher_id: data.user.teacherId || null
       };
-
-    
 
       // Store authentication data and sync to SQLite
       await Promise.all([
@@ -144,31 +130,6 @@ export function UserProvider({ children }) {
       setLoading(false);
     }
   };
-
-  // Either remove it completely (if not needed) or fix the endpoint:
-  // const fetchAdditionalUserData = async (token, userId) => {
-  //   try {
-  //     console.log('Fetching additional data for user:', userId);
-  //     const response = await fetch(`${API_URL}/users/${userId}/details`, {
-  //       method: 'GET',
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error(`HTTP error! status: ${response.status}`);
-  //     }
-
-  //     const data = await response.json();
-  //     console.log('Additional user data:', data);
-  //     return data;
-  //   } catch (error) {
-  //     console.error('Error fetching additional user data:', error);
-  //     return {}; // Return empty object if additional data isn't critical
-  //   }
-  // };
 
   // Helper function to clear auth data
   const clearAuthData = async () => {
@@ -194,13 +155,11 @@ export function UserProvider({ children }) {
         return;
       }
 
-      // Only proceed if database is initialized
       if (!UserService.db) {
         console.log('Database not initialized - skipping session load');
         return;
       }
 
-      // Direct query without retries since DB is confirmed ready
       const dbUser = await UserService.getCurrentUser();
       console.log('User from local DB:', dbUser);
 
@@ -213,7 +172,6 @@ export function UserProvider({ children }) {
           const parsed = JSON.parse(backup);
           console.log('Restoring from SecureStore backup:', parsed);
           setUser(parsed);
-          // Queue async sync without waiting
           UserService.syncUser(parsed, token).catch(e => 
             console.warn('Background sync failed:', e)
           );
@@ -235,45 +193,55 @@ export function UserProvider({ children }) {
   }, [dbInitialized, loadUserSession]);
 
   const logout = async () => {
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      
-      if (token) {
-        await fetch(`${API_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
+      try {
+          const token = await SecureStore.getItemAsync('authToken');
+          
+          if (token) {
+              const response = await fetch(`${API_URL}/auth/logout`, {
+                  method: 'POST',
+                  headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                  }
+              });
 
-      await Promise.all([
-        SecureStore.deleteItemAsync('authToken'),
-        SecureStore.deleteItemAsync('userData'),
-        UserService.clearUserData()
-      ]);
-      
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    }
+              if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || 'Logout failed');
+              }
+          }
+
+          await Promise.all([
+              SecureStore.deleteItemAsync('authToken'),
+              SecureStore.deleteItemAsync('userData'),
+              UserService.clearUserData()
+          ]);
+          
+          setUser(null);
+      } catch (error) {
+          console.error('Logout error local side:', error);
+          throw error;
+      }
   };
 
   const verifyTokenSilently = async (token, email) => {
-    try {
-      await fetch(`${API_URL}/auth/verify-token`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
-      });
-    } catch (error) {
-      console.warn('Background verification failed:', error);
-    }
+      try {
+          const response = await fetch(`${API_URL}/auth/verify-token`, {
+              method: 'POST',
+              headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ email })
+          });
+          const data = await response.json();
+          if (!data.valid) {
+              await logout(); // Auto-logout if token is invalid
+          }
+      } catch (error) {
+          console.warn('Background verification failed:', error);
+          await logout(); // Auto-logout on error
+      }
   };
 
   const isAuthenticated = () => {
@@ -311,7 +279,7 @@ export function UserProvider({ children }) {
     });
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Faild to Reset Password');
+      throw new Error(errorData.error || 'Failed to Reset Password');
     }
     
     return await response.json();
@@ -331,8 +299,8 @@ export function UserProvider({ children }) {
       startPasswordReset,
       verifyResetCode,  
       completePasswordReset,
-      verifyTokenSilently,
       clearAuthData,
+      verifyTokenSilently,
       loadUserSession
     }}>
       {children}

@@ -8,7 +8,7 @@ export class UserService {
 
   static async syncUser(serverUser, token) {
     try {
-      // First check if user exists
+      // First check if user exists by email
       const existingUser = await this.db.getFirstAsync(
         'SELECT * FROM users WHERE email = ? LIMIT 1',
         [serverUser.email]
@@ -16,7 +16,6 @@ export class UserService {
 
       if (existingUser) {
         console.log('User exists, updating fields...');
-        // Only update changed fields
         await this.db.runAsync(
           `UPDATE users SET
             server_id = ?,
@@ -33,18 +32,18 @@ export class UserService {
             last_sync = datetime('now')
           WHERE email = ?`,
           [
-            serverUser.user_id,
+            serverUser.server_id,
             serverUser.role_id,
             serverUser.first_name,
             serverUser.middle_name || null,
             serverUser.last_name,
             serverUser.suffix || null,
-            serverUser.gender,
-            serverUser.birth_date,
+            serverUser.gender || null,
+            serverUser.birth_date || null,
             serverUser.lrn || null,
             serverUser.teacher_id || null,
             token,
-            serverUser.email  // WHERE condition
+            serverUser.email
           ]
         );
       } else {
@@ -55,15 +54,15 @@ export class UserService {
             suffix, gender, birth_date, lrn, teacher_id, token, last_sync
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
           [
-            serverUser.user_id,
+            serverUser.server_id,
             serverUser.role_id,
             serverUser.email,
             serverUser.first_name,
             serverUser.middle_name || null,
             serverUser.last_name,
             serverUser.suffix || null,
-            serverUser.gender,
-            serverUser.birth_date,
+            serverUser.gender || null,
+            serverUser.birth_date || null,
             serverUser.lrn || null,
             serverUser.teacher_id || null,
             token
@@ -84,7 +83,6 @@ export class UserService {
     }
 
     try {
-      // First verify table exists
       const tableExists = await this.db.getFirstAsync(
         `SELECT name FROM sqlite_master 
         WHERE type='table' AND name='users'`
@@ -112,10 +110,9 @@ export class UserService {
     }
   }
 
-  // New method to check for specific field changes
   static async hasChanges(existingUser, serverUser) {
     const fieldsToCheck = [
-      'first_name', 'last_name', 'role_id', 'lrn', 
+      'server_id', 'first_name', 'last_name', 'role_id', 'lrn', 
       'teacher_id', 'gender', 'birth_date'
     ];
     

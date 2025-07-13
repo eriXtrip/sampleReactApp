@@ -10,10 +10,13 @@ import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedView = ({ style, safe = false, children, ...props }) => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light;
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const insets = useSafeAreaInsets()
 
   // Android-specific adjustments

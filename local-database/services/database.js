@@ -8,7 +8,7 @@ export async function initializeDatabase(db) {
         );
         
         CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER PRIMARY KEY,
             server_id INTEGER UNIQUE,
             role_id INTEGER NOT NULL,
             email TEXT NOT NULL UNIQUE,

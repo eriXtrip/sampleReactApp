@@ -415,8 +415,13 @@ export const logout = async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         
+        if (!token) {
+            return res.status(400).json({ error: 'No token provided' });
+        }
+
+        // Insert the token into revoked_tokens
         await pool.query(
-            'UPDATE revoked_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE token = ?',
+            'INSERT INTO revoked_tokens (token, revoked_at) VALUES (?, CURRENT_TIMESTAMP)',
             [token]
         );
 
@@ -426,7 +431,6 @@ export const logout = async (req, res) => {
         res.status(500).json({ error: 'Logout failed' });
     }
 };
-
 
 
 

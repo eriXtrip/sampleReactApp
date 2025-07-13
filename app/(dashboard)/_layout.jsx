@@ -6,6 +6,8 @@ import { useEffect, useRef } from 'react'
 import { useNavigationState } from '@react-navigation/native'
 import { UserProvider } from "../../contexts/UserContext";
 import { SQLiteProvider } from 'expo-sqlite';
+import { ProfileContext } from '../../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const AnimatedTabIcon = ({ focused, iconName, theme, routeName }) => {
   const widthAnim = useRef(new Animated.Value(40)).current
@@ -76,9 +78,10 @@ const AnimatedTabIcon = ({ focused, iconName, theme, routeName }) => {
 }
 
 export default function DashboardLayout() {
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] ?? Colors.light
-  const needsInvertedStatusBar = colorScheme === "light"
+  const colorScheme = useColorScheme();
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const needsInvertedStatusBar = theme === "light"
 
   return (
       <SQLiteProvider databaseName="mydatabase.db">
