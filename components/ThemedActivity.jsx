@@ -3,6 +3,8 @@ import { View, StyleSheet } from 'react-native';
 import ThemedText from './ThemedText';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedActivity = ({
   title,
@@ -14,7 +16,8 @@ const ThemedActivity = ({
   timeStyle,
 }) => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light;
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   return (
     <View style={[

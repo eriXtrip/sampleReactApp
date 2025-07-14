@@ -48,7 +48,7 @@ export default function ProfileLayout() {
         <View
           style={{
             height: Platform.OS === 'android' ? 40 : 0,
-            backgroundColor: theme.navBackground,
+            backgroundColor: theme.statusbarBackground,
           }}
         >
           <StatusBar

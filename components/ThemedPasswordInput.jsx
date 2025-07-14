@@ -3,6 +3,8 @@ import { TextInput, StyleSheet, View, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../constants/Colors'
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedPasswordInput = ({
   value,
@@ -11,8 +13,9 @@ const ThemedPasswordInput = ({
   style = [],
   ...rest
 }) => {
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] ?? Colors.light
+  const colorScheme = useColorScheme();
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const [showPassword, setShowPassword] = useState(false)
 
   return (

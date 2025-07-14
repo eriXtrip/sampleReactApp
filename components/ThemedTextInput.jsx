@@ -4,6 +4,8 @@ import { useColorScheme } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Colors } from '../constants/Colors'
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedTextInput = ({
   value,
@@ -13,8 +15,9 @@ const ThemedTextInput = ({
   secure = false,
   autoCapitalize = 'sentences',
 }) => {
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] ?? Colors.light
+  const colorScheme = useColorScheme();
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   return (
     <View style={secure ? styles.Container : null}>

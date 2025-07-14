@@ -6,11 +6,13 @@ import { Colors } from "../../constants/Colors"
 import { UserProvider } from "../../contexts/UserContext";
 import { SQLiteProvider } from 'expo-sqlite';
 import { initializeDatabase } from '../../local-database/services/database';
-
+import { ProfileContext } from '../../contexts/ProfileContext';
+import { useContext } from 'react';
 
 export default function AuthLayout() {
-    const colorScheme = useColorScheme()
-    const theme = Colors[colorScheme] ?? Colors.light   
+    const colorScheme = useColorScheme();
+    const { themeColors } = useContext(ProfileContext);
+    const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
     const needsInvertedStatusBar = colorScheme === "light"
 
     return (
@@ -22,14 +24,14 @@ export default function AuthLayout() {
                 {/* Android-specific status bar handling */}
                 {Platform.OS === 'android' && (
                 <View style={{
-                    height: StatusBar.currentHeight,
-                    backgroundColor: theme.navBackground
+                    height: 40,
+                    backgroundColor: theme.statusbarBackground, 
                 }}>
-                    <StatusBar 
+                <StatusBar 
                     translucent
                     backgroundColor="transparent"
                     barStyle={needsInvertedStatusBar ? "dark-content" : "light-content"}
-                    />
+                />
                 </View>
                 )}
                 <Stack screenOptions={{

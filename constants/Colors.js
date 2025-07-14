@@ -16,6 +16,7 @@ export const Colors = {
         alertBackground: "#131150",
         tint: '#3364ff',
         buttonText: "#f2f2f2",
+        statusbarBackground: '#302f82',
     },
 
     light: {
@@ -32,6 +33,7 @@ export const Colors = {
         alertBackground: "#fff",
         tint: '#c2d0ff',
         buttonText: "#f2f2f2",
+        statusbarBackground: '#d8d8d8ff',
     },
 
 }

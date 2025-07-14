@@ -3,6 +3,8 @@ import { View, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedSearch = ({
   value,
@@ -12,7 +14,8 @@ const ThemedSearch = ({
   inputStyle,
 }) => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light;
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   return (
     <View style={[styles.searchContainer, style]}>

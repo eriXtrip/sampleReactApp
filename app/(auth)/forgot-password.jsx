@@ -16,11 +16,13 @@ import ThemedAlert from '../../components/ThemedAlert'
 import ThemedPasswordInput from '../../components/ThemedPasswordInput'
 import ThemedCodeInput from '../../components/ThemedCodeInput'
 import ThemedTextInput from '../../components/ThemedTextInput'
+import { ProfileContext } from '../../contexts/ProfileContext';
 
 const ForgotPassword = () => {
     const router = useRouter()
-    const colorScheme = useColorScheme()
-    const theme = Colors[colorScheme] ?? Colors.light
+    const colorScheme = useColorScheme();
+    const { themeColors } = useContext(ProfileContext);
+    const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
     const {
         startPasswordReset,
@@ -123,6 +125,10 @@ const ForgotPassword = () => {
     const handleSubmitEmail = async () => {
         if (!email.trim()) return showAlert('Please enter your email');
 
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return showAlert('Invalid email format.');
+        }
+
         try {
             console.log('Submitting email:', email);
             await startPasswordReset({ email });
@@ -137,6 +143,13 @@ const ForgotPassword = () => {
         if (formData.password !== formData.confirmPassword) return showAlert('Passwords do not match');
         if (formData.password.length < 6) return showAlert('Password must be at least 6 characters');
 
+        // Password regex: at least one uppercase, lowercase, number, and special character
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+
+        if (!passwordRegex.test(password)) {
+            return showAlert('Password must include uppercase, lowercase, number, and special character.');
+        }
+        
         try {
             await completePasswordReset({ email, password: formData.password });
             console.log('email:', email, 'password:', formData.password);
@@ -197,7 +210,7 @@ const ForgotPassword = () => {
                     <Spacer height={20} />
                     
                     {/* Submit Button */}
-                    <ThemedButton onPress={handleSubmitEmail}>Send Reset Link</ThemedButton>
+                    <ThemedButton onPress={handleSubmitEmail}>Send Reset Code</ThemedButton>
 
                 </>
             )}
@@ -315,6 +328,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
+        marginTop: 35,
     },
     progressLine: {
         height: 2,

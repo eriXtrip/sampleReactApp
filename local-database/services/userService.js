@@ -101,9 +101,14 @@ export class UserService {
   }
 
   static async clearUserData() {
+    if (!this.db) {
+      console.warn('Database not initialized - skipping clear');
+      return;
+    }
+
     try {
       await this.db.runAsync('DELETE FROM users');
-      console.log('All user data cleared');
+      await this.db.runAsync('DELETE FROM sessions');
     } catch (error) {
       console.error('Failed to clear user data:', error);
       throw error;

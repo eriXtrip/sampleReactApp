@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/(auth)/login.jsx
 import React, { useState, useContext, useEffect  } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator} from 'react-native'
+import { StyleSheet, Image, View, ActivityIndicator} from 'react-native'
 import { Link, useRouter, Redirect } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
@@ -20,7 +20,7 @@ const login = () => {
     const {
         login,
     } = useContext(UserContext);
-    const [emailOrLrn, setEmailOrLrn] = useState('');
+    const [email, setemail] = useState('');
     const [password, setPassword] = useState('');
     const [alert, setAlert] = useState({ visible: false, message: '' });
     const [loading, setLoading] = useState(false);
@@ -38,11 +38,11 @@ const login = () => {
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            const result = await login(emailOrLrn, password); // Use login from context
+            await login(email, password); // Use login from context
             router.replace('/home');
         } catch (error) {
             console.error('Login error frontend:', error);
-            console.log(emailOrLrn, password);
+            console.log(email, password);
             showAlert(error.message);
         } finally {
             setLoading(false);
@@ -61,7 +61,15 @@ const login = () => {
 
     return (
         <ThemedView style={styles.container} safe={true}>
+            <View style={styles.logoContainer}>
+            <Image 
+                source={require('../../assets/img/Login_Logo.png')} // Update path to your logo
+                style={styles.logo}
+                resizeMode="contain"
+            />
+            </View>
             {/* Welcome Message */}
+            
             <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
             <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
             
@@ -69,8 +77,8 @@ const login = () => {
             
             <ThemedText style={styles.label}>Email</ThemedText>
             <ThemedTextInput
-                value={emailOrLrn}
-                onChangeText={setEmailOrLrn}
+                value={email}
+                onChangeText={setemail}
                 placeholder="Enter email"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -113,18 +121,27 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 20,
+        
+    },
+    logoContainer: {
+        alignItems: 'center',
+        marginTop: 40,
+        marginBottom: 10,
+    },
+    logo: {
+        width: 100,  // Adjust as needed
+        height: 100, // Adjust as needed
     },
     welcome: {
         fontSize: 28,
         fontWeight: 'bold',
         textAlign: 'center',
-        marginTop: 40,
         marginBottom: 5,
     },
     subtitle: {
         fontSize: 16,
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 0,
     },
     passwordHeader: {
         flexDirection: 'row',

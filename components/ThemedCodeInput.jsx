@@ -2,10 +2,13 @@ import React from 'react'
 import { StyleSheet, TextInput } from 'react-native'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../constants/Colors'
+import { ProfileContext } from '../contexts/ProfileContext';
+import { useContext } from 'react';
 
 const ThemedCodeInput = React.forwardRef((props, ref) => {
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] ?? Colors.light
+  const colorScheme = useColorScheme();
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   
   // Create dynamic styles object
   const inputStyles = {

@@ -12,6 +12,7 @@ import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
+import { ProfileContext } from '../../contexts/ProfileContext';
 
 const Profile = () => {
   const router = useRouter();
@@ -19,7 +20,8 @@ const Profile = () => {
   const { user, logout } = useContext(UserContext);
 
   const colorScheme = useColorScheme();
-  const themeColors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   // Safely access user data with fallbacks
   const displayName = user 
@@ -72,7 +74,7 @@ const Profile = () => {
         <Spacer height={30} />
 
         {/* PROFILE MENU Card */}
-        <View style={[styles.card , { backgroundColor: themeColors.navBackground, borderColor: themeColors.cardBorder, borderWidth: 1,}]}>
+        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>PROFILE MENU</ThemedText>
           <TouchableOpacity style={styles.cardItem}>
             <ThemedText>My Profile</ThemedText>
@@ -87,7 +89,7 @@ const Profile = () => {
         <Spacer height={20} />
 
         {/* APPEARANCE Card */}
-        <View style={[styles.card , { backgroundColor: themeColors.navBackground, borderColor: themeColors.cardBorder, borderWidth: 1,}]}>
+        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>APPEARANCE</ThemedText>
           <TouchableOpacity
             style={[styles.cardItem, { borderBottomWidth: 0 }]}
@@ -101,7 +103,7 @@ const Profile = () => {
         <Spacer height={20} />
 
         {/* ABOUT MQUEST Card */}
-        <View style={[styles.card , { backgroundColor: themeColors.navBackground, borderColor: themeColors.cardBorder, borderWidth: 1,}]}>
+        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>ABOUT MQUEST</ThemedText>
           <TouchableOpacity style={styles.cardItem}>
             <ThemedText>Privacy Policy</ThemedText>

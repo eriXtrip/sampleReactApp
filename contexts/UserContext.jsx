@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { UserService } from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
+import { testServerConnection } from '../local-database/services/testServerConnection';
 
 export const UserContext = createContext();
 
@@ -12,7 +13,8 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
-  const API_URL = "http://192.168.0.120:3001/api";
+  const [serverReachable, setServerReachable] = useState(false);
+  const API_URL = "http://192.168.0.115:3001/api";
   const db = useSQLiteContext();
 
   // Initialize database using database.js
@@ -74,6 +76,9 @@ export function UserProvider({ children }) {
   const login = async (email, password) => {
     try {
       setLoading(true);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error(data.error || 'Invalid email format.');
+      }
       console.log('Attempting login with:', { email });
       
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -97,15 +102,15 @@ export function UserProvider({ children }) {
       const userDataForSync = {
         server_id: data.user.id,
         email: data.user.email,
-        first_name: data.user.firstName || 'Unknown', // Required field
-        middle_name: data.user.middleName || null,
-        last_name: data.user.lastName || 'Unknown', // Required field
-        suffix: data.user.suffix || null,
-        birth_date: data.user.birthday || 'Unknown',
-        gender: data.user.gender || null,
+        first_name: data.user.firstName, // Required field
+        middle_name: data.user.middleName || 'N/A',
+        last_name: data.user.lastName, // Required field
+        suffix: data.user.suffix || 'N/A',
+        birth_date: data.user.birthday,
+        gender: data.user.gender,
         role_id: data.user.role, // Assumes server returns numeric role_id
-        lrn: data.user.lrn || null,
-        teacher_id: data.user.teacherId || null
+        lrn: data.user.lrn || 'N/A',
+        teacher_id: data.user.teacherId || "N/A"
       };
 
       // Store authentication data and sync to SQLite
@@ -188,40 +193,67 @@ export function UserProvider({ children }) {
   // Load session when db is ready or on mount
   useEffect(() => {
     if (dbInitialized) {
-      loadUserSession();
+      const initApp = async () => {
+        await loadUserSession();
+        const isReachable = await testServerConnection(API_URL); // Use the service
+        setServerReachable(isReachable);
+      };
+      initApp();
     }
   }, [dbInitialized, loadUserSession]);
 
-  const logout = async () => {
-      try {
-          const token = await SecureStore.getItemAsync('authToken');
-          
-          if (token) {
-              const response = await fetch(`${API_URL}/auth/logout`, {
-                  method: 'POST',
-                  headers: {
-                      'Authorization': `Bearer ${token}`,
-                      'Content-Type': 'application/json'
-                  }
-              });
-
-              if (!response.ok) {
-                  const errorData = await response.json();
-                  throw new Error(errorData.error || 'Logout failed');
-              }
-          }
-
-          await Promise.all([
-              SecureStore.deleteItemAsync('authToken'),
-              SecureStore.deleteItemAsync('userData'),
-              UserService.clearUserData()
-          ]);
-          
-          setUser(null);
-      } catch (error) {
-          console.error('Logout error local side:', error);
-          throw error;
+  // Cleanup on unmount if needed
+  useEffect(() => {
+    return () => {
+      if (db) {
+        db.closeAsync().catch(console.warn);
       }
+    };
+  }, [db]);
+
+  const logout = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+          
+      if (token) {
+          const response = await fetch(`${API_URL}/auth/logout`, {
+              method: 'POST',
+              headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+              }
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Logout failed');
+          }
+      }
+
+      // 1. First clear SecureStore (no DB dependency)
+      await Promise.all([
+        SecureStore.deleteItemAsync('authToken'),
+        SecureStore.deleteItemAsync('userData')
+      ]);
+
+      // 2. Only attempt DB operations if initialized
+      if (dbInitialized) {
+        try {
+          await UserService.clearUserData();
+        } catch (dbError) {
+          console.warn('Non-critical DB clear error:', dbError);
+          // Continue logout even if DB clear fails
+        }
+      }
+
+      // 3. Update state last
+      setUser(null);
+      console.log('✅ Logout successful');
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw new Error('Logout failed');
+    }
   };
 
   const verifyTokenSilently = async (token, email) => {
@@ -288,6 +320,7 @@ export function UserProvider({ children }) {
   return (
     <UserContext.Provider value={{ 
       user,
+      setUser,
       loading,
       registrationData,
       startRegistration,
@@ -301,7 +334,9 @@ export function UserProvider({ children }) {
       completePasswordReset,
       clearAuthData,
       verifyTokenSilently,
-      loadUserSession
+      loadUserSession,
+      serverReachable,
+      API_URL,
     }}>
       {children}
     </UserContext.Provider>

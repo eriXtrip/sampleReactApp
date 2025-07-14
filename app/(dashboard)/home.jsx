@@ -11,10 +11,14 @@ import ThemedText from '../../components/ThemedText';
 import ThemedSearch from '../../components/ThemedSearch';
 import ThemedAchievement from '../../components/ThemedAchievement';
 import ThemedActivity from '../../components/ThemedActivity';
+import { ProfileContext } from '../../contexts/ProfileContext';
+import { useContext } from 'react';
+
 
 const Home = () => {
   const colorScheme = useColorScheme();
-  const themeColors = Colors[colorScheme || 'light'];
+  const { themeColors } = useContext(ProfileContext);
+  const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const [searchQuery, setSearchQuery] = useState('');
 
   const recentActivities = [
@@ -130,7 +134,7 @@ const Home = () => {
                   styles.progressFill,
                   { 
                     width: `${subject.progress}%`,
-                    backgroundColor: themeColors.tint, // Fallback color
+                    backgroundColor: theme.tint, // Fallback color
                   }
                 ]}
               />
@@ -158,7 +162,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 0,
+    marginTop: 20,
   },
   search: {
     width: '80%',

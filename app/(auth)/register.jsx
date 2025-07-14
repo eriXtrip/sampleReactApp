@@ -16,7 +16,7 @@ import ThemedAlert from '../../components/ThemedAlert';
 import ThemedTextInput from '../../components/ThemedTextInput';
 import ThemedPasswordInput from '../../components/ThemedPasswordInput';
 import ThemedCodeInput from '../../components/ThemedCodeInput';
-
+import { ProfileContext } from '../../contexts/ProfileContext';
 
 const Register = () => {
     const router = useRouter();
@@ -29,7 +29,8 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
 
     const colorScheme = useColorScheme();
-    const theme = Colors[colorScheme] ?? Colors.light;
+    const { themeColors } = useContext(ProfileContext);
+    const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
     const [step, setStep] = useState(0); // Step 0 = Role select so on to other steps
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -73,8 +74,13 @@ const Register = () => {
         setStep(1);
     };
 
+    const isValidName = (name) => {
+        // Regular expression that allows only letters (uppercase and lowercase) and spaces
+        return /^[a-zA-Z\s]+$/.test(name) && name.trim().length > 0;
+    };
+
     const handleNext = () => {
-        if (!validateStep(1)) return showAlert('First and Last Name are required.');
+        if (!validateStep(1)) return showAlert('Please enter valid names (only letters allowed).');
         setStep(2);
     };
 
@@ -122,7 +128,9 @@ const Register = () => {
         const {
             role,
             firstName,
+            middleName,
             lastName,
+            suffix,
             gender,
             birthday,
             lrn,
@@ -137,7 +145,14 @@ const Register = () => {
             return !!role;
 
             case 1:
-            return !!firstName.trim() && !!lastName.trim();
+                // Validate first and last name are present and valid
+                // Middle name and suffix are optional but if provided, must be valid
+                const isFirstNameValid = isValidName(firstName);
+                const isLastNameValid = isValidName(lastName);
+                const isMiddleNameValid = !middleName || isValidName(middleName); // optional
+                const isSuffixValid = !suffix || isValidName(suffix); // optional
+                
+                return isFirstNameValid && isLastNameValid && isMiddleNameValid && isSuffixValid;
 
             case 2:
             return !!gender;
@@ -315,13 +330,13 @@ const Register = () => {
         try {
             // Validate all required fields
             const requiredFields = {
-            password: formData.password,
-            confirmPassword: formData.confirmPassword,
-            role: formData.role,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            gender: formData.gender,
-            birthday: formData.birthday
+                password: formData.password,
+                confirmPassword: formData.confirmPassword,
+                role: formData.role,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                gender: formData.gender,
+                birthday: formData.birthday
             };
 
             const missingFields = Object.entries(requiredFields)
@@ -336,6 +351,13 @@ const Register = () => {
             if (formData.password !== formData.confirmPassword) {
             showAlert('Passwords do not match');
             return;
+            }
+
+            // Password regex: at least one uppercase, lowercase, number, and special character
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+
+            if (!passwordRegex.test(formData.password)) {
+                return showAlert('Password must include uppercase, lowercase, number, and special character.');
             }
 
             const result = await completeRegistration(formData);
@@ -796,6 +818,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
+        marginTop: 35,
     },
     progressLine: {
         height: 2,

@@ -5,37 +5,51 @@ dotenv.config();
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT),
-  secure: false, // Start with false for troubleshooting
+  secure: process.env.EMAIL_SECURE === 'true', // Convert to boolean
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
   },
   tls: {
-    ciphers: 'SSLv3', // Try different SSL method
-    rejectUnauthorized: false // For development only
-  }
+    minVersion: 'TLSv1.2', // More secure default
+    rejectUnauthorized: process.env.NODE_ENV === 'production' // Strict in prod
+  },
+  logger: true, // Enable logging
+  debug: process.env.NODE_ENV !== 'production' // Debug in dev
 });
 
-// Test connection on startup
-transporter.verify((error) => {
-  if (error) {
+// Enhanced verification
+async function verifyTransporter() {
+  try {
+    await transporter.verify();
+    console.log('✅ SMTP server is ready');
+    return true;
+  } catch (error) {
+    console.error('❌ SMTP connection failed:', {
+      error: error.message,
+      code: error.code,
+      stack: error.stack
+    });
     console.error('SMTP Configuration:', {
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
-      user: process.env.EMAIL_USER
+      user: process.env.EMAIL_USER,
+      secure: process.env.EMAIL_SECURE
     });
-    console.error('SMTP Error Details:', error);
-  } else {
-    console.log('✅ SMTP Server ready');
+    return false;
   }
-});
+}
+
+// Verify on startup and periodically
+verifyTransporter();
+setInterval(verifyTransporter, 3600000); // 1 hour checks
 
 export const sendVerificationEmail = async (email, code, title, message) => {
   const mailOptions = {
-    from: `"${process.env.EMAIL_FROM}" <${process.env.EMAIL_USER}>`,
+    from: `"${process.env.EMAIL_FROM_NAME || 'System'}" <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
     to: email,
     subject: title,
-    text: `${message} ${code}`,
+    text: `${message}\n\nYour code: ${code}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f7f7; border-radius: 8px;">
         <div style="text-align: center;">
@@ -48,18 +62,25 @@ export const sendVerificationEmail = async (email, code, title, message) => {
           <p style="font-size: 14px; color: #aaa;">If you did not request this, please ignore this email.</p>
         </div>
       </div>
-    `
+    `,
+    priority: 'high'
   };
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
+    console.log('📧 Email sent:', {
+      messageId: info.messageId,
+      to: email,
+      subject: title
+    });
     return true;
   } catch (error) {
-    console.error('Email send failed:', {
+    console.error('❌ Email send failed:', {
+      to: email,
       error: error.message,
+      code: error.code,
       stack: error.stack
     });
-    throw error;
+    throw new Error(`Failed to send email: ${error.message}`);
   }
 };

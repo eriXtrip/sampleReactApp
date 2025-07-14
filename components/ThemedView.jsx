@@ -25,7 +25,7 @@ const ThemedView = ({ style, safe = false, children, ...props }) => {
     paddingBottom: Platform.OS === 'android' ? 0 : insets.bottom,
   };
 
-  if (!safe){
+  if (safe){
     return (
       <View 
           style={[{ backgroundColor: theme.background }, style]}

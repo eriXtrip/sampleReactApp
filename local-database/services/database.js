@@ -24,6 +24,15 @@ export async function initializeDatabase(db) {
             last_sync TEXT,
             FOREIGN KEY (role_id) REFERENCES roles(role_id)
         );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        );
         
         INSERT OR IGNORE INTO roles (role_id, role_name, description) VALUES 
             (1, 'admin', 'Administrator'),

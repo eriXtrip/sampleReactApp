@@ -6,7 +6,7 @@ import { ProfileProvider } from '../contexts/ProfileContext';
 
 const RootLayout = () => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light;
+  const theme = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
 
   return (
     <>
@@ -14,7 +14,7 @@ const RootLayout = () => {
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: theme.navBackground },
+            headerStyle: { backgroundColor: theme.Background },
             headerTintColor: theme.title,
           }}
         >

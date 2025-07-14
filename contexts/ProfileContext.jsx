@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const ProfileContext = createContext();
 
 export function ProfileProvider({ children }) {
-  const [themeColors, setTheme] = useState('system');
+  const [themeColors, setTheme] = useState('light');
 
   // Load theme from AsyncStorage on mount
   useEffect(() => {
