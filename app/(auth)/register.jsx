@@ -363,7 +363,7 @@ const Register = () => {
             const result = await completeRegistration(formData);
 
             if (result.success) {
-            router.replace('/home');
+            router.replace('/login');
             } else {
             showAlert(result.error || 'Registration failed');
             }

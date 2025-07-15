@@ -444,7 +444,7 @@ export const startPasswordReset = async (req, res) => {
 
     // Check if user exists
     const [users] = await pool.query(
-      'SELECT email, password_hash FROM users WHERE email = ?',
+      'SELECT email FROM users WHERE email = ?',
       [email]
     );
 
