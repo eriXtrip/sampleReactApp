@@ -17,6 +17,7 @@ import ThemedPasswordInput from '../../components/ThemedPasswordInput'
 import ThemedCodeInput from '../../components/ThemedCodeInput'
 import ThemedTextInput from '../../components/ThemedTextInput'
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { useResendTimer } from  '../../hooks/useResendTimer';
 
 const ForgotPassword = () => {
     const router = useRouter()
@@ -38,9 +39,10 @@ const ForgotPassword = () => {
         confirmPassword: ''
     })
     const [alert, setAlert] = useState({ visible: false, message: '' })
-    const [attempts, setAttempts] = useState(0)
-    const MAX_ATTEMPTS = 3
     
+    const RESEND_TIME = 30;
+    const { timer: resendTimer, isRunning, start: startResendTimer } = useResendTimer(RESEND_TIME);
+
     const inputRefs = useRef(Array(6).fill(null))
 
     const showAlert = (msg) => setAlert({ visible: true, message: msg })
@@ -84,36 +86,24 @@ const ForgotPassword = () => {
     }
 
     const handleVerifyCode = async (code) => {
-        try {
         const result = await verifyResetCode(email, code);
         console.log('email:', email, 'code:', code);
-            if (result.success) {
-                setStep(3);
-                setAttempts(0);
-            } else {
-                throw new Error('Invalid or expired code');
-            }
-        } catch (error) {
-            // const newAttempts = attempts + 1;
-            // setAttempts(newAttempts);
-            // if (newAttempts >= MAX_ATTEMPTS) {
-            //     showAlert(`Too many attempts. Please request a new code.`);
-            //     setStep(1);
-            //     setAttempts(0);
-            // } else {
-            //     showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS})`);
-            //     setVerificationCode(['', '', '', '', '', '']);
-            //     if (inputRefs.current[0]) inputRefs.current[0].focus();
-            // }
+        if (result.success) {
+            setStep(3);
+            setAttempts(0);
+        } else {
+            throw new Error('Invalid or expired code');
         }
     };
 
     const handleResendCode = () => {
-        if (attempts >= MAX_ATTEMPTS) {
-            showAlert('Please wait before requesting a new code.');
-        return;
+        if (resendTimer > 0) {
+            showAlert(`Please wait ${resendTimer}s before resending.`);
+            return;
         }
-        handleSubmitEmail(); // Reuse the same function
+
+        handleSubmitEmail(); // Trigger actual resend logic
+        startResendTimer(); // Starts the countdown
     };
 
     const handleKeyPress = (e, index) => {
@@ -132,6 +122,7 @@ const ForgotPassword = () => {
         try {
             console.log('Submitting email:', email);
             await startPasswordReset({ email });
+            startResendTimer(); // Starts the countdown
             setStep(2);
         } catch (error) {
             showAlert(error.message || 'Account not found');
@@ -259,16 +250,17 @@ const ForgotPassword = () => {
                         <ThemedText style={{ textAlign: 'center' }}>
                             Didn't receive code? Check your spam,
                         </ThemedText>
-                        <Pressable onPress={handleResendCode}>
-                            <ThemedText style={{ textAlign: 'center', color: Colors.primary, fontWeight: 'bold' }}>
-                                Resend Code
+                        <Pressable onPress={handleResendCode} disabled={resendTimer > 0}>
+                            <ThemedText
+                            style={{
+                                textAlign: 'center',
+                                color: resendTimer > 0 ? 'gray' : Colors.primary,
+                                fontWeight: 'bold',
+                            }}
+                            >
+                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
                             </ThemedText>
                         </Pressable>
-                        {attempts > 0 && (
-                            <ThemedText style={{ textAlign: 'center', marginTop: 10, color: theme.textSecondary }}>
-                                Attempts: {attempts}/{MAX_ATTEMPTS}
-                            </ThemedText>
-                        )}
                     </View>
                 </>
             )}

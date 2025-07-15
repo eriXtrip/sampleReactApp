@@ -68,7 +68,7 @@ export const startRegistration = async (req, res) => {
     // Store in verification table
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
     await pool.query(
-      `INSERT INTO users_verification_code 
+      `REPLACE INTO users_verification_code 
       (email, verification_code, verification_expires, type) 
       VALUES (?, ?, ?, 'registration')`,
       [email, verificationCode, expiresAt]
@@ -467,7 +467,7 @@ export const startPasswordReset = async (req, res) => {
 
     // Insert code into password_reset table
     await pool.query(
-      `INSERT INTO users_verification_code (email, verification_code, verification_expires, type)
+      `REPLACE INTO users_verification_code (email, verification_code, verification_expires, type)
        VALUES (?, ?, ?, 'password_reset')`,
       [email, verificationCode, expiresAt]
     );

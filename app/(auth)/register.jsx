@@ -17,14 +17,15 @@ import ThemedTextInput from '../../components/ThemedTextInput';
 import ThemedPasswordInput from '../../components/ThemedPasswordInput';
 import ThemedCodeInput from '../../components/ThemedCodeInput';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { useResendTimer } from  '../../hooks/useResendTimer';
 
 const Register = () => {
     const router = useRouter();
     const { 
+        startPasswordReset,
         startRegistration, 
         verifyCode, 
-        completeRegistration, 
-        registrationData 
+        completeRegistration
     } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
 
@@ -36,8 +37,8 @@ const Register = () => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     
     const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
-    const [attempts, setAttempts] = useState(0)
-    const MAX_ATTEMPTS = 3
+    const RESEND_TIME = 30;
+    const { timer: resendTimer, isRunning, start: startResendTimer } = useResendTimer(RESEND_TIME);
     
     const inputRefs = useRef(Array(6).fill(null))
 
@@ -244,7 +245,7 @@ const Register = () => {
 
     // Step 1: Start Registration with backend
     const handleStartRegistration = async () => {
-        if (!validateStep(1)) return showAlert('First and Last Name are required.');
+        startResendTimer(); // Starts the countdown
         
         setLoading(true);
         try {
@@ -301,20 +302,6 @@ const Register = () => {
             const result = await verifyCode(formData.email, code);
             if (result.success) {
                 setStep(7); // Move to password step
-            } else {
-                // Handle failed attempts
-                // const newAttempts = attempts + 1;
-                // setAttempts(newAttempts);
-                
-                // if (newAttempts >= MAX_ATTEMPTS) {
-                //     showAlert('Too many attempts. Please start over.');
-                //     setStep(0);
-                //     setAttempts(0);
-                // } else {
-                //     showAlert(`Invalid code (${newAttempts}/${MAX_ATTEMPTS} attempts)`);
-                //     setVerificationCode(['', '', '', '', '', '']);
-                //     if (inputRefs.current[0]) inputRefs.current[0].focus();
-                // }
             }
         } catch (error) {
             showAlert('Verification failed. Please try again.');
@@ -376,36 +363,21 @@ const Register = () => {
     };
 
     // Handle resend verification code
-    const handleResendCode = async () => {
-        if (attempts >= MAX_ATTEMPTS) {
-            showAlert('Please wait before requesting a new code.');
+    const handleResendCode = () => {
+        if (resendTimer > 0) {
+            showAlert(`Please wait ${resendTimer}s before resending.`);
             return;
         }
-        
-        setLoading(true);
-        try {
-            const result = await startRegistration({
-                email: formData.email,
-                role: formData.role.toLowerCase(),
-                // Include other required fields that backend might need for resend
-                firstName: formData.firstName,
-                lastName: formData.lastName
-            });
 
-            if (result.success) {
-                showAlert('New verification code sent to your email');
-                setVerificationCode(['', '', '', '', '', '']);
-                setAttempts(0);
-                if (inputRefs.current[0]) inputRefs.current[0].focus();
-            } else {
-                showAlert(result.error || 'Failed to resend code');
-            }
-        } catch (error) {
-            showAlert('Failed to resend code. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        resendCode(); // Trigger actual resend logic
+        startResendTimer(); // Starts the countdown
+
     };
+
+    const resendCode = async () => {
+        handleStartRegistration();
+    };
+
     
 
     return (
@@ -653,11 +625,11 @@ const Register = () => {
                         </View>
 
                         <ThemedText title={true} style={[styles.title, { textAlign: 'left' }]}>
-                        What's your email?
+                            What's your email?
                         </ThemedText>
 
                         <ThemedText style={{ marginBottom: 20, marginLeft: 4, fontSize: 14, color: theme.text }}>
-                        Enter your active email where you can be contacted.
+                            Enter your active email where you can be contacted.
                         </ThemedText>
 
                         <ThemedTextInput
@@ -715,7 +687,7 @@ const Register = () => {
                                 />
                             ))}
                         </View>
-                        
+
                         <Spacer height={30} />
                         
                         {/* Resend Code */}
@@ -723,16 +695,17 @@ const Register = () => {
                             <ThemedText style={{ textAlign: 'center' }}>
                                 Didn't receive code? Check your spam,
                             </ThemedText>
-                            <Pressable onPress={handleResendCode}>
-                                <ThemedText style={{ textAlign: 'center', color: Colors.primary, fontWeight: 'bold' }}>
-                                    Resend Code
+                            <Pressable onPress={handleResendCode} disabled={resendTimer > 0}>
+                                <ThemedText
+                                style={{
+                                    textAlign: 'center',
+                                    color: resendTimer > 0 ? 'gray' : Colors.primary,
+                                    fontWeight: 'bold',
+                                }}
+                                >
+                                {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
                                 </ThemedText>
                             </Pressable>
-                            {attempts > 0 && (
-                                <ThemedText style={{ textAlign: 'center', marginTop: 10, color: theme.textSecondary }}>
-                                    Attempts: {attempts}/{MAX_ATTEMPTS}
-                                </ThemedText>
-                            )}
                         </View>
                     </>
                     ) : (
@@ -744,11 +717,11 @@ const Register = () => {
                         </View>
 
                         <ThemedText title={true} style={[styles.title, { textAlign: 'left' }]}>
-                        Create a password
+                            Create a password
                         </ThemedText>
 
                         <ThemedText style={{ marginBottom: 20, marginLeft: 4, fontSize: 14, color: theme.text }}>
-                        Create a password with at least 6 letters or numbers. It should be something other can't guess.
+                            Create a password with at least 6 letters or numbers. It should be something other can't guess.
                         </ThemedText>
 
                         <Spacer height={15} />
@@ -777,9 +750,6 @@ const Register = () => {
                         </ThemedButton>
                     </>
                 )}
-                {/* <Link href='/login' style={styles.link}>
-                    <ThemedText style={{ textAlign: 'center', marginBottom: 50 }}>Already have an account? Login Instead</ThemedText>
-                </Link> */}
             </ScrollView>
 
             <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
