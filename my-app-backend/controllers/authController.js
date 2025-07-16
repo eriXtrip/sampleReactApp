@@ -311,7 +311,7 @@ export const login = async (req, res) => {
         });
 
         if (!users || users.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'No account found. Pls register with your email' });
         }
 
         const user = users[0];
@@ -449,7 +449,7 @@ export const startPasswordReset = async (req, res) => {
     );
 
     if (users.length === 0) {
-      return res.status(404).json({ error: 'No account found with that email' });
+      return res.status(404).json({ error: 'No account found. Pls register with your email' });
     }
 
     // Generate unique 6-digit verification code

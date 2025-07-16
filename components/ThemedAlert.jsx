@@ -19,9 +19,9 @@ const ThemedAlert = ({ visible, message, onClose }) => {
     >
       <View style={styles.overlay}>
         <View style={[styles.alertBox, { backgroundColor: theme.alertBackground, borderColor: theme.uiBackground }]}>
-          <Ionicons name="alert-circle" size={30} color={Colors.warning} />
+          <Ionicons name="alert-circle" size={30} color={theme.warning} />
           <Text style={[styles.message, { color: theme.text }]}>{message}</Text>
-          <Pressable onPress={onClose} style={[styles.button, { backgroundColor: theme.iconColor }]}>
+          <Pressable onPress={onClose} style={[styles.button, { backgroundColor: theme.warning }]}>
             <Text style={{ color: theme.background, fontWeight: 'bold' }}>OK</Text>
           </Pressable>
         </View>

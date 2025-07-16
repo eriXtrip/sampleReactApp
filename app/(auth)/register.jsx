@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/auth/register.jsx
 import React, { useState, useRef, useContext  } from 'react'
-import { StyleSheet, Text, TextInput, View, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Pressable, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -508,12 +508,16 @@ const Register = () => {
                         Select your gender.
                         </ThemedText>
 
-                        <View style={[styles.genderList, {backgroundColor: theme.Background, borderColor: theme.iconColor,}]}>
-                        {['Female', 'Male', 'Prefer not to say'].map((option) => (
-                            <Pressable
+                        <View style={[styles.genderList, {backgroundColor: theme.navBackground, borderColor: theme.cardBorder,}]}>
+                        {['Female', 'Male', 'Prefer not to say'].map((option, index) => (
+                            <TouchableOpacity
                             key={option}
                             onPress={() => handleChange('gender', option)}
-                            style={styles.genderOption}
+                            style={[styles.genderOption,
+                                {borderColor: theme.cardBorder},
+                                index === 2 && { borderBottomWidth: 0 }
+                            ]}
+                            
                             >
                             <Text style={[styles.genderText, { color: theme.text }]}>
                                 {option}
@@ -523,7 +527,7 @@ const Register = () => {
                                 size={25}
                                 color={theme.text}
                             />
-                            </Pressable>
+                            </TouchableOpacity>
                         ))}
                         </View>
 
@@ -833,6 +837,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 12,
         paddingHorizontal: 18,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
     genderText: {
         fontSize: 16,
