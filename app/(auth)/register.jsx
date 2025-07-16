@@ -378,6 +378,16 @@ const Register = () => {
         handleStartRegistration();
     };
 
+    const passwordHint = () => {
+        showAlert("Tips for a strong password\n\n" +
+            "• Combine upper and lower case letters, numbers, and special characters (e.g., $, #, &, etc.).\n\n" +
+            "• Keep your password at least 8 to 12 characters long.\n\n" +
+            "• Avoid consecutive characters (e.g., 12345, abcde, qwerty, etc.) or repeating characters (e.g., 11111).\n\n" +
+            "• Avoid personal info like names of friends or relatives, your birthday, or your address.\n\n" +
+            "• Avoid common or obvious words (e.g., password, maya, bank, money, etc.).\n\n" +
+            "• Avoid using the same password from other accounts you own.");
+    };
+
     
 
     return (
@@ -558,9 +568,13 @@ const Register = () => {
                             onPress={() => setShowDatePicker(true)}
                             style={[styles.datePicker, { backgroundColor: theme.uiBackground, borderColor: theme.iconColor }]}
                         >
-                        <Text style={{ color: theme.text, fontSize: 16 }}>
-                            {formData.birthday ? new Date(formData.birthday).toLocaleDateString() : 'Select Date'}
-                        </Text>
+                            <Text style={{ fontSize: 16 }}>
+                                {
+                                    formData.birthday && formData.birthday !== ''
+                                    ? new Date(formData.birthday).toLocaleDateString()
+                                    : 'Select Date'
+                                }
+                            </Text>
                         </Pressable>
 
                         {showDatePicker && (
@@ -680,7 +694,7 @@ const Register = () => {
                                 <ThemedCodeInput
                                     key={index}
                                     ref={(el) => (inputRefs.current[index] = el)}
-                                    style={styles.codeInput}
+                                    style={[styles.codeInput, {color: theme.text, borderColor: theme.iconColor}]}
                                     value={verificationCode[index]}
                                     onChangeText={(text) => handleVerificationChange(text, index)}
                                     onKeyPress={(e) => handleKeyPress(e, index)}
@@ -697,7 +711,7 @@ const Register = () => {
                         {/* Resend Code */}
                         <View style={{ alignItems: 'center' }}>
                             <ThemedText style={{ textAlign: 'center' }}>
-                                Didn't receive code? Check your spam,
+                                Didn't receive code? Check your spam
                             </ThemedText>
                             <Pressable onPress={handleResendCode} disabled={resendTimer > 0}>
                                 <ThemedText
@@ -725,11 +739,15 @@ const Register = () => {
                         </ThemedText>
 
                         <ThemedText style={{ marginBottom: 20, marginLeft: 4, fontSize: 14, color: theme.text }}>
-                            Create a password with at least 6 letters or numbers. It should be something other can't guess.
+                            Create a password with at least 8 letters or numbers. It should be something other can't guess.
                         </ThemedText>
 
                         <Spacer height={15} />
-                        <ThemedText style={styles.label}>Password</ThemedText>
+                        <ThemedText style={styles.label}>Password
+                            <Pressable onPress={passwordHint}>
+                                <Ionicons name="alert-circle" size={18} color={theme.warning} paddingLeft={5}/>
+                            </Pressable>
+                        </ThemedText>
                         <ThemedPasswordInput
                             placeholder="Enter password"
                             value={formData.password}

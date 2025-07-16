@@ -18,7 +18,7 @@ const ThemedCodeInput = React.forwardRef((props, ref) => {
     borderRadius: 8,
     borderWidth: 1,
     marginHorizontal: 4,
-    color: "#000000",
+    color: theme.text,
     borderColor: theme.iconColor,
     backgroundColor: theme.uiBackground,
   }

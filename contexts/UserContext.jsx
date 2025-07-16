@@ -14,7 +14,7 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  const API_URL = "http://192.168.0.105:3001/api";
+  const API_URL = "http://192.168.0.100:3001/api";
   const db = useSQLiteContext();
 
   // Initialize database using database.js

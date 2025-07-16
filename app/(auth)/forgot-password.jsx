@@ -132,12 +132,12 @@ const ForgotPassword = () => {
     const handleSubmitPassword = async () => {
         if (!formData.password.trim()) return showAlert('Please enter a password');
         if (formData.password !== formData.confirmPassword) return showAlert('Passwords do not match');
-        if (formData.password.length < 6) return showAlert('Password must be at least 6 characters');
+        if (formData.password.length < 6) return showAlert('Password must be at least 8 characters');
 
         // Password regex: at least one uppercase, lowercase, number, and special character
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
 
-        if (!passwordRegex.test(password)) {
+        if (!passwordRegex.test(formData.password)) {
             return showAlert('Password must include uppercase, lowercase, number, and special character.');
         }
         
@@ -158,6 +158,17 @@ const ForgotPassword = () => {
             setStep(2)
         }
     }
+
+    const passwordHint = () => {
+        showAlert("Tips for a strong password\n\n" +
+            "• Combine upper and lower case letters, numbers, and special characters (e.g., $, #, &, etc.).\n\n" +
+            "• Keep your password at least 8 to 12 characters long.\n\n" +
+            "• Avoid consecutive characters (e.g., 12345, abcde, qwerty, etc.) or repeating characters (e.g., 11111).\n\n" +
+            "• Avoid personal info like names of friends or relatives, your birthday, or your address.\n\n" +
+            "• Avoid common or obvious words (e.g., password, maya, bank, money, etc.).\n\n" +
+            "• Avoid using the same password from other accounts you own.");
+    };
+
 
     return (
         <ThemedView style={styles.container} safe={true}>
@@ -274,15 +285,19 @@ const ForgotPassword = () => {
                     </View>
 
                     <ThemedText title={true} style={styles.title}>
-                        Create a password
+                        Create a password 
                     </ThemedText>
 
                     <ThemedText style={{ marginBottom: 20, marginLeft: 4, fontSize: 14, color: theme.text }}>
-                        Create a password with at least 6 letters or numbers. It should be something other can't guess.
+                        Create a password with at least 8 letters or numbers. It should be something other can't guess.
                     </ThemedText>
 
                     <Spacer height={15} />
-                    <ThemedText style={styles.label}>Password</ThemedText>
+                    <ThemedText style={styles.label}>Password
+                        <Pressable onPress={passwordHint}>
+                            <Ionicons name="alert-circle" size={18} color={theme.warning} paddingLeft={5}/>
+                        </Pressable>
+                    </ThemedText>
                     <ThemedPasswordInput
                         placeholder="Enter password"
                         value={formData.password}
