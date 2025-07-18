@@ -132,10 +132,10 @@ const ForgotPassword = () => {
     const handleSubmitPassword = async () => {
         if (!formData.password.trim()) return showAlert('Please enter a password');
         if (formData.password !== formData.confirmPassword) return showAlert('Passwords do not match');
-        if (formData.password.length < 6) return showAlert('Password must be at least 8 characters');
+        if (formData.password.length < 8) return showAlert('Password must be at least 8 characters');
 
         // Password regex: at least one uppercase, lowercase, number, and special character
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
 
         if (!passwordRegex.test(formData.password)) {
             return showAlert('Password must include uppercase, lowercase, number, and special character.');
@@ -145,7 +145,7 @@ const ForgotPassword = () => {
             await completePasswordReset({ email, password: formData.password });
             console.log('email:', email, 'password:', formData.password);
             showAlert('Password has been reset successfully');
-            setTimeout(() => router.push('/login'), 1500);
+            setTimeout(() => router.push('/login'), 2000);
         } catch (error) {
             showAlert(error.message || 'Failed to reset password');
         }

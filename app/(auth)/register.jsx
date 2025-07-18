@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/auth/register.jsx
 import React, { useState, useRef, useContext  } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Platform, Text, TouchableOpacity, View, Pressable, ScrollView, KeyboardAvoidingView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,8 +99,8 @@ const Register = () => {
         if (!validateStep(4)) {
             return showAlert(
             formData.role === 'Teacher'
-                ? 'Teacher ID must be exactly 10 digits.'
-                : 'LRN must be exactly 12 digits.'
+                ? 'Teacher ID must be exactly 10 digits and contain only numbers.'
+                : 'LRN must be exactly 12 digits and contain only numbers.'
             )}
         setStep(5);
     };
@@ -167,12 +167,13 @@ const Register = () => {
 
 
             case 4:
-                if (role === 'Teacher') {
-                    return /^\d{10}$/.test(teacherId); // Teacher ID must be exactly 10 digits
+                if (formData.role === 'Teacher') {
+                    const teacherId = formData.teacherId ? formData.teacherId.trim() : '';
+                    return teacherId && /^\d{10}$/.test(teacherId);
                 } else {
-                    return /^\d{12}$/.test(lrn); // LRN must be exactly 12 digits
+                    const lrn = formData.lrn ? formData.lrn.trim() : '';
+                    return lrn && /^\d{12}$/.test(lrn);
                 }
-
 
             case 5:
                 if (!email) {
@@ -225,7 +226,6 @@ const Register = () => {
         if (index === 5 && digit) {
             const fullCode = [...newCode].join(''); // Get the complete code
             console.log('Verification Code Submitted:', {
-                code: fullCode,
                 email: formData.email, // Also log the associated email
                 timestamp: new Date().toISOString()
             });
@@ -331,17 +331,22 @@ const Register = () => {
             .map(([key]) => key);
 
             if (missingFields.length > 0) {
-            showAlert(`Missing required fields: ${missingFields.join(', ')}`);
-            return;
+                showAlert(`Missing required fields: ${missingFields.join(', ')}`);
+                return;
             }
 
             if (formData.password !== formData.confirmPassword) {
-            showAlert('Passwords do not match');
-            return;
+                showAlert('Passwords do not match');
+                return;
+            }
+
+            if (formData.password.length < 8 || formData.confirmPassword.length < 8){
+                showAlert('Password must be at least 8 character long');
+                return;
             }
 
             // Password regex: at least one uppercase, lowercase, number, and special character
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
 
             if (!passwordRegex.test(formData.password)) {
                 return showAlert('Password must include uppercase, lowercase, number, and special character.');
@@ -350,9 +355,10 @@ const Register = () => {
             const result = await completeRegistration(formData);
 
             if (result.success) {
-            router.replace('/login');
+                showAlert('Account successfully created.');
+                setTimeout(() => router.push('/login'), 2000);
             } else {
-            showAlert(result.error || 'Registration failed');
+                showAlert(result.error || 'Registration failed');
             }
         } catch (error) {
             console.error('Registration error:', error);
@@ -756,11 +762,14 @@ const Register = () => {
 
                         <Spacer height={15} />
                         <ThemedText style={styles.label}>Confirm Password</ThemedText>
-                        <ThemedPasswordInput
-                            placeholder="Confirm password"
-                            value={formData.confirmPassword}
-                            onChangeText={(text) => handleChange('confirmPassword', text)}
-                        />
+                        <KeyboardAvoidingView behavior={Platform.OS === 'android' ? 'padding' : undefined}>
+                            <ThemedPasswordInput
+                                placeholder="Confirm password"
+                                value={formData.confirmPassword}
+                                onChangeText={(text) => handleChange('confirmPassword', text)}
+                            />
+                        </KeyboardAvoidingView>
+                        
 
                         <Spacer height={25} />
                         <ThemedButton 

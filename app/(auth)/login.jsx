@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/(auth)/login.jsx
 import React, { useState, useContext, useEffect  } from 'react';
-import { StyleSheet, Image, View, ActivityIndicator} from 'react-native'
+import { KeyboardAvoidingView, StyleSheet, Image, View, ActivityIndicator, Platform} from 'react-native'
 import { Link, useRouter, Redirect } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
@@ -37,17 +37,22 @@ const login = () => {
 
     const handleSubmit = async () => {
         setLoading(true);
-        try {
+        if (!!!email || !!!password){
+            return showAlert( 'Pls enter your email and password');
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return showAlert('Invalid email format.');
+        }
+            
+        try{
             await login(email, password); // Use login from context
             router.replace('/home');
-        } catch (error) {
-            console.error('Login error frontend:', error);
-            console.log(email, password);
+        } catch (error){
             showAlert(error.message);
         } finally {
             setLoading(false);
         }
-       
+
     };
 
     // Show loading indicator while checking auth state
@@ -76,13 +81,16 @@ const login = () => {
             <Spacer height={30} />
             
             <ThemedText style={styles.label}>Email</ThemedText>
-            <ThemedTextInput
-                value={email}
-                onChangeText={setemail}
-                placeholder="Enter email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
+            <KeyboardAvoidingView behavior={Platform.OS === 'android' ? 'padding' : undefined}>
+                <ThemedTextInput
+                    value={email}
+                    onChangeText={setemail}
+                    placeholder="Enter email"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+            </KeyboardAvoidingView>
+            
             
             <Spacer height={20} />
             
@@ -93,10 +101,13 @@ const login = () => {
                     <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
                 </Link>
             </View>
-            <ThemedPasswordInput
-                value={password}
-                onChangeText={setPassword}
-            />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ThemedPasswordInput
+                    value={password}
+                    onChangeText={setPassword}
+                />
+            </KeyboardAvoidingView>
+            
             
             <Spacer height={30} />
             

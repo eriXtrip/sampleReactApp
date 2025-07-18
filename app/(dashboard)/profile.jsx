@@ -80,7 +80,10 @@ const Profile = () => {
             <ThemedText>My Profile</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}>
+          <TouchableOpacity 
+            style={[styles.cardItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/(profile)/change-password')}
+          >
             <ThemedText>Change Password</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>

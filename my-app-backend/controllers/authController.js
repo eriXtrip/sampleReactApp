@@ -1,5 +1,6 @@
 // SAMPLEREACTAPP/my-app-backend/controllers/authController.js
 import { sendVerificationEmail } from '../utils/email.js';
+import { verifyAndDecodeToken } from '../middleware/authHelpers.js';
 import pool from '../services/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -170,7 +171,7 @@ export const completeRegistration = async (req, res) => {
 
     console.log("Destructured fields:", {
       email, password, confirmPassword, role, firstName, 
-      lastName, gender, birthday // Log the critical fields
+      lastName, gender, birthday, lrn, teacherId
     });
     
     if ( !password || !confirmPassword || !role || 
@@ -224,16 +225,6 @@ export const completeRegistration = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Set lrn or teacher_id based on role
-    let finalLrn = null;
-    let finalTeacherId = null;
-
-    if (normalizedRole === 'Pupil') {
-      finalLrn = lrn || null;
-    } else if (normalizedRole === 'Teacher') {
-      finalTeacherId = teacherId || null;
-    }
-
     // Insert into users table
     await pool.query(
       `INSERT INTO users (
@@ -250,8 +241,8 @@ export const completeRegistration = async (req, res) => {
         suffix,
         gender,
         birthday,
-        finalLrn,
-        finalTeacherId
+        lrn,
+        teacherId
       ]
     );
 
@@ -283,7 +274,7 @@ export const login = async (req, res) => {
         console.log('Querying database for user...');
         const [users] = await pool.query(
             `SELECT 
-                u.user_id as id, 
+                u.user_id, 
                 u.role_id,
                 u.first_name,
                 u.middle_name,
@@ -301,34 +292,34 @@ export const login = async (req, res) => {
         );
 
         console.log('Database query results:', {
-            userCount: users?.length,
-            firstUser: users?.[0] ? {
-                id: users[0].id,
+            userCount: Array.isArray(users) ? users.length : 0,
+            firstUser: Array.isArray(users) && users[0] ? {
+                id: users[0].user_id,
                 email: users[0].email,
-                role_id: users[0].role_id,
-                role: users[0].role
+                role_id: users[0].role_id
             } : null
         });
 
-        if (!users || users.length === 0) {
-            return res.status(401).json({ error: 'No account found. Pls register with your email' });
+        // Check if users array is valid and not empty
+        if (!!!users || users.length === 0) {
+            return res.status(401).json({ error: 'No account found. Please create an account with your email' });
         }
 
         const user = users[0];
 
-        // Verify password
         const passwordValid = await bcrypt.compare(password, user.password_hash);
         if (!passwordValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Login failed. Please check your credentials.' });
         }
 
         // Create JWT token
         const token = jwt.sign(
             {
-                userId: user.id,
+                userId: user.user_id,
                 email: user.email
             },
             process.env.JWT_SECRET,
+            { expiresIn: '1h' } // Added token expiration
         );
 
         // Return user data without sensitive information
@@ -336,13 +327,13 @@ export const login = async (req, res) => {
             success: true,
             token,
             user: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 firstName: user.first_name,
                 middleName: user.middle_name,
                 lastName: user.last_name,
                 suffix: user.suffix,
-                role: user.role_id,
+                role: user.role_id, // Consistent with client expectation
                 birthday: user.birth_date,
                 gender: user.gender,
                 lrn: user.lrn,
@@ -352,12 +343,9 @@ export const login = async (req, res) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        
-        // More specific error messages
         if (error.code === 'ECONNREFUSED') {
             return res.status(500).json({ error: 'Database connection failed' });
         }
-        
         res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 };
@@ -384,8 +372,6 @@ export const checkTokenRevocation = async (req, res, next) => {
     }
 };
 
-
-
 // Token verification middleware
 export const verifyToken = async (req, res) => {
   try {
@@ -394,7 +380,7 @@ export const verifyToken = async (req, res) => {
 
     // Check revocation
     const [revoked] = await pool.query(
-      'SELECT 1 FROM revoked_tokens WHERE token = ?',
+      'SELECT * FROM revoked_tokens WHERE token = ?',
       [token]
     );
     
@@ -431,8 +417,6 @@ export const logout = async (req, res) => {
         res.status(500).json({ error: 'Logout failed' });
     }
 };
-
-
 
 export const startPasswordReset = async (req, res) => {
   try {
@@ -538,5 +522,38 @@ export const completePasswordReset = async (req, res) => {
   } catch (error) {
     console.error('completePasswordReset error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { server_id, currentPassword, newPassword } = req.body;
+    console.log('ChangePassword data:', { server_id, currentPassword, newPassword });
+
+    const decoded = await verifyAndDecodeToken(req);
+    console.log('swt: ', decoded);
+
+    if (!server_id || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Server ID, current password, and new password are required' });
+    }
+
+    const [users] = await pool.query('SELECT * FROM users WHERE user_id = ?', [server_id]);
+    if (!users.length) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    const user = users[0];
+    const passwordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Invalid current password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [hashedPassword, server_id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Change password error:', error.message);
+    res.status(401).json({ error: error.message || 'Failed to change password' });
   }
 };

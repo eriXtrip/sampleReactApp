@@ -12,7 +12,8 @@ import {
   logout,
   startPasswordReset,
   verifyResetCode,
-  completePasswordReset
+  completePasswordReset,
+  changePassword
 } from './controllers/authController.js';
 import config from './config.js';
 import os from 'os';
@@ -33,6 +34,7 @@ app.post('/api/auth/logout', logout);
 app.post('/api/auth/start-password-reset', startPasswordReset);
 app.post('/api/auth/verify-reset-code', verifyResetCode);
 app.post('/api/auth/complete-password-reset', completePasswordReset);
+app.post('/api/auth/change-password', changePassword);
 
 // Health check
 app.get('/api/health', (req, res) => {

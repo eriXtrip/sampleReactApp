@@ -14,7 +14,7 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  const API_URL = "http://192.168.0.100:3001/api";
+  const API_URL = "http://192.168.0.111:3001/api";
   const db = useSQLiteContext();
 
   // Initialize database using database.js
@@ -75,64 +75,61 @@ export function UserProvider({ children }) {
   // Login function (updated for new schema)
   const login = async (email, password) => {
     try {
-      setLoading(true);
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        throw new Error(data.error || 'Invalid email format.');
-      }
-      console.log('Attempting login with:', { email });
-      
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+        setLoading(true);
+        console.log('Attempting login with:', { email });
 
-      const data = await response.json();
-      console.log('Initial login response:', { 
-        ok: response.ok, 
-        userData: data.user,
-        hasToken: !!data.token 
-      });
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed. Please check your credentials.');
-      }
+        const data = await response.json();
+        console.log('Initial login response:', {
+            ok: response.ok,
+            status: response.status,
+            userData: data.user,
+            hasToken: !!data.token,
+            error: data.error
+        });
 
-      // Transform server data to match new SQLite schema
-      const userDataForSync = {
-        server_id: data.user.id,
-        email: data.user.email,
-        first_name: data.user.firstName, // Required field
-        middle_name: data.user.middleName || 'N/A',
-        last_name: data.user.lastName, // Required field
-        suffix: data.user.suffix || 'N/A',
-        birth_date: data.user.birthday,
-        gender: data.user.gender,
-        role_id: data.user.role, // Assumes server returns numeric role_id
-        lrn: data.user.lrn || 'N/A',
-        teacher_id: data.user.teacherId || "N/A"
-      };
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error(data.error);
+            }
+            throw new Error(data.error || 'Login failed. Please try again.');
+        }
 
-      // Store authentication data and sync to SQLite
-      await Promise.all([
-        SecureStore.setItemAsync('authToken', data.token),
-        SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync)),
-        UserService.syncUser(userDataForSync, data.token)
-      ]);
-      
-      setUser(userDataForSync);
-      return { success: true, user: userDataForSync };
+        // Transform server data to match new SQLite schema
+        const userDataForSync = {
+            server_id: data.user.id,
+            email: data.user.email,
+            first_name: data.user.firstName,
+            middle_name: data.user.middleName || 'N/A',
+            last_name: data.user.lastName,
+            suffix: data.user.suffix || 'N/A',
+            birth_date: data.user.birthday,
+            gender: data.user.gender,
+            role_id: data.user.role, // Fixed to match server response
+            lrn: data.user.lrn || 'N/A',
+            teacher_id: data.user.teacherId || 'N/A'
+        };
+
+        // Store authentication data and sync to SQLite
+        await Promise.all([
+            SecureStore.setItemAsync('authToken', data.token),
+            SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync)),
+            UserService.syncUser(userDataForSync, data.token)
+        ]);
+
+        setUser(userDataForSync);
+        return { success: true, user: userDataForSync };
 
     } catch (error) {
-      console.error('Login error:', {
-        message: error.message,
-        stack: error.stack,
-        fullError: JSON.stringify(error)
-      });
-      await clearAuthData();
-      throw error;
+        await clearAuthData();
+        throw new Error(error.message); // Preserve specific error message
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -317,6 +314,44 @@ export function UserProvider({ children }) {
     return await response.json();
   };
 
+  const changepassword = async (data) => {
+    const token = await SecureStore.getItemAsync('authToken');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const url = `${API_URL}/auth/change-password`;
+    console.log('ChangePassword request:', { url, token, server_id: data.server_id, currentPassword: data.currentPassword, newPassword: data.newPassword });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        server_id: data.server_id,
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      }),
+    });
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', { status: response.status, url, text });
+      throw new Error(`Expected JSON, received ${contentType || 'no content-type'}: ${text.slice(0, 100)}...`);
+    }
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to change password');
+    }
+
+    return responseData;
+  };
+
   return (
     <UserContext.Provider value={{ 
       user,
@@ -337,6 +372,7 @@ export function UserProvider({ children }) {
       loadUserSession,
       serverReachable,
       API_URL,
+      changepassword,
     }}>
       {children}
     </UserContext.Provider>

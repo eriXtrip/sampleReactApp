@@ -26,6 +26,7 @@ const ThemedPasswordInput = ({
         secureTextEntry={!showPassword}
         placeholder={placeholder}
         placeholderTextColor={theme.iconColor}
+        contextMenuHidden={true} //disable copy&paste
         style={[
           styles.input,
           {
