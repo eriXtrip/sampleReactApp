@@ -18,6 +18,7 @@ export const Colors = {
         buttonText: "#f2f2f2",
         statusbarBackground: '#302f82',
         warning: "#fffc",
+        notifColor: "#fff",
     },
 
     light: {
@@ -32,10 +33,11 @@ export const Colors = {
         cardBackground: "#5289F6",
         cardBorder: "#c8caceff",
         alertBackground: "#fff",
-        tint: '#c2d0ff',
+        tint: '#727272ff',
         buttonText: "#f2f2f2",
         statusbarBackground: '#d8d8d8ff',
         warning: "#8c8c8c",
+        notifColor: "#888a94",
     },
 
 }
