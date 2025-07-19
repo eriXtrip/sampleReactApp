@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/(auth)/login.jsx
 import React, { useState, useContext, useEffect  } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Image, View, ActivityIndicator, Platform} from 'react-native'
+import { KeyboardAvoidingView, StyleSheet, Image, View, ActivityIndicator, Platform, TouchableOpacity } from 'react-native'
 import { Link, useRouter, Redirect } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
@@ -14,6 +14,8 @@ import ThemedButton from '../../components/ThemedButton'
 import ThemedAlert from '../../components/ThemedAlert'
 import ThemedTextInput from '../../components/ThemedTextInput'
 import ThemedPasswordInput from '../../components/ThemedPasswordInput'
+import ApiConfigScreen from '../index';
+import { clearApiUrl  } from '../../utils/apiManager';
 
 const login = () => {
     const router = useRouter()
@@ -23,10 +25,10 @@ const login = () => {
     const [email, setemail] = useState('');
     const [password, setPassword] = useState('');
     const [alert, setAlert] = useState({ visible: false, message: '' });
-    const [loading, setLoading] = useState(false);
+    const [ loading, setLoading] = useState(false);
     const showAlert = (msg) => setAlert({ visible: true, message: msg });
     const closeAlert = () => setAlert({ ...alert, visible: false });
-    const { setUser } = useUser();
+    const [cleared, setCleared] = useState(false);
     const { user, isLoading } = useUser();
 
     useEffect(() => {
@@ -37,6 +39,7 @@ const login = () => {
 
     const handleSubmit = async () => {
         setLoading(true);
+        console.log('Login button pressed');
         if (!!!email || !!!password){
             return showAlert( 'Pls enter your email and password');
         }
@@ -55,6 +58,19 @@ const login = () => {
 
     };
 
+    const handleLogoPress = async () => {
+        await clearApiUrl();
+        console.log('✅ API URL cleared!');
+        setCleared(true); // Trigger re-render
+    };
+
+    const handleApiConfigComplete = () => {
+        setCleared(false);
+        router.replace('/login'); // Or your desired navigation
+    };
+
+    if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;;
+
     // Show loading indicator while checking auth state
     if (isLoading) {
         return (
@@ -67,11 +83,14 @@ const login = () => {
     return (
         <ThemedView style={styles.container} safe={true}>
             <View style={styles.logoContainer}>
-            <Image 
-                source={require('../../assets/img/Login_Logo.png')} // Update path to your logo
-                style={styles.logo}
-                resizeMode="contain"
-            />
+                <TouchableOpacity onPress={handleLogoPress}>
+                    <Image 
+                        source={require('../../assets/img/Login_Logo.png')} // Update path to your logo
+                        style={styles.logo}
+                        resizeMode="contain"
+                        
+                    />
+                </TouchableOpacity>
             </View>
             {/* Welcome Message */}
             
@@ -111,7 +130,7 @@ const login = () => {
             
             <Spacer height={30} />
             
-            <ThemedButton onPress={handleSubmit} > Login </ThemedButton>
+            <ThemedButton onPress={handleSubmit}  > Login </ThemedButton>
             
             <Spacer height={20} />
             

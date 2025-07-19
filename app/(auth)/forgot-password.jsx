@@ -92,8 +92,10 @@ const ForgotPassword = () => {
             setStep(3);
             setAttempts(0);
         } else {
+            showAlert('Invalid or expired reset code');
             throw new Error('Invalid or expired code');
         }
+        console.error('Verification failed:', error.message);
     };
 
     const handleResendCode = () => {

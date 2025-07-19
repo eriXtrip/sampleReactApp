@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
 import { useColorScheme, View, Platform, StatusBar, Text, TouchableOpacity } from 'react-native';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
+
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProvider } from "../../contexts/UserContext";
 import { SQLiteProvider } from 'expo-sqlite';
+
 
 export default function ProfileLayout() {
   const colorScheme = useColorScheme();

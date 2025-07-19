@@ -1,61 +1,151 @@
-import { StyleSheet, Text, View, Image } from 'react-native'
-import { Link } from 'expo-router'
-import ThemedView from '../components/ThemedView'
-import ThemedLogo from '../components/ThemedLogo'
-import Spacer from '../components/Spacer'
-import ThemedText from '../components/ThemedText'
+// SAMPLEREACTAPP/app/index.jsx
 
-const Home = () => {
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Image,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Easing,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useUser } from '../hooks/useUser'
+import { UserProvider } from "../contexts/UserContext";
+import { SQLiteProvider } from 'expo-sqlite';
+import { initializeDatabase } from '../local-database/services/database';
+
+const { width, height } = Dimensions.get('window');
+const CIRCLE_SIZE = 100;
+
+
+const Index = () => {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedLogo />
+    <SQLiteProvider databaseName="mquest.db" onInit={initializeDatabase}>
+      <UserProvider>
+        <SplashScreen />
+      </UserProvider>
+    </SQLiteProvider>
+  );
+};
 
-      <Spacer />
-      <ThemedText style={styles.title} title={true}>The number one</ThemedText>
+export default Index;
 
-      <Spacer/>
-      <ThemedText>Reading list App</ThemedText>
+const SplashScreen = () => {
+  const router = useRouter();
+  const { user, isLoading } = useUser();
 
-      <View style={styles.card}>
-        <Text>This is card</Text>
-      </View>
+  const circle1Scale = useRef(new Animated.Value(0.1)).current;
+  const circle2Scale = useRef(new Animated.Value(0.1)).current;
+  const logoPulse = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-      <Link href="/login" style={styles.link}>
-        <ThemedText>Login</ThemedText>
-      </Link>
-      <Link href="/register" style={styles.link}>
-        <ThemedText>Register</ThemedText>
-      </Link>
-      <Link href="/home" style={styles.link}>
-        <ThemedText>Home</ThemedText>
-      </Link>
-    </ThemedView>
-  )
-}
+  useEffect(() => {
+    // Start circle animations
+    Animated.sequence([
+      Animated.timing(circle1Scale, {
+        toValue: 10,
+        duration: 500,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle2Scale, {
+        toValue: 10,
+        duration: 500,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        if (user) {
+            router.replace('/home');
+        }else{
+          router.replace('/login');
+        }
+      });
+    });
 
-export default Home
+    // Logo pulse animation (loop)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, {
+          toValue: 1.1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoPulse, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      {/* Circle 1 */}
+      <Animated.View
+        style={[
+          styles.expandingCircle,
+          {
+            transform: [{ scale: circle1Scale }],
+            opacity: fadeAnim,
+          },
+        ]}
+      />
+      {/* Circle 2 */}
+      <Animated.View
+        style={[
+          styles.expandingCircle,
+          {
+            backgroundColor: '#ffffffff', // slightly lighter
+            transform: [{ scale: circle2Scale }],
+            opacity: fadeAnim,
+          },
+        ]}
+      />
+      {/* Logo with pulse */}
+      <Animated.Image
+        source={require('../assets/img/Login_Logo.png')}
+        style={[
+          styles.logo,
+          {
+            transform: [{ scale: logoPulse }],
+            opacity: fadeAnim,
+          },
+        ]}
+        resizeMode="contain"
+      />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#fff',
     justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-
-  title: {
-    fontWeight: 'bold',
-    fontSize:18,
+  expandingCircle: {
+    position: 'absolute',
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
+    backgroundColor: '#3B82F6',
+    top: height / 2 - CIRCLE_SIZE / 2,
+    left: width / 2 - CIRCLE_SIZE / 2,
+    zIndex: 0,
   },
-
-  card: {
-    backgroundColor: '#eee',
-    padding: 20,
-    borderRadius: 5,
-    boxShadow: '4px 4px rgba(0,0,0,0.1)',
+  logo: {
+    width: 200,
+    height: 200,
+    zIndex: 1,
   },
-  
-  link: {
-    marginVertical: 10,
-    borderBottomWidth: 1,
-  }
-})
+});

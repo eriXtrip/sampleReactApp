@@ -64,25 +64,31 @@ const ChangePassword = () => {
   };
 
   const validateForm = () => {
-    if (!formData.currentPassword) {
-      showAlert('Error', 'Current password is required.');
+    if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
+      showAlert('Error', 'Current, New, and Confirm password are required.');
       return false;
     }
-    if (!formData.newPassword) {
-      showAlert('Error', 'New password is required.');
+    if (formData.newPassword == formData.currentPassword) {
+      showAlert('Error', 'New password and Current password must not be the same.');
+      return false;
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      showAlert('Error', 'New password and confirm password do not match.');
       return false;
     }
     if (formData.newPassword.length < 8) {
       showAlert('Error', 'New password must be at least 8 characters long.');
       return false;
     }
-    if (!/^(?!\d{8,}$)(?!.*(.)\1{3}).*$/.test(formData.newPassword)) {
-      showAlert('Error', 'New password must not be all numbers or contain repeating characters.');
+     if (formData.confirmPassword.length < 8) {
+      showAlert('Error', 'Confirm password must be at least 8 characters long.');
       return false;
     }
-    if (formData.newPassword !== formData.confirmPassword) {
-      showAlert('Error', 'New password and confirm password do not match.');
-      return false;
+    // Password regex: at least one uppercase, lowercase, number, and special character
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(formData.newPassword) || !passwordRegex.test(formData.confirmPassword)) {
+        showAlert('Error','Password must include uppercase, lowercase, number, and special character.');
+        return false;
     }
     return true;
   };

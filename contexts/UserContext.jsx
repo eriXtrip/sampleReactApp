@@ -1,10 +1,12 @@
-// SAMPLEREACTAPP/contexts/UserContext.jsx
+// SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as SecureStore from 'expo-secure-store';
 import { UserService } from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
 import { testServerConnection } from '../local-database/services/testServerConnection';
+import { triggerLocalNotification } from '../utils/notificationUtils';
+import { getApiUrl } from '../utils/apiManager.js';
 
 export const UserContext = createContext();
 
@@ -14,8 +16,18 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  const API_URL = "http://192.168.0.129:3001/api";
+  const API_URL = "http://192.168.0.112:3001/api";
+  //const [API_URL, setApiUrl] = useState(null);
   const db = useSQLiteContext();
+
+  // useEffect(() => {
+  //   (async () => {
+  //     const url = await getApiUrl();
+  //     setApiUrl(url);
+  //     console.log('URL: ', url);
+      
+  //   })();
+  // }, []);
 
   // Initialize database using database.js
   useEffect(() => {
@@ -68,6 +80,8 @@ export function UserProvider({ children }) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Registration failed');
     }
+
+    await triggerLocalNotification('👋 Welcome Aboard!', `Your account has been created. Let's start the quest, ${data.first_name}!`);
     
     return await response.json();
   };
@@ -122,24 +136,15 @@ export function UserProvider({ children }) {
             UserService.syncUser(userDataForSync, data.token)
         ]);
 
+        await triggerLocalNotification('✅ Login Successful', `Welcome back, ${userDataForSync.first_name}`);
         setUser(userDataForSync);
         return { success: true, user: userDataForSync };
-
     } catch (error) {
-        await clearAuthData();
+        await UserService.clearUserData();
         throw new Error(error.message); // Preserve specific error message
     } finally {
         setLoading(false);
     }
-  };
-
-  // Helper function to clear auth data
-  const clearAuthData = async () => {
-    await Promise.all([
-      SecureStore.deleteItemAsync('authToken'),
-      SecureStore.deleteItemAsync('userData'),
-      UserService.clearUserData()
-    ]);
   };
 
   // Load user session on initial render
@@ -199,59 +204,55 @@ export function UserProvider({ children }) {
     }
   }, [dbInitialized, loadUserSession]);
 
-  // Cleanup on unmount if needed
-  useEffect(() => {
-    return () => {
-      if (db) {
-        db.closeAsync().catch(console.warn);
-      }
-    };
-  }, [db]);
-
   const logout = async () => {
+    console.log('🚪 Logging out...');
+
+    // 1. Wait a bit if DB is still initializing
+    if (!dbInitialized) {
+      console.warn('⏳ Waiting for DB to finish initializing before logout...');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-          
-      if (token) {
-          const response = await fetch(`${API_URL}/auth/logout`, {
-              method: 'POST',
-              headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-              }
-          });
-
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || 'Logout failed');
-          }
-      }
-
-      // 1. First clear SecureStore (no DB dependency)
+      // 2. Clear SecureStore
       await Promise.all([
         SecureStore.deleteItemAsync('authToken'),
-        SecureStore.deleteItemAsync('userData')
+        SecureStore.deleteItemAsync('userData'),
       ]);
+      console.log('🧹 SecureStore cleared');
 
-      // 2. Only attempt DB operations if initialized
-      if (dbInitialized) {
+      // 3. Clear user from local database if it's available
+      if (dbInitialized && UserService.db) {
         try {
           await UserService.clearUserData();
+          console.log('🧹 Local DB user data cleared');
         } catch (dbError) {
-          console.warn('Non-critical DB clear error:', dbError);
-          // Continue logout even if DB clear fails
+          console.warn('⚠️ Failed to clear user data:', dbError);
         }
+      } else {
+        console.warn('⚠️ DB not ready — skipped clearing user data');
       }
 
-      // 3. Update state last
+      // 4. Clear local state
       setUser(null);
       console.log('✅ Logout successful');
-      
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw new Error('Logout failed');
+
+      // 5. Safely close the database
+      try {
+        if (UserService.db) {
+          await UserService.db.closeAsync();
+          console.log('🔒 Database closed after logout');
+          UserService.db = null; // Optional: Reset db reference
+        }
+      } catch (closeError) {
+        console.warn('⚠️ Failed to close DB after logout:', closeError);
+      }
+
+    } catch (logoutError) {
+      console.error('❌ Logout failed:', logoutError);
     }
   };
+
 
   const verifyTokenSilently = async (token, email) => {
       try {
@@ -287,7 +288,7 @@ export function UserProvider({ children }) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Account not found');
     }
-    
+    await triggerLocalNotification('⚠️ Security Alert', 'A password reset was requested for your account.');
     return await response.json();
   };
 
@@ -310,7 +311,7 @@ export function UserProvider({ children }) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to Reset Password');
     }
-    
+    await triggerLocalNotification('🔐 Password Changed', 'Your password was updated successfully.');
     return await response.json();
   };
 
@@ -348,7 +349,7 @@ export function UserProvider({ children }) {
     if (!response.ok) {
       throw new Error(responseData.error || 'Failed to change password');
     }
-
+    await triggerLocalNotification('🔐 Password Changed', 'Your password was updated successfully.');
     return responseData;
   };
 
@@ -367,7 +368,6 @@ export function UserProvider({ children }) {
       startPasswordReset,
       verifyResetCode,  
       completePasswordReset,
-      clearAuthData,
       verifyTokenSilently,
       loadUserSession,
       serverReachable,
@@ -378,3 +378,6 @@ export function UserProvider({ children }) {
     </UserContext.Provider>
   );
 }
+
+
+// aplication abb for playstore: https://expo.dev/artifacts/eas/cX5mdRtNusKWcPfbzQRscu.aab

@@ -507,23 +507,36 @@ export const completePasswordReset = async (req, res) => {
       return res.status(400).json({ error: 'Email and new password are required' });
     }
 
+    // Step 1: Fetch current hashed password from database
+    const [rows] = await pool.query('SELECT password_hash FROM users WHERE email = ?', [email]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentHash = rows[0].password_hash;
+
+    // Step 2: Compare new password with old one
+    const isSame = await bcrypt.compare(password, currentHash);
+    if (isSame) {
+      return res.status(400).json({ error: 'You are currently using this password.' });
+    }
+
+    // Step 3: Hash and update password
     const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE users SET password_hash = ? WHERE email = ?', [hashedPassword, email]);
 
-    await pool.query(
-      'UPDATE users SET password_hash = ? WHERE email = ?',
-      [hashedPassword, email]
-    );
-
-    // Optionally delete all password reset codes for this email
+    // Step 4: Clean up verification codes (optional)
     await pool.query('DELETE FROM users_verification_code WHERE email = ?', [email]);
 
-    res.status(200).json({ success: true, message: 'Password reset successful' });
+    return res.status(200).json({ success: true, message: 'Password reset successful' });
 
   } catch (error) {
     console.error('completePasswordReset error:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
+    return res.status(500).json({ error: 'Failed to reset password' });
   }
 };
+
 
 export const changePassword = async (req, res) => {
   try {

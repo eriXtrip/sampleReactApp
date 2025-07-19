@@ -46,20 +46,22 @@ const Profile = () => {
     }
   };
 
-  if (!user) {
-    return (
-      <ThemedView style={[styles.container, styles.loadingContainer]}>
-        <ThemedText>No user data found</ThemedText>
-        <ThemedButton onPress={() => router.replace('/login')}>
-          Go to Login
-        </ThemedButton>
-      </ThemedView>
-    );
-  }
+  // if (!user) {
+  //   return (
+  //     <ThemedView style={[styles.container, styles.loadingContainer]}>
+  //       <ThemedText>No user data found</ThemedText>
+  //       <ThemedButton onPress={() => router.replace('/login')}>
+  //         Go to Login
+  //       </ThemedButton>
+  //     </ThemedView>
+  //   );
+  // }
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Image 

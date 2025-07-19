@@ -46,6 +46,7 @@ const SubjectList = () => {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
       />
     </ThemedView>
   );

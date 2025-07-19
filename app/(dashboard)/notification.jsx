@@ -114,6 +114,7 @@ const Notification = () => {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
       />
       <Spacer height={100} />
     </ThemedView>

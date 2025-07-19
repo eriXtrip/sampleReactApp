@@ -774,8 +774,6 @@ const Register = () => {
                         <Spacer height={25} />
                         <ThemedButton 
                             onPress={handleCompleteRegistration}
-                            disabled={loading || !formData.password || formData.password !== formData.confirmPassword}
-                            loading={loading}
                         >
                             Complete Registration
                         </ThemedButton>
