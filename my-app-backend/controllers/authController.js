@@ -593,7 +593,7 @@ export const vulnerableFunction = async (req, res) => {
     return res.status(500).json({ error: 'Something went wrong' });
   }
 };
- // This will convert the query into: SELECT * FROM users WHERE email = 'anything' OR '1'='1' and return all users, bypassing security.
+ // This will convert the query into: SELECT * FROM users WHERE email = ' OR '1'='1 -- ' and return all users, bypassing security.
 
 // Secure - parameterized query
 export const secureFunction = async (req, res) => {
@@ -617,3 +617,5 @@ export const secureFunction = async (req, res) => {
     res.status(500).json({ error: 'Something went wrong' });
   }
 };
+
+//  Query that separates user input from the SQL logic Example: ' OR '1'='1 -- ' will be treated as a literal string, not SQL.
