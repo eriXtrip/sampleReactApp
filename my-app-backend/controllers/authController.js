@@ -570,3 +570,50 @@ export const changePassword = async (req, res) => {
     res.status(401).json({ error: error.message || 'Failed to change password' });
   }
 };
+
+/* parameterized queries with ? placeholders and pool.query([...]) 
+it will not be interpreted as SQL query, but treated as a literal string */
+
+// Insecure - vulnerable to SQL injection
+export const vulnerableFunction = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const query = `SELECT * FROM users WHERE email = '${email}'`;
+    console.log("🔍 Final query:", query);
+
+    const [rows] = await pool.query(query);
+
+    if (rows.length > 0) {
+      return res.json({ success: true, users: rows });
+    } else {
+      return res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    console.error('❌ SQL error:', error);
+    return res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+ // This will convert the query into: SELECT * FROM users WHERE email = 'anything' OR '1'='1' and return all users, bypassing security.
+
+// Secure - parameterized query
+export const secureFunction = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // SAFE: using placeholders for user input
+    const [rows] = await pool.query(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (rows.length > 0) {
+      return res.json({ success: true, user: rows[0] });
+    } else {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+  } catch (error) {
+    console.error('Secure login error:', error.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};

@@ -13,7 +13,9 @@ import {
   startPasswordReset,
   verifyResetCode,
   completePasswordReset,
-  changePassword
+  changePassword,
+  secureFunction,
+  vulnerableFunction,
 } from './controllers/authController.js';
 import config from './config.js';
 import os from 'os';
@@ -35,6 +37,8 @@ app.post('/api/auth/start-password-reset', startPasswordReset);
 app.post('/api/auth/verify-reset-code', verifyResetCode);
 app.post('/api/auth/complete-password-reset', completePasswordReset);
 app.post('/api/auth/change-password', changePassword);
+app.post('/api/auth/secure-function', secureFunction);
+app.post('/api/auth/vulnerable-function', vulnerableFunction);
 
 // Health check
 app.get('/api/health', (req, res) => {

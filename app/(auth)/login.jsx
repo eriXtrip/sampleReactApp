@@ -71,6 +71,10 @@ const login = () => {
 
     if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;;
 
+    const handleTestSQLinjection = () => {
+        router.replace('/TestSQLInjectionScreen')
+    }
+
     // Show loading indicator while checking auth state
     if (isLoading) {
         return (
@@ -94,7 +98,9 @@ const login = () => {
             </View>
             {/* Welcome Message */}
             
-            <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
+            <TouchableOpacity onPress={handleTestSQLinjection}>
+                <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
+            </TouchableOpacity>
             <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
             
             <Spacer height={30} />

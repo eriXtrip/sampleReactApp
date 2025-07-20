@@ -16,7 +16,7 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  const API_URL = "http://192.168.0.112:3001/api";
+  const API_URL = "http://192.168.0.111:3001/api";
   //const [API_URL, setApiUrl] = useState(null);
   const db = useSQLiteContext();
 
@@ -353,6 +353,42 @@ export function UserProvider({ children }) {
     return responseData;
   };
 
+  // Vulnerable version (for testing SQL injection)
+  const testVulnerableFunction = async (email) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/vulnerable-function`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      console.log('Vulnerable Function Response:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Vulnerable test error:', error.message);
+      return { error: error.message };
+    }
+  };
+
+  // Secure version
+  const testSecureFunction = async (email) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/secure-function`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      console.log('Secure Function Response:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Secure test error:', error.message);
+      return { error: error.message };
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       user,
@@ -373,6 +409,8 @@ export function UserProvider({ children }) {
       serverReachable,
       API_URL,
       changepassword,
+      testVulnerableFunction,
+      testSecureFunction,
     }}>
       {children}
     </UserContext.Provider>

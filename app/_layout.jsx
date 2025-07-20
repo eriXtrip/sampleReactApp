@@ -7,6 +7,8 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import ApiConfigScreen from './contact';
 import { getApiUrl } from '../utils/apiManager';
+import { UserProvider } from '../contexts/UserContext';
+import { SQLiteProvider } from 'expo-sqlite';
 
 // Configure how notifications are shown when app is foregrounded
 Notifications.setNotificationHandler({
@@ -75,21 +77,26 @@ const RootLayout = () => {
 
   return (
     <>
-      <ProfileProvider>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: theme.Background },
-            headerTintColor: theme.title,
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
-          <Stack.Screen name="(profile)" options={{ headerShown: false }} />
-          <Stack.Screen name="contact" options={{ title: 'Contact' }} />
-        </Stack>
-      </ProfileProvider>
+      <SQLiteProvider databaseName="mydatabase.db">
+        <UserProvider>
+          <ProfileProvider>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: theme.Background },
+                headerTintColor: theme.title,
+              }}
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="TestSQLInjectionScreen" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
+              <Stack.Screen name="(profile)" options={{ headerShown: false }} />
+              <Stack.Screen name="contact" options={{ title: 'Contact' }} />
+            </Stack>
+          </ProfileProvider>
+        </UserProvider>
+      </SQLiteProvider>
     </>
   );
 };
