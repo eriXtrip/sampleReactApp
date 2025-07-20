@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { setApiUrl, getApiUrl } from '../utils/apiManager';
 import { Ionicons } from '@expo/vector-icons';
+import { testServerConnection } from '../local-database/services/testServerConnection';
 
 const ApiConfigScreen = ({ onComplete }) => {
   const [url, setUrl] = useState('');
@@ -14,10 +15,18 @@ const ApiConfigScreen = ({ onComplete }) => {
   }, []);
 
   const handleSave = async () => {
-    console.log('Save button pressed', url);
-    if (!url) return alert('Please enter a valid API IP (e.g. http://192.168.0.112:3001/api)');
+    if (!url) {
+      alert('Please enter a valid API URL (e.g. http://192.168.0.101:3001/api)');
+      return;
+    }
+
+    const isReachable = await testServerConnection(url);
+    if (!isReachable) {
+      return; // Don't proceed if server is unreachable
+    }
+
     await setApiUrl(url);
-    onComplete();
+    onComplete(); // This should call handleApiConfigComplete and close this screen
   };
 
   return (

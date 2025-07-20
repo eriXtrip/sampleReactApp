@@ -14,7 +14,7 @@ import ThemedButton from '../../components/ThemedButton'
 import ThemedAlert from '../../components/ThemedAlert'
 import ThemedTextInput from '../../components/ThemedTextInput'
 import ThemedPasswordInput from '../../components/ThemedPasswordInput'
-import ApiConfigScreen from '../index';
+import ApiConfigScreen from '../contact';
 import { clearApiUrl  } from '../../utils/apiManager';
 
 const login = () => {
@@ -59,9 +59,8 @@ const login = () => {
     };
 
     const handleLogoPress = async () => {
-        await clearApiUrl();
-        console.log('✅ API URL cleared!');
-        setCleared(true); // Trigger re-render
+        setCleared(false);
+        router.replace('/');
     };
 
     const handleApiConfigComplete = () => {
@@ -69,7 +68,14 @@ const login = () => {
         router.replace('/login'); // Or your desired navigation
     };
 
-    if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;;
+    
+    const handleAccountPress = async () => {
+        await clearApiUrl();
+        console.log('✅ API URL cleared!');
+        setCleared(true); // Or your desired navigation
+    };
+
+    if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;
 
     const handleTestSQLinjection = () => {
         router.replace('/TestSQLInjectionScreen')
@@ -101,7 +107,11 @@ const login = () => {
             <TouchableOpacity onPress={handleTestSQLinjection}>
                 <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
             </TouchableOpacity>
-            <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
+
+            <TouchableOpacity onPress={handleAccountPress}>
+                <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
+            </TouchableOpacity>
+            
             
             <Spacer height={30} />
             

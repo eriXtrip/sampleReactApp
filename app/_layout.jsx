@@ -48,12 +48,12 @@ const RootLayout = () => {
   const [hasApi, setHasApi] = useState(null);
   const [hasApiUrl, setHasApiUrl] = useState(null);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const url = await getApiUrl();
-  //     setHasApiUrl(!!url); // true if set, false if missing
-  //   })();
-  // }, []);
+  useEffect(() => {
+    (async () => {
+      const url = await getApiUrl();
+      setHasApiUrl(!!url); // true if set, false if missing
+    })();
+  }, []);
 
   useEffect(() => {
     // Optional: listen for notification taps or responses
@@ -68,12 +68,12 @@ const RootLayout = () => {
     askNotificationPermission();
   }, []);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const url = await getApiUrl();
-  //     setHasApi(!!url); // Converts to true/false
-  //   })();
-  // }, []);
+  useEffect(() => {
+    (async () => {
+      const url = await getApiUrl();
+      setHasApi(!!url); // Converts to true/false
+    })();
+  }, []);
 
   return (
     <>

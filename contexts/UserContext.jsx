@@ -16,18 +16,18 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  const API_URL = "http://192.168.0.111:3001/api";
-  //const [API_URL, setApiUrl] = useState(null);
+  //const API_URL = "http://192.168.0.101:3001/api";
+  const [API_URL, setApiUrl] = useState(null);
   const db = useSQLiteContext();
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const url = await getApiUrl();
-  //     setApiUrl(url);
-  //     console.log('URL: ', url);
+  useEffect(() => {
+    (async () => {
+      const url = await getApiUrl();
+      setApiUrl(url);
+      console.log('URL: ', url);
       
-  //   })();
-  // }, []);
+    })();
+  }, []);
 
   // Initialize database using database.js
   useEffect(() => {
@@ -362,9 +362,23 @@ export function UserProvider({ children }) {
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
-      console.log('Vulnerable Function Response:', data);
-      return data;
+      const contentType = response.headers.get('content-type');
+
+      if (!response.ok) {
+        const text = await response.text(); // Read raw HTML/text
+        throw new Error(`Server Error: ${response.status}\n${text}`);
+      }
+
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        console.log('✅ Vulnerable Function Response:', data);
+        return data;
+      } else {
+        const text = await response.text();
+        console.warn('⚠️ Unexpected response:', text);
+        throw new Error('Server did not return JSON');
+      }
+
     } catch (error) {
       console.error('❌ Vulnerable test error:', error.message);
       return { error: error.message };
