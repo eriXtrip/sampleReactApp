@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/index.jsx
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Image,
@@ -10,14 +10,13 @@ import {
   Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useUser } from '../hooks/useUser'
+import { useUser } from '../hooks/useUser';
 import { UserProvider } from "../contexts/UserContext";
 import { SQLiteProvider } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = 100;
-
 
 const Index = () => {
   return (
@@ -34,15 +33,19 @@ export default Index;
 const SplashScreen = () => {
   const router = useRouter();
   const { user, isLoading } = useUser();
+  const [targetRoute, setTargetRoute] = useState(null);
+  const [animationsCompleted, setAnimationsCompleted] = useState(false);
 
   const circle1Scale = useRef(new Animated.Value(0.1)).current;
   const circle2Scale = useRef(new Animated.Value(0.1)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Animation effect
   useEffect(() => {
-    // Start circle animations
-    Animated.sequence([
+    console.log('Starting animations');
+    // Run finite animations
+    const mainAnimations = Animated.sequence([
       Animated.timing(circle1Scale, {
         toValue: 10,
         duration: 500,
@@ -55,22 +58,15 @@ const SplashScreen = () => {
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-    ]).start(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 580,
         useNativeDriver: true,
-      }).start(() => {
-        if (user) {
-            router.replace('/home');
-        }else{
-          router.replace('/login');
-        }
-      });
-    });
+      }),
+    ]);
 
-    // Logo pulse animation (loop)
-    Animated.loop(
+    // Run looped logo pulse separately
+    const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(logoPulse, {
           toValue: 1.1,
@@ -83,8 +79,37 @@ const SplashScreen = () => {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+
+    // Start both animations
+    mainAnimations.start(() => {
+      console.log('Main animations completed');
+      setAnimationsCompleted(true);
+    });
+    pulseAnimation.start();
+
+    // Stop pulse animation when main animations complete
+    return () => {
+      console.log('Stopping pulse animation');
+      pulseAnimation.stop();
+    };
   }, []);
+
+  // User check effect
+  useEffect(() => {
+    if (!isLoading) {
+      console.log('User check complete, user:', user);
+      setTargetRoute(user ? '/home' : '/login');
+    }
+  }, [isLoading, user]);
+
+  // Navigation effect
+  useEffect(() => {
+    if (targetRoute && animationsCompleted) {
+      console.log('Navigating to:', targetRoute);
+      router.replace(targetRoute);
+    }
+  }, [targetRoute, animationsCompleted, router]);
 
   return (
     <View style={styles.container}>
