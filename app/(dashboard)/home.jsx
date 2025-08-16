@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Image, ScrollView, TouchableOpacity, Animated  } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
@@ -19,6 +19,7 @@ const Home = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -118,13 +119,17 @@ const Home = () => {
         
         {/* Header with Search and Avatar */}
         <View style={styles.header}>
-          <ThemedSearch 
-            placeholder="Search lessons..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.search}
-            inputStyle={styles.searchInput}
-          />
+        <TouchableOpacity onPress={() => router.push('/searchpage')} style={{ width: '80%'}}>
+            <ThemedSearch 
+              placeholder="Search..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.search}
+              inputStyle={styles.searchInput}
+              editable={false}
+            />
+          </TouchableOpacity>
+          
           <TouchableOpacity>
             <Image 
               source={{ uri: `https://api.dicebear.com/9.x/bottts-neutral/png?seed=Aidan` }}
@@ -255,7 +260,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   search: {
-    width: '80%',
+    width: '100%',
   },
   searchInput: {
     borderRadius: 150,

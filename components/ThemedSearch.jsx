@@ -12,13 +12,15 @@ const ThemedSearch = ({
   placeholder = "Search...",
   style,
   inputStyle,
+  editable = true,
+  autoFocus = true,
 }) => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
-  const theme = Colors[theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   return (
-    <View style={[styles.searchContainer, style]}>
+    <View pointerEvents={editable ? 'auto' : 'none'} style={[styles.searchContainer, style]}>
       <Ionicons
         name="search-outline"
         size={20}
@@ -29,6 +31,8 @@ const ThemedSearch = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        editable={editable}
+        autoFocus={autoFocus}
         style={[
           styles.input,
           {
