@@ -2,7 +2,7 @@ import React, { useContext, useLayoutEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -28,6 +28,7 @@ const SubjectDetail = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   const navigation = useNavigation();
+  const router = useRouter();
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true });
   }, [navigation]);
@@ -41,6 +42,18 @@ const SubjectDetail = () => {
   const [showEnroll, setShowEnroll] = useState(false);
 
   const handlePressEnroll = () => {
+    if (type === 'section') {
+      router.push({
+        pathname: '/section_page',
+        params: {
+          name: String(name),
+          createdBy: String(createdBy),
+          schoolYear: String(schoolYear),
+        },
+      });
+      return;
+    }
+
     if (requiresEnrollmentKey === true || String(requiresEnrollmentKey) === 'true') {
       setShowEnroll(true);
     } else {

@@ -61,7 +61,7 @@ const SearchPage = () => {
                 requiresEnrollmentKey={true}
                 onPress={() =>
                   router.push({
-                    pathname: '/(home)/subject_detail',
+                    pathname: '/subject_detail',
                     params: {
                       type: 'subject',
                       name: 'Science G4',
@@ -79,7 +79,7 @@ const SearchPage = () => {
                 schoolYear="2024-2025"
                 onPress={() =>
                   router.push({
-                    pathname: '/(home)/subject_detail',
+                    pathname: 'subject_detail',
                     params: {
                       type: 'section',
                       name: 'Section A - Grade 4',
