@@ -44,6 +44,12 @@ export default function HomeLayout() {
               title: 'Search',
             }}
           />
+          <Stack.Screen
+            name="subject_detail"
+            options={{
+              title: 'SubjectDetail',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

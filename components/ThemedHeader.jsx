@@ -36,7 +36,6 @@ const ThemedHeader = ({ options, navigation }) => {
           paddingLeft: navigation.canGoBack() ? 16 : 0,
         }}
       >
-        {options.title || 'Profile'}
       </Text>
       <View style={{ width: 24 }} />
     </View>

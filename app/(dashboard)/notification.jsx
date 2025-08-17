@@ -1,10 +1,9 @@
-import { StyleSheet, View, FlatList } from 'react-native';
+import { StyleSheet, FlatList } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useContext } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
-import ThemedText from '../../components/ThemedText';
+import CardNotif from '../../components/card_notif';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 
@@ -87,23 +86,7 @@ const Notification = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   const renderItem = ({ item }) => (
-    <View style={[styles.card, { 
-      borderTopColor: item.color, 
-      borderTopWidth: 6, 
-      borderLeftColor: theme.navBackground,
-      borderLeftWidth: 5,
-      borderRightColor: theme.navBackground,
-      borderRightWidth: 5,
-      borderBottomWidth: 0,
-      backgroundColor: theme.navBackground,
-      shadowColor: theme.tint,
-    }]}>
-      <Ionicons name={item.icon} size={30} style={[styles.icon, {color: theme.notifColor}]} />
-      <View style={styles.textContainer}>
-        <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.cardMessage}>{item.message}</ThemedText>
-      </View>
-    </View>
+  <CardNotif color={item.color} icon={item.icon} title={item.title} message={item.message} theme={theme} />
   );
 
   return (

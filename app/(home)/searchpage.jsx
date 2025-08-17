@@ -7,7 +7,7 @@ import ThemedSearch from '../../components/ThemedSearch';
 import ThemedText from '../../components/ThemedText';
 import ThemedView from '../../components/ThemedView';
 import SearchResultCard from '../../components/SearchResultCard';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 const SearchPage = () => {
@@ -17,6 +17,7 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const navigation = useNavigation();
+  const router = useRouter();
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
@@ -36,25 +37,63 @@ const SearchPage = () => {
           autoFocus={true}
         />
       </View>
+
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
         behavior={Platform.OS === 'android' ? 'height' : undefined}
         keyboardVerticalOffset={0}
+        style={{ flex: 1 }}
       >
-        <View style={styles.helperContainer}>
-        {searchQuery.trim().length === 0 ? (
-        <ThemedText style={[styles.text, { color: theme.text, textAlign: 'center' }]}>
-        {"Enter a topic or keywords\nTip: The more specific, the better!"}
-        </ThemedText>
-        ) : (
-        <View>
-        <SearchResultCard type="subject" name="Science G4" createdBy="Ms. Reyes" schoolYear="2024-2025" />
-        <SearchResultCard type="section" name="Section A - Grade 4" createdBy="Mr. Gomez" schoolYear="2024-2025" />
-        </View>
-        )}
+        {/* Results container placed immediately below the topBar/ThemedSearch */}
+        <View style={{ paddingHorizontal: 0, marginTop: 8, flex: 1 }}>
+          {searchQuery.trim().length === 0 ? (
+            <View style={[styles.helperContainer, { alignItems: 'center' }]}>
+              <ThemedText style={[styles.text, { color: theme.text, textAlign: 'center' }]}>
+                {"Enter a topic or keywords\nTip: The more specific, the better!"}
+              </ThemedText>
+            </View>
+          ) : (
+            <View>
+              <SearchResultCard
+                type="subject"
+                name="Science G4"
+                createdBy="Ms. Reyes"
+                schoolYear="2024-2025"
+                requiresEnrollmentKey={true}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(home)/subject_detail',
+                    params: {
+                      type: 'subject',
+                      name: 'Science G4',
+                      createdBy: 'Ms. Reyes',
+                      schoolYear: '2024-2025',
+                      requiresEnrollmentKey: true,
+                    },
+                  })
+                }
+              />
+              <SearchResultCard
+                type="section"
+                name="Section A - Grade 4"
+                createdBy="Mr. Gomez"
+                schoolYear="2024-2025"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(home)/subject_detail',
+                    params: {
+                      type: 'section',
+                      name: 'Section A - Grade 4',
+                      createdBy: 'Mr. Gomez',
+                      schoolYear: '2024-2025',
+                      requiresEnrollmentKey: false,
+                    },
+                  })
+                }
+              />
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
-      
     </ThemedView>
   );
 };

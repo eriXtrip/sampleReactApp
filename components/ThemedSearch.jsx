@@ -37,7 +37,7 @@ const ThemedSearch = ({
           styles.input,
           {
             backgroundColor: theme.uiBackground,
-            color: theme.text,
+            color: "#000000",
             borderColor: theme.iconColor,
           },
           inputStyle,
