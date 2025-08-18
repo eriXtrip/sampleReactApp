@@ -33,11 +33,39 @@ const SubjectDetail = () => {
     navigation.setOptions({ headerShown: true });
   }, [navigation]);
 
-  const { type = 'subject', name = '', createdBy = '', schoolYear = '', requiresEnrollmentKey = '' } = useLocalSearchParams();
+  const { type = 'subject', name = '', createdBy = '', schoolYear = '', requiresEnrollmentKey = '', grade = '' } = useLocalSearchParams();
   const accentColor = useMemo(() => typeToAccent[type] || typeToAccent.subject, [type]);
   const iconName = useMemo(() => typeToIcon[type] || 'book', [type]);
 
   const bannerHeight = Math.round(Dimensions.get('window').height * 0.2);
+
+  // Parse title and grade for navigation
+  const parseTitleAndGrade = (rawName, rawGrade) => {
+    if (rawGrade) return { title: String(rawName), grade: String(rawGrade) };
+    const m = String(rawName).match(/^(.*)\s+(Grade\s*\d+|G\s*\d+)$/i);
+    if (m) {
+      let g = m[2].trim();
+      g = g.replace(/^G\s*(\d+)$/i, 'Grade $1');
+      return { title: m[1].trim(), grade: g };
+    }
+    return { title: String(rawName), grade: '' };
+  };
+
+  const { title: parsedTitle, grade: parsedGrade } = useMemo(
+    () => parseTitleAndGrade(name, grade),
+    [name, grade]
+  );
+
+  const navigateToSubjectPage = () => {
+    router.push({
+      pathname: '/subject_page',
+      params: {
+        name: parsedTitle,
+        grade: parsedGrade,
+        progress: 78,
+      },
+    });
+  };
 
   const [showEnroll, setShowEnroll] = useState(false);
 
@@ -57,13 +85,16 @@ const SubjectDetail = () => {
     if (requiresEnrollmentKey === true || String(requiresEnrollmentKey) === 'true') {
       setShowEnroll(true);
     } else {
-      // proceed with enroll flow when no key is required
+      // No key required: go directly to subject_page with attached details
+      navigateToSubjectPage();
     }
   };
 
   const handleConfirmEnroll = (keyValue) => {
-    // TODO: validate and submit the key
+    // TODO: validate and submit the key if needed
     setShowEnroll(false);
+    // After confirming enrollment, navigate to subject_page with details
+    navigateToSubjectPage();
   };
 
   return (

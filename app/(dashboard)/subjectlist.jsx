@@ -2,6 +2,7 @@ import { StyleSheet, View, Image, FlatList, TouchableOpacity } from 'react-nativ
 import { useColorScheme } from 'react-native';
 import { useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter  } from 'expo-router';
 
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
@@ -12,7 +13,7 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 const SUBJECTS = [
   { id: '1', icon: require('../../assets/icons/english_.png'), title: 'English', grade: 'Grade 4', downloaded: false },
   { id: '2', icon: require('../../assets/icons/filipino_.png'), title: 'Filipino', grade: 'Grade 4', downloaded: true },
-  { id: '3', icon: require('../../assets/icons/math_.png'), title: 'Math', grade: 'Grade 4', downloaded: false },
+  { id: '3', icon: require('../../assets/icons/math_.png'), title: 'Mathematics', grade: 'Grade 4', downloaded: false },
   { id: '4', icon: require('../../assets/icons/saturn_.png'), title: 'Science', grade: 'Grade 4', downloaded: true },
 ];
 
@@ -20,9 +21,18 @@ const SubjectList = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const router = useRouter()
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity>
+    <TouchableOpacity
+      onPress={() =>
+        router.push({ pathname: '/subject_page', params: {
+          name: item.title, 
+          grade: item.grade, 
+          progress: 78 } 
+        })
+      }
+    >
       <View style={[styles.subjectBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
         <Image source={item.icon} style={styles.icon} />
         <View style={styles.textContainer}>
