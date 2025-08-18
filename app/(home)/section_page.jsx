@@ -80,7 +80,15 @@ const SectionPage = () => {
   };
 
   const renderSubjectItem = ({ item }) => (
-    <TouchableOpacity>
+    <TouchableOpacity
+      onPress={() =>
+        navigation.navigate('subject_page', {
+          name: item.title,
+          grade: item.grade,
+          progress: 78,
+        })
+      }
+    >
       <View style={[styles.subjectBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
         <Image source={item.icon} style={styles.icon} />
         <View style={styles.textContainer}>
@@ -195,7 +203,7 @@ const SectionPage = () => {
               keyExtractor={(item) => item.id}
               renderItem={renderClassmateItem}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-              contentContainerStyle={{ paddingBottom: 24 }}
+              contentContainerStyle={{ paddingBottom: 10, marginTop: 10 }}
               showsVerticalScrollIndicator={false}
               onScroll={animatedOnScroll}
               scrollEventThrottle={16}
@@ -260,7 +268,7 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingBottom: 20,
   },
   // Subject card styles copied to match dashboard/subjectlist.jsx
   subjectBox: {
@@ -268,8 +276,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 10,
-    marginBottom: 15,
+    marginBottom: 5,
     borderWidth: 2,
+    marginTop: 10,
   },
   icon: {
     width: 50,

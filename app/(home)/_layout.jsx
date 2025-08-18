@@ -50,6 +50,18 @@ export default function HomeLayout() {
               title: 'SubjectDetail',
             }}
           />
+          <Stack.Screen
+            name="subject_page"
+            options={{
+              title: 'Subject',
+            }}
+          />
+          <Stack.Screen
+            name="section_page"
+            options={{
+              title: 'Section',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>
