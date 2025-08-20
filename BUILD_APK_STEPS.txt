@@ -1,0 +1,91 @@
+Steps to generate an Android APK with EAS Build (preview profile)
+
+Overview
+This guide shows how to configure and build an Android APK using EAS Build with the preview profile, then download and install it on a device.
+
+1) Prerequisites
+- Node.js and npm/yarn installed
+- Expo account (free) and EAS CLI installed globally
+  npm install -g eas-cli
+- Logged in to EAS
+  eas login
+
+2) Verify project setup
+- Ensure you run all commands from the project root:
+  c:\Users\USER\Desktop\sampleReactApp
+- Make sure your Expo config (app.json or app.config.js/ts) defines a unique Android package:
+  In app.json (example):
+  {
+    "expo": {
+      "name": "Sample React App",
+      "slug": "sample-react-app",
+      "android": {
+        "package": "com.yourcompany.samplereactapp"
+      }
+    }
+  }
+  Notes:
+  - The package must be unique across the Play Store (e.g., com.yourcompany.appname)
+  - If you don’t set android.package, EAS Build will fail for Android
+
+3) Configure EAS for the project (first time only)
+- Initialize build configuration:
+  eas build:configure
+  Follow the prompts. This creates/updates eas.json in your project.
+
+4) Ensure eas.json contains a preview profile that produces an APK
+- Open eas.json and add or verify a preview profile similar to this:
+  {
+    "cli": {
+      "version": ">= 3.13.0"
+    },
+    "build": {
+      "preview": {
+        "distribution": "internal",
+        "android": {
+          "buildType": "apk"
+        }
+      }
+    }
+  }
+  Notes:
+  - buildType: "apk" is required to produce an .apk (default is .aab)
+  - distribution: "internal" is convenient for testing; you can omit or change as needed
+
+5) Run the build
+- From the project root, run:
+  eas build --platform android --profile preview
+
+6) Monitor the build
+- The command will start a remote build and display a dashboard URL.
+- Open that URL to watch logs and progress.
+
+7) Download the APK
+- When the build finishes, the dashboard (and CLI output) will provide a direct link to the APK artifact.
+- Download the APK to your computer.
+
+8) Install on a device
+- Transfer the APK to your Android device (USB, AirDrop-like, or cloud).
+- On the device, enable installing from unknown sources if prompted.
+- Tap the APK to install.
+
+9) Common troubleshooting
+- Missing android.package in app.json:
+  Add a unique value under expo.android.package.
+- Keystore/credentials:
+  EAS manages a default keystore for you. You can view or manage with:
+    eas credentials
+- Cached build problems:
+  Re-run with:
+    eas build --platform android --profile preview --clear-cache
+- Using local builds (optional):
+  You can build locally if you have Android SDK/NDK set up:
+    eas build --platform android --profile preview --local
+
+10) Next steps
+- For Play Store: prefer .aab (change buildType to "app-bundle") and use eas submit.
+- For persistent build settings per env (dev/preview/production), define multiple profiles in eas.json.
+
+Reference command
+- As requested:
+  eas build --platform android --profile preview

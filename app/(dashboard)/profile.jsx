@@ -78,34 +78,52 @@ const Profile = () => {
         {/* PROFILE MENU Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>PROFILE MENU</ThemedText>
-          <TouchableOpacity style={styles.cardItem}>
+         
+          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/profile_page')}
+          >
             <ThemedText>My Profile</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.cardItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/(profile)/change-password')}
+            onPress={() => router.push('/change-password')}
           >
             <ThemedText>Change Password</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
         </View>
 
-        <Spacer height={20} />
+        <Spacer height={5} />
 
         {/* APPEARANCE Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>APPEARANCE</ThemedText>
           <TouchableOpacity
             style={[styles.cardItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/(profile)/theme')}
+            onPress={() => router.push('/theme')}
           >
             <ThemedText>Theme</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
         </View>
 
-        <Spacer height={20} />
+         <Spacer height={5} />
+
+        {/* Download Card */}
+        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
+          <ThemedText style={styles.cardTitle}>Download Queue</ThemedText>
+          <TouchableOpacity
+            style={[styles.cardItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/download')}
+          >
+            <ThemedText>Dowload</ThemedText>
+            <Ionicons name="chevron-forward-outline" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        <Spacer height={5} />
 
         {/* ABOUT MQUEST Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>

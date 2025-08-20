@@ -151,7 +151,7 @@ const Home = () => {
         {/* Achievements Section */}
         <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle}>🌟 Your Achievements</ThemedText>
-          <Link href="/achievements">
+          <Link href="/achievements_page">
             <ThemedText style={styles.seeAll}>View All</ThemedText>
           </Link>
         </View>
@@ -191,8 +191,8 @@ const Home = () => {
 
         {/* Recent Activities Carousel */}
         <View style={styles.sectionHeader}>
-          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
-          <Link href="/activities">
+          <ThemedText style={styles.sectionTitle}>📚 Recent Activity</ThemedText>
+          <Link href="/recent_activity_page">
             <ThemedText style={styles.seeAll}>See all</ThemedText>
           </Link>
         </View>
@@ -215,7 +215,7 @@ const Home = () => {
         <Spacer height={30} />
 
         {/* Subjects Progress */}
-        <ThemedText style={styles.sectionTitle}>Your Subjects</ThemedText>
+        <ThemedText style={styles.sectionTitle}>📖 Your Subjects</ThemedText>
         
         {subjects.map((subject, index) => (
           <View key={index} style={styles.subjectContainer}>

@@ -47,6 +47,18 @@ export default function ProfileLayout() {
               title: 'Change Theme',
             }}
           />
+          <Stack.Screen
+            name="profile_page"
+            options={{
+              title: 'Profile',
+            }}
+          />
+          <Stack.Screen
+            name="download"
+            options={{
+              title: 'Download queue',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

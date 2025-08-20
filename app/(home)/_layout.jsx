@@ -47,19 +47,31 @@ export default function HomeLayout() {
           <Stack.Screen
             name="subject_detail"
             options={{
-              title: 'SubjectDetail',
+              title: '',
             }}
           />
           <Stack.Screen
             name="subject_page"
             options={{
-              title: 'Subject',
+              title: '',
             }}
           />
           <Stack.Screen
             name="section_page"
             options={{
-              title: 'Section',
+              title: '',
+            }}
+          />
+          <Stack.Screen
+            name="achievements_page"
+            options={{
+              title: '🌟 Your Achievements',
+            }}
+          />
+          <Stack.Screen
+            name="recent_activity_page"
+            options={{
+              title: '📚 Recent Activity',
             }}
           />
         </Stack>

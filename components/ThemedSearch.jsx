@@ -31,6 +31,7 @@ const ThemedSearch = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        placeholderTextColor="#0000000"
         editable={editable}
         autoFocus={autoFocus}
         style={[
