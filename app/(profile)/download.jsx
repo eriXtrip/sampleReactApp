@@ -66,7 +66,12 @@ const DownloadPage = () => {
     >
       <View style={styles.itemLeft}>
         <ThemedText style={styles.itemTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.itemSub}>Status: {item.status} · {item.progress ?? 0}%</ThemedText>
+        <ThemedText style={styles.itemSub}>Status: {item.status}</ThemedText>
+
+        {/* Progress bar container */}
+        <View style={[styles.progressContainer, { backgroundColor: theme.iconBackground }]}>
+          <View style={[styles.progressBar, { width: `${item.progress ?? 0}%`, backgroundColor: theme.iconColorFocused }]} />
+        </View>
       </View>
 
       <View style={styles.itemRight}>
@@ -76,6 +81,7 @@ const DownloadPage = () => {
       </View>
     </TouchableOpacity>
   );
+
 
   return (
     <ThemedView style={styles.container} safe={true}>
@@ -171,18 +177,25 @@ const styles = StyleSheet.create({
     color: '#666', 
     marginTop: 4,
  },
-
   itemRight: { 
     flexDirection: 'row', 
     alignItems: 'center',
   },
   iconBtn: { 
     padding: 6, 
-    marginRight: 8,
+    marginRight: 0,
  },
-  backHome: { 
-    backgroundColor: '#007AFF',
- },
+  progressContainer: {
+    width: '100%',
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 4,
+  },
 });
 
 export default DownloadPage;

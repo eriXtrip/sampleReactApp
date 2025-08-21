@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState } from 'react'; 
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -39,13 +39,22 @@ const ThemedHeader = ({ options, navigation }) => {
       >
         {options?.title ?? ''}
       </Text>
-      {options?.title === 'Subject' ? (
+
+      {/* Subject menu trigger */}
+      {options?.title === 'Subject' && (
         <TouchableOpacity onPress={() => setMenuVisible((v) => !v)}>
           <Ionicons name="download-outline" size={24} color={theme.title} />
         </TouchableOpacity>
-      ) : (
-        <View style={{ width: 24 }} />
       )}
+
+      {/* Download queue menu trigger */}
+      {options?.title === 'Download queue' && (
+        <TouchableOpacity onPress={() => setMenuVisible((v) => !v)}>
+          <Ionicons name="ellipsis-vertical-outline" size={24} color={theme.title} />
+        </TouchableOpacity>
+      )}
+
+      {/* Popup Menu */}
       <Modal
         visible={menuVisible}
         transparent
@@ -56,8 +65,8 @@ const ThemedHeader = ({ options, navigation }) => {
           <View
             style={{
               position: 'absolute',
-              top: 56,
-              right: 8,
+              top: 60,
+              right: 0,
               backgroundColor: theme.navBackground,
               borderWidth: 1,
               borderColor: theme.title + '33',
@@ -68,20 +77,47 @@ const ThemedHeader = ({ options, navigation }) => {
               elevation: 8,
             }}
           >
-            <TouchableOpacity onPress={() => setMenuVisible(false)} style={{ paddingVertical: 6 }}>
-              <Text style={{ color: theme.title }}>All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setMenuVisible(false)} style={{ paddingVertical: 6 }}>
-              <Text style={{ color: theme.title }}>Unfinish</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setMenuVisible(false)} style={{ paddingVertical: 6 }}>
-              <Text style={{ color: theme.title }}>Not Downloaded</Text>
-            </TouchableOpacity>
+            {options?.title === 'Subject' && (
+              <>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
+                  <Text style={{ color: theme.title }}>All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} sstyle={[style.menu]}>
+                  <Text style={{ color: theme.title }}>Unfinish</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu, { borderBottomWidth: 0 }]}>
+                  <Text style={{ color: theme.title }}>Not Downloaded</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {options?.title === 'Download queue' && (
+              <>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
+                  <Text style={{ color: theme.title }}>Pause</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
+                  <Text style={{ color: theme.title }}>Resume</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu, { borderBottomWidth: 0 }]}>
+                  <Text style={{ color: theme.title }}>Cancel All</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </Pressable>
       </Modal>
     </View>
   );
+};
+
+const style = {
+  menu: {
+    fontSize: 15,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+  },
 };
 
 export default ThemedHeader;

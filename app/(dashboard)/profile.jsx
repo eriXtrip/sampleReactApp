@@ -79,7 +79,7 @@ const Profile = () => {
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>PROFILE MENU</ThemedText>
          
-          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}
+          <TouchableOpacity style={[styles.cardItem]}
             onPress={() => router.push('/profile_page')}
           >
             <ThemedText>My Profile</ThemedText>
@@ -132,6 +132,7 @@ const Profile = () => {
             <ThemedText>Privacy Policy</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
+
           <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}>
             <ThemedText>Terms and Conditions</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
