@@ -130,7 +130,9 @@ const Home = () => {
             />
           </TouchableOpacity>
           
-          <TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/profile_page')}
+            >
             <Image 
               source={{ uri: `https://api.dicebear.com/9.x/bottts-neutral/png?seed=Aidan` }}
               style={styles.avatar}
