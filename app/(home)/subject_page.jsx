@@ -2,7 +2,7 @@ import React, { useContext, useLayoutEffect, useMemo, useRef, useState, useEffec
 import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageBackground, Platform } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -21,22 +21,34 @@ const SUBJECT_ICON_MAP = {
 };
 
 const LESSON_CARDS = [
-  { id: 'gen', title: 'General' },
-  { id: 't1', title: 'Topic 1' },
-  { id: 'l2', title: 'Lesson 2' },
-  { id: 'pre', title: 'Pretest' },
-  { id: 'match', title: 'Matching Game' },
-  { id: 'flash', title: 'Flashcard' },
-  { id: 'post', title: 'Post Test' },
-  { id: 'l3', title: 'Lesson 3' },
+  { id: 'gen', title: 'General', type: 'general' },
+  { id: 't1', title: 'Topic 1', type: 'ppt' },
+  { id: 'l2', title: 'Lesson 2', type: 'pdf' },
+  { id: 'pre', title: 'Pretest', type: 'test' },
+  { id: 'match', title: 'Matching Game', type: 'match' },
+  { id: 'flash', title: 'Flashcard', type: 'flash' },
+  { id: 'post', title: 'Post Test', type: 'test' },
+  { id: 'l3', title: 'Lesson 3', type: 'link' },
+  { id: 'l4', title: 'Lesson 4', type: 'video' },
 ];
 
+
+const LESSON_TYPE_ICON_MAP = {
+  general: 'information-circle-outline',
+  ppt: 'easel-outline',
+  pdf: 'document-attach-outline',
+  video: 'videocam-outline',
+  link: 'link-outline',
+  test: 'document-text-outline',
+  match: 'game-controller-outline',
+  flash: 'copy-outline',
+};
 
 const SubjectPage = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-
+  const router = useRouter();
   const navigation = useNavigation();
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true, title: 'Subject' });
@@ -110,11 +122,16 @@ const SubjectPage = () => {
 
   const renderLessonCard = ({ item }) => {
     const isSelected = selectedIds.has(item.id);
+    const iconName = LESSON_TYPE_ICON_MAP[item.type] || 'book-outline';
     return (
       <TouchableOpacity
         onPress={() => {
           if (selectionMode) {
             toggleSelect(item.id);
+          } else {
+            if (item.type === 'general') {
+              router.push({ pathname: '/(content_render)/general', params: { title: item.title, content: "Welcome to MQuest, your personalized learning adventure! We are thrilled to have you on board. Get ready to embark on an exciting journey of knowledge and discovery. Our platform offers a wide range of subjects and interactive lessons designed to make learning fun and engaging. As you progress, you'll unlock achievements, earn badges, and climb the leaderboard. Don't forget to check out the map to see your learning path and track your progress. If you have any questions or need assistance, please don't hesitate to reach out to our support team. Let the quest for knowledge begin!" }});
+            }
           }
         }}
         onLongPress={() => {
@@ -131,7 +148,7 @@ const SubjectPage = () => {
             },
           ]}
         >
-          <Ionicons name="book-outline" size={28} color={theme.text} style={{ marginRight: 12 }} />
+          <Ionicons name={iconName} size={28} color={theme.text} style={{ marginRight: 12 }} />
           <View style={styles.textContainer}>
             <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{item.title}</ThemedText>
             {!!subjectGrade && (
