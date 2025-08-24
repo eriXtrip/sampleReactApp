@@ -1,3 +1,5 @@
+// samplereactapp/app/(home)/subject_page.jsx
+
 import React, { useContext, useLayoutEffect, useMemo, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageBackground, Platform } from 'react-native';
 import { useColorScheme } from 'react-native';
@@ -130,7 +132,9 @@ const SubjectPage = () => {
             toggleSelect(item.id);
           } else {
             if (item.type === 'general') {
-              router.push({ pathname: '/(content_render)/general', params: { title: item.title, content: "Welcome to MQuest, your personalized learning adventure! We are thrilled to have you on board. Get ready to embark on an exciting journey of knowledge and discovery. Our platform offers a wide range of subjects and interactive lessons designed to make learning fun and engaging. As you progress, you'll unlock achievements, earn badges, and climb the leaderboard. Don't forget to check out the map to see your learning path and track your progress. If you have any questions or need assistance, please don't hesitate to reach out to our support team. Let the quest for knowledge begin!" }});
+              router.push({ pathname: '/general', params: { title: item.title, content: "Welcome to MQuest, your personalized learning adventure! We are thrilled to have you on board. Get ready to embark on an exciting journey of knowledge and discovery. Our platform offers a wide range of subjects and interactive lessons designed to make learning fun and engaging. As you progress, you'll unlock achievements, earn badges, and climb the leaderboard. Don't forget to check out the map to see your learning path and track your progress. If you have any questions or need assistance, please don't hesitate to reach out to our support team. Let the quest for knowledge begin!" }});
+            } else if (item.type === 'ppt') {
+              router.push({ pathname: '/ppt', params: { title: item.title} });
             }
           }
         }}

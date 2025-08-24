@@ -1,3 +1,5 @@
+// samplereactapp/app/(content_render)/general.jsx
+
 import React, { useContext } from 'react';
 import { View, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';

@@ -1,3 +1,5 @@
+// samplereactapp/app/(content_render)/_layout.jsx
+
 import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useContext, useMemo } from 'react';
@@ -40,6 +42,12 @@ export default function ContentRenderLayout() {
         <Stack screenOptions={screenOptions}>
           <Stack.Screen
             name="general"
+            options={{
+              title: '',
+            }}
+          />
+          <Stack.Screen
+            name="ppt"
             options={{
               title: '',
             }}
