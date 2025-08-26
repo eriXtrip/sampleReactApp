@@ -5,6 +5,8 @@ import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageB
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -14,6 +16,7 @@ import Map from '../../components/Map';
 import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { ensureLessonFile } from '../../utils/fileHelper';
 
 const SUBJECT_ICON_MAP = {
   Mathematics: require('../../assets/icons/math_.png'),
@@ -23,15 +26,21 @@ const SUBJECT_ICON_MAP = {
 };
 
 const LESSON_CARDS = [
-  { id: 'gen', title: 'General', type: 'general' },
-  { id: 't1', title: 'Topic 1', type: 'ppt' },
-  { id: 'l2', title: 'Lesson 2', type: 'pdf' },
-  { id: 'pre', title: 'Pretest', type: 'test' },
-  { id: 'match', title: 'Matching Game', type: 'match' },
-  { id: 'flash', title: 'Flashcard', type: 'flash' },
-  { id: 'post', title: 'Post Test', type: 'test' },
-  { id: 'l3', title: 'Lesson 3', type: 'link' },
-  { id: 'l4', title: 'Lesson 4', type: 'video' },
+  { id: 'gen', title: 'General', type: 'general', shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
+  { id: 't1', title: 'Topic 1', type: 'ppt', shortDescription: 'A detailed presentation on the first major topic of the subject.' },
+  { id: 'l2', title: 'Lesson 2', type: 'pdf', shortDescription: 'A comprehensive PDF guide for the second lesson.' },
+  { id: 'pre', title: 'Pretest', type: 'test', shortDescription: 'A preliminary test to assess your initial understanding.' },
+  { id: 'match', title: 'Matching Game', type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.' },
+  { id: 'flash', title: 'Flashcard', type: 'flash', shortDescription: 'Interactive flashcards to help memorize key terms and concepts.' },
+  { id: 'post', title: 'Post Test', type: 'test', shortDescription: 'A final test to evaluate your mastery of the subject.' },
+  { 
+    id: 'l3', 
+    title: 'MATATAG - Science 4 Quarter 1 Week 1 - Science Inventions', 
+    type: 'link', 
+    shortDescription: 'An external resource link for deeper exploration of the topic.',
+    content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_' // ✅ add actual link here
+  },
+  { id: 'l4', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', shortDescription: 'A video lesson explaining advanced concepts visually.' },
 ];
 
 
@@ -119,6 +128,35 @@ const SubjectPage = () => {
     }
   }, [selectedIds, selectionMode]);
 
+  const [downloadedFiles, setDownloadedFiles] = useState({}); // { lessonId: true/false }
+
+  // helper: maps lesson type to actual filename
+  const getFileNameForLesson = (item) => {
+    if (item.type === 'pdf') return 'Chapter1.pdf';
+    if (item.type === 'ppt') return 'Sample PPT.pptx';
+    if (item.type === 'video') return 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4';
+    return null;
+  };
+
+   // check if files exist in documentDirectory
+  useEffect(() => {
+    const checkFiles = async () => {
+      const status = {};
+      for (let item of LESSON_CARDS) {
+        const fileName = getFileNameForLesson(item);
+        if (fileName) {
+          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+          const info = await FileSystem.getInfoAsync(fileUri);
+          status[item.id] = info.exists;
+        } else {
+          status[item.id] = false; // non-file lessons
+        }
+      }
+      setDownloadedFiles(status);
+    };
+
+    checkFiles();
+  }, []);
   
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
@@ -127,15 +165,41 @@ const SubjectPage = () => {
     const iconName = LESSON_TYPE_ICON_MAP[item.type] || 'book-outline';
     return (
       <TouchableOpacity
-        onPress={() => {
+        onPress={async () => {
           if (selectionMode) {
             toggleSelect(item.id);
           } else {
-            if (item.type === 'general') {
-              router.push({ pathname: '/general', params: { title: item.title, content: "Welcome to MQuest, your personalized learning adventure! We are thrilled to have you on board. Get ready to embark on an exciting journey of knowledge and discovery. Our platform offers a wide range of subjects and interactive lessons designed to make learning fun and engaging. As you progress, you'll unlock achievements, earn badges, and climb the leaderboard. Don't forget to check out the map to see your learning path and track your progress. If you have any questions or need assistance, please don't hesitate to reach out to our support team. Let the quest for knowledge begin!" }});
+            let fileUri = '';
+            if (item.type === 'pdf') {
+              fileUri = await ensureLessonFile(
+                require('../../assets/lessons/Chapter1.pdf'),
+                'Chapter1.pdf'
+              );
             } else if (item.type === 'ppt') {
-              router.push({ pathname: '/ppt', params: { title: item.title} });
+              fileUri = await ensureLessonFile(
+                require('../../assets/lessons/Sample PPT.pptx'),
+                'Sample PPT.pptx'
+              );
+            } else if (item.type === 'video') {
+              fileUri = await ensureLessonFile(
+                require('../../assets/lessons/Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'),
+                'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'
+              );
+            } else if (item.type === 'link') {
+              fileUri = item.content; // ✅ pass the external link directly
             }
+
+            router.push({
+              pathname: '/content_details',
+              params: {
+                title: item.title,
+                shortDescription: item.shortDescription,
+                type: item.type,
+                content: fileUri, // <--- now a file:// URI we control
+                subjectName: subjectName,
+                subjectGrade: subjectGrade,
+              },
+            });
           }
         }}
         onLongPress={() => {
@@ -163,10 +227,12 @@ const SubjectPage = () => {
             isSelected ? (
               <Ionicons name="checkmark-circle" size={35} color="#48cae4" />
             ) : (
-              <Ionicons name="ellipse-outline" size={35} color={theme.text} style={{opacity: 0.6}} />
+              <Ionicons name="ellipse-outline" size={35} color={theme.text} style={{ opacity: 0.6 }} />
             )
+          ) : downloadedFiles[item.id] ? (
+            <Ionicons name="checkmark-circle-outline" size={35} color="green" />
           ) : (
-            <Ionicons name="arrow-down-circle-outline" size={35} color={theme.text} style={{opacity: 0.6}} />
+            <Ionicons name="arrow-down-circle-outline" size={35} color={theme.text} style={{ opacity: 0.6 }} />
           )}
         </View>
       </TouchableOpacity>

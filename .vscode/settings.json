@@ -1,4 +1,4 @@
 {
     "codium.codeCompletion.enable": true,
-    "CodeGPT.apiKey": "Ollama"
+    "CodeGPT.apiKey": "OpenRouter"
 }

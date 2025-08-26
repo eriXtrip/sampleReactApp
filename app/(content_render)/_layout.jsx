@@ -41,13 +41,7 @@ export default function ContentRenderLayout() {
         <ThemedStatusBar themeColors={themeColors} />
         <Stack screenOptions={screenOptions}>
           <Stack.Screen
-            name="general"
-            options={{
-              title: '',
-            }}
-          />
-          <Stack.Screen
-            name="ppt"
+            name="content_details"
             options={{
               title: '',
             }}
