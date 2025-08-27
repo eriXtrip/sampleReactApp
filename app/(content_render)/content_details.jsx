@@ -29,12 +29,18 @@ const LESSON_TYPE_ICON_MAP = {
 };
 
 const ContentDetails = () => {
-  const { title, type, content, shortDescription } = useLocalSearchParams();
+  const { title, type, status, content, shortDescription } = useLocalSearchParams();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-  const [isDone, setIsDone] = useState(false); // State to track done status
+  
+  const normalizeStatus = (val) => {
+    if (val === true || val === "true" || val === "1") return true;
+    return false;
+  };
+
+  const [isDone, setIsDone] = useState(normalizeStatus(status));
 
   const iconName = LESSON_TYPE_ICON_MAP[type] || 'book-outline';
 
@@ -109,7 +115,9 @@ const ContentDetails = () => {
   };
 
   const handleMarkAsDone = () => {
-    setIsDone((prev) => !prev); // Toggle done state
+    const newState = !isDone;
+    setIsDone(newState);
+    router.setParams({ status: newState ? "true" : "false" });
     console.log(isDone ? 'Marked as undone' : 'Marked as done');
   };
 
@@ -130,7 +138,8 @@ const ContentDetails = () => {
       borderBottomLeftRadius: 20,
       borderBottomRightRadius: 20,
       padding: 20,
-      paddingLeft: 10,
+      paddingLeft: 20,
+      paddingLeft: 30,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 }, // Shadow at the bottom
       shadowOpacity: 0.2,
@@ -146,21 +155,21 @@ const ContentDetails = () => {
       fontWeight: 'bold',
       color: theme.text,
       marginLeft: 12,
-      paddingRight: 20,
+      paddingRight: 30,
     },
     doneButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#48cae4',
-      borderRadius: 6,
+      backgroundColor: '#d0f3dfff',
+      borderRadius: 12,
       paddingVertical: 8,
       paddingHorizontal: 12,
-      marginTop: 20,
+      marginTop: 10,
       marginLeft: 20,
       alignSelf: 'flex-start', // Align to the left
     },
     doneText: {
-      color: '#ffffff',
+      color: '#0eb85f',
       fontSize: 14, // Smaller font size
       fontWeight: '600',
       marginLeft: 6,
@@ -170,7 +179,7 @@ const ContentDetails = () => {
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       padding: 20,
-      marginTop: 20,
+      marginTop: 10,
       flex: 1,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -4 }, // Shadow at the top
@@ -207,9 +216,32 @@ const ContentDetails = () => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.doneButton} onPress={handleMarkAsDone}>
-        <Ionicons name={isDone ? 'checkmark-done-outline' : 'checkmark-outline'} size={20} color="#ffffff" />
-        <ThemedText style={styles.doneText}>{isDone ? 'Done' : 'Mark as Done'}</ThemedText>
+      <TouchableOpacity
+        style={[
+          styles.doneButton,
+          !isDone && {
+            backgroundColor: 'transparent',   // transparent background
+            borderWidth: 2,                   // visible border
+            borderColor: theme.cardBorder,    // theme border color
+          },
+        ]}
+        onPress={handleMarkAsDone}
+      >
+        {isDone && (
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={20}
+            color="#0eb85f"
+          />
+        )}
+        <ThemedText
+          style={[
+            styles.doneText,
+            !isDone && { color: theme.text }, // adjust text color when undone
+          ]}
+        >
+          {isDone ? 'Done' : 'Mark as Done'}
+        </ThemedText>
       </TouchableOpacity>
 
       <View style={styles.bottomCard}>

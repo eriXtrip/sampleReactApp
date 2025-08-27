@@ -24,7 +24,7 @@ const ThemedHeader = ({ options, navigation }) => {
     >
       {navigation.canGoBack() && (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.title} />
+          <Ionicons name="chevron-back" size={30} color={theme.title} />
         </TouchableOpacity>
       )}
       <Text

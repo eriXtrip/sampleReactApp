@@ -26,21 +26,22 @@ const SUBJECT_ICON_MAP = {
 };
 
 const LESSON_CARDS = [
-  { id: 'gen', title: 'General', type: 'general', shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
-  { id: 't1', title: 'Topic 1', type: 'ppt', shortDescription: 'A detailed presentation on the first major topic of the subject.' },
-  { id: 'l2', title: 'Lesson 2', type: 'pdf', shortDescription: 'A comprehensive PDF guide for the second lesson.' },
-  { id: 'pre', title: 'Pretest', type: 'test', shortDescription: 'A preliminary test to assess your initial understanding.' },
-  { id: 'match', title: 'Matching Game', type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.' },
-  { id: 'flash', title: 'Flashcard', type: 'flash', shortDescription: 'Interactive flashcards to help memorize key terms and concepts.' },
-  { id: 'post', title: 'Post Test', type: 'test', shortDescription: 'A final test to evaluate your mastery of the subject.' },
+  { id: 'gen', title: 'General', type: 'general', status: true, shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
+  { id: 't1', title: 'Topic 1', type: 'ppt', status: true, shortDescription: 'A detailed presentation on the first major topic of the subject.' },
+  { id: 'l2', title: 'Lesson 2', type: 'pdf',status: true, shortDescription: 'A comprehensive PDF guide for the second lesson.' },
+  { id: 'pre', title: 'Pretest', type: 'test', status: false, shortDescription: 'A preliminary test to assess your initial understanding.' },
+  { id: 'match', title: 'Matching Game', status: false, type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.' },
+  { id: 'flash', title: 'Flashcard', type: 'flash', status: false, shortDescription: 'Interactive flashcards to help memorize key terms and concepts.' },
+  { id: 'post', title: 'Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.' },
   { 
     id: 'l3', 
     title: 'MATATAG - Science 4 Quarter 1 Week 1 - Science Inventions', 
     type: 'link', 
+    status: true,
     shortDescription: 'An external resource link for deeper exploration of the topic.',
     content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_' // ✅ add actual link here
   },
-  { id: 'l4', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', shortDescription: 'A video lesson explaining advanced concepts visually.' },
+  { id: 'l4', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.' },
 ];
 
 
@@ -163,6 +164,12 @@ const SubjectPage = () => {
   const renderLessonCard = ({ item }) => {
     const isSelected = selectedIds.has(item.id);
     const iconName = LESSON_TYPE_ICON_MAP[item.type] || 'book-outline';
+
+    // left border green when done === '1'
+    const rawDone = item?.status ?? item?.done ?? false;
+    const isDone = rawDone === true || rawDone === 'true' || rawDone === 1 || rawDone === '1';
+    const leftBorderColor = isDone ? '#16a34a' : theme.cardBorder;
+
     return (
       <TouchableOpacity
         onPress={async () => {
@@ -186,7 +193,7 @@ const SubjectPage = () => {
                 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'
               );
             } else if (item.type === 'link') {
-              fileUri = item.content; // ✅ pass the external link directly
+              fileUri = item.content; // pass the external link directly
             }
 
             router.push({
@@ -195,7 +202,8 @@ const SubjectPage = () => {
                 title: item.title,
                 shortDescription: item.shortDescription,
                 type: item.type,
-                content: fileUri, // <--- now a file:// URI we control
+                status: item.status,
+                content: fileUri,
                 subjectName: subjectName,
                 subjectGrade: subjectGrade,
               },
@@ -211,8 +219,11 @@ const SubjectPage = () => {
           style={[
             styles.cardBox,
             {
-              backgroundColor: theme.background,
+              borderStyle: 'solid',
+              borderWidth: 2,
               borderColor: isSelected ? '#48cae4' : theme.cardBorder,
+              borderLeftWidth: 6,
+              paddingLeft: 12,
             },
           ]}
         >
@@ -238,6 +249,7 @@ const SubjectPage = () => {
       </TouchableOpacity>
     );
   };
+
 
   const animatedOnScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -465,7 +477,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     marginBottom: 5,
-    borderWidth: 2,
     marginTop: 10,
   },
   textContainer: {
