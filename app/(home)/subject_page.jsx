@@ -178,9 +178,10 @@ const SubjectPage = () => {
           } else {
             let fileUri = '';
             if (item.type === 'pdf') {
-              fileUri = await ensureLessonFile(
-                require('../../assets/lessons/Chapter1.pdf'),
-                'Chapter1.pdf'
+              fileUri = ('https://github.com/vinzscam/react-native-file-viewer/raw/master/docs/react-native-file-viewer-certificate.pdf'
+                //       await ensureLessonFile(
+                // require('../../assets/lessons/Chapter1.pdf'),
+                // 'Chapter1.pdf'
               );
             } else if (item.type === 'ppt') {
               fileUri = await ensureLessonFile(
@@ -197,7 +198,7 @@ const SubjectPage = () => {
             }
 
             router.push({
-              pathname: '/content_details',
+              pathname: '/content_details_test',
               params: {
                 title: item.title,
                 shortDescription: item.shortDescription,

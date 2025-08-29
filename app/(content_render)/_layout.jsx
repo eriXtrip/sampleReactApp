@@ -46,6 +46,12 @@ export default function ContentRenderLayout() {
               title: '',
             }}
           />
+          <Stack.Screen
+            name="content_details_test"
+            options={{
+              title: '',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

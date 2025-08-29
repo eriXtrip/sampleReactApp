@@ -1,6 +1,6 @@
 // app/_layout.jsx
 
-import { useColorScheme, Alert, Platform, View, ActivityIndicator, Linking } from 'react-native';
+import { useColorScheme, Alert, Platform, Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,12 @@ import ApiConfigScreen from './contact';
 import { getApiUrl } from '../utils/apiManager';
 import { UserProvider } from '../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
+
+// Define your lessons folder path
+const LESSONS_DIR =
+  FileSystem.externalStorageDirectory +
+  'Android/media/com.mquest/lesson_contents/';
 
 // Configure how notifications are shown when app is foregrounded
 Notifications.setNotificationHandler({
@@ -73,21 +79,25 @@ const askStoragePermission = async () => {
         permissions.map(permission =>
           PermissionsAndroid.request(permission, {
             title: 'Storage Permission',
-            message: 'This app needs access to your storage to open PDF and PPT files.',
+            message:
+              'This app needs access to your storage to save and open files.',
             buttonPositive: 'OK',
             buttonNegative: 'Cancel',
           })
         )
       );
 
-      const allGranted = results.every(result => result === PermissionsAndroid.RESULTS.GRANTED);
+      const allGranted = results.every(
+        result => result === PermissionsAndroid.RESULTS.GRANTED
+      );
 
       if (allGranted) {
-        console.log('All storage permissions granted');
+        console.log('✅ Storage permissions granted');
+        return true;
       } else {
         Alert.alert(
           'Storage Permission Denied',
-          'Please allow storage access in your settings to open files.',
+          'Please allow storage access in your settings to save/open files.',
           [
             { text: 'OK' },
             {
@@ -96,21 +106,28 @@ const askStoragePermission = async () => {
             },
           ]
         );
+        return false;
       }
     } catch (err) {
       console.warn('Error requesting storage permissions:', err);
-      Alert.alert(
-        'Error',
-        'Failed to request storage permissions.',
-        [
-          { text: 'OK' },
-          {
-            text: 'Open Settings',
-            onPress: () => Linking.openSettings(),
-          },
-        ]
-      );
+      return false;
     }
+  }
+  return true;
+};
+
+// Ensures lesson_contents folder exists
+const ensureLessonsDir = async () => {
+  try {
+    const dirInfo = await FileSystem.getInfoAsync(LESSONS_DIR);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(LESSONS_DIR, { intermediates: true });
+      console.log('📂 Created lessons folder:', LESSONS_DIR);
+    } else {
+      console.log('📂 Lessons folder already exists');
+    }
+  } catch (e) {
+    console.error('❌ Error creating lessons folder:', e);
   }
 };
 
@@ -129,16 +146,22 @@ const RootLayout = () => {
 
   useEffect(() => {
     // Optional: listen for notification taps or responses
-    const subscription = Notifications.addNotificationReceivedListener(notification => {
-      console.log("🔔 Notification received:", notification);
-    });
+    const subscription =
+      Notifications.addNotificationReceivedListener(notification => {
+        console.log('🔔 Notification received:', notification);
+      });
 
     return () => subscription.remove();
   }, []);
 
   useEffect(() => {
-    askNotificationPermission();
-    askStoragePermission(); // Request storage permissions on app start
+    (async () => {
+      await askNotificationPermission();
+      const granted = await askStoragePermission();
+      if (granted) {
+        await ensureLessonsDir(); // ✅ Create folder on first run
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -149,30 +172,28 @@ const RootLayout = () => {
   }, []);
 
   return (
-    <>
-      <SQLiteProvider databaseName="mydatabase.db">
-        <UserProvider>
-          <ProfileProvider>
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            <Stack
-              screenOptions={{
-                headerStyle: { backgroundColor: theme.Background },
-                headerTintColor: theme.title,
-              }}
-            >
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="TestSQLInjectionScreen" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
-              <Stack.Screen name="(profile)" options={{ headerShown: false }} />
-              <Stack.Screen name="(home)" options={{ headerShown: false }} />
-              <Stack.Screen name="(content_render)" options={{ headerShown: false }} />
-              <Stack.Screen name="contact" options={{ title: 'Contact' }} />
-            </Stack>
-          </ProfileProvider>
-        </UserProvider>
-      </SQLiteProvider>
-    </>
+    <SQLiteProvider databaseName="mydatabase.db">
+      <UserProvider>
+        <ProfileProvider>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: theme.Background },
+              headerTintColor: theme.title,
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="TestSQLInjectionScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
+            <Stack.Screen name="(profile)" options={{ headerShown: false }} />
+            <Stack.Screen name="(home)" options={{ headerShown: false }} />
+            <Stack.Screen name="(content_render)" options={{ headerShown: false }} />
+            <Stack.Screen name="contact" options={{ title: 'Contact' }} />
+          </Stack>
+        </ProfileProvider>
+      </UserProvider>
+    </SQLiteProvider>
   );
 };
 
