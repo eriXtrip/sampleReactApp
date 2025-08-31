@@ -185,6 +185,7 @@ const ContentDetails = () => {
   };
 
   const handleOpen = async () => {
+    // PDFs & PPTs
     if (['pdf', 'ppt', 'pptx'].includes(type)) {
       let fileUri = null;
       if (!fileExists) fileUri = await handleDownload();
@@ -194,7 +195,38 @@ const ContentDetails = () => {
       }
       if (fileUri) await openWithChooser(fileUri, title);
     }
+
+    // Quiz (JSON file)
+    if (type === 'test') {
+      try {
+        const fileName = content ? content.split('/').pop() : "quiz.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        await ensureLessonsDir();
+
+        let fileInfo = await FileSystem.getInfoAsync(targetUri);
+        if (!fileInfo.exists) {
+          // Download the quiz JSON
+          const { uri: downloadedUri } = await FileSystem.downloadAsync(content, targetUri);
+          fileInfo = await FileSystem.getInfoAsync(downloadedUri);
+        }
+
+        if (fileInfo.exists) {
+          // Navigate to quiz screen
+          router.push({
+            pathname: '/quiz',
+            params: { quizUri: targetUri, title },
+          });
+        } else {
+          Alert.alert("Error", "Quiz file could not be loaded.");
+        }
+      } catch (err) {
+        console.error("Quiz load error:", err);
+        Alert.alert("Error", "Unable to open quiz.");
+      }
+    }
   };
+
 
   const styles = StyleSheet.create({
     container: {
@@ -355,7 +387,7 @@ const ContentDetails = () => {
           )}
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx'].includes(type) && (
+        {['pdf', 'ppt', 'pptx', 'test'].includes(type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
             <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
           </ThemedButton>

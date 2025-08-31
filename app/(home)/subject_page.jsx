@@ -197,6 +197,8 @@ const SubjectPage = () => {
               );
             } else if (item.type === 'link') {
               fileUri = item.content; // pass the external link directly
+            } else if (item.type === 'test') {
+              fileUri = 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/test-quiz.json';
             }
 
             router.push({
