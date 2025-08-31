@@ -1,13 +1,15 @@
 // app/(content_render)/content_details.jsx
 
-import React, { useContext, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert, PermissionsAndroid, Linking } from 'react-native';
+import React, { useContext, useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert, PermissionsAndroid } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Application from 'expo-application';
 import { WebView } from 'react-native-webview';
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -17,15 +19,62 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { getYouTubeEmbedUrl } from "../../utils/youtube";
 
-const LESSON_TYPE_ICON_MAP = {
-  general: 'information-circle-outline',
-  ppt: 'easel-outline',
-  pdf: 'document-attach-outline',
-  video: 'videocam-outline',
-  link: 'link-outline',
-  test: 'document-text-outline',
-  match: 'game-controller-outline',
-  flash: 'copy-outline',
+const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
+
+function getMimeType(uri) {
+  const ext = uri.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf': return 'application/pdf';
+    case 'doc': return 'application/msword';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'ppt': return 'application/vnd.ms-powerpoint';
+    case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'xls': return 'application/vnd.ms-excel';
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'mp4': return 'video/mp4';
+    case 'mov': return 'video/quicktime';
+    case 'jpg': case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    default: return '*/*';
+  }
+}
+
+const ensureLessonsDir = async () => {
+  try {
+    const dirInfo = await FileSystem.getInfoAsync(LESSONS_DIR);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(LESSONS_DIR, { intermediates: true });
+    }
+    return LESSONS_DIR;
+  } catch (e) {
+    console.error('❌ Error creating lessons folder:', e);
+    Alert.alert('Error', 'Failed to create lessons folder. Cannot save files.');
+    return null;
+  }
+};
+
+const openWithChooser = async (uri, title) => {
+  try {
+    if (Platform.OS === 'android') {
+      const contentUri = await FileSystem.getContentUriAsync(uri);
+      const mimeType = getMimeType(uri);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        type: mimeType,
+        flags: 1,
+      });
+    } else {
+      if (await Sharing.isAvailableAsync()) {
+        const mimeType = getMimeType(uri);
+        await Sharing.shareAsync(uri, { mimeType, dialogTitle: title, UTI: mimeType });
+      } else {
+        Alert.alert('Not supported', 'Opening files is not available on this device.');
+      }
+    }
+  } catch (err) {
+    console.error('Open file error:', err);
+    Alert.alert('Error', 'No app found to open this file. Please install a compatible app.');
+  }
 };
 
 const ContentDetails = () => {
@@ -34,94 +83,118 @@ const ContentDetails = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-  
-  const normalizeStatus = (val) => {
-    if (val === true || val === "true" || val === "1") return true;
-    return false;
-  };
 
+  const normalizeStatus = (val) => (val === true || val === "true" || val === "1");
   const [isDone, setIsDone] = useState(normalizeStatus(status));
+  const [fileExists, setFileExists] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  const iconName = LESSON_TYPE_ICON_MAP[type] || 'book-outline';
+  const iconName = {
+    general: 'information-circle-outline',
+    ppt: 'easel-outline',
+    pdf: 'document-attach-outline',
+    video: 'videocam-outline',
+    link: 'link-outline',
+    test: 'document-text-outline',
+    match: 'game-controller-outline',
+    flash: 'copy-outline',
+  }[type] || 'book-outline';
 
-  const checkStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      const permission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-      if (!permission) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'This app needs access to your storage to open PDF and PPT files.',
-            buttonPositive: 'OK',
-            buttonNegative: 'Cancel',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      }
-      return true;
-    }
-    return true; // Non-Android platforms don't need this permission
-  };
-
-  const isYouTubeUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    const lower = url.toLowerCase();
-    return lower.includes('youtube.com') || lower.includes('youtu.be');
-  };
-
-  const embedUrl = getYouTubeEmbedUrl(content);
-
-  const handleStart = async () => {
-    // PDFs and PPTs: share/open with external apps (existing behavior)
-    if (['pdf', 'ppt'].includes(type)) {
-      if (!content) {
-        Alert.alert('Error', 'No file path provided.');
-        return;
-      }
-
-      const mimeType =
-        type === 'pdf'
-          ? 'application/pdf'
-          : 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-
+  // Check if file exists
+  useEffect(() => {
+    (async () => {
+      if (!content) return;
+      const fileName = content.split('/').pop();
+      const targetUri = `${LESSONS_DIR}${fileName}`;
       try {
-        const available = await Sharing.isAvailableAsync();
-        if (available) {
-          await Sharing.shareAsync(content, {
-            mimeType,
-            dialogTitle: `Open ${title} with`,
-          });
-        } else {
-          Alert.alert('Error', 'No app available to open this file.');
-        }
-      } catch (err) {
-        Alert.alert('Error', `Could not open the file: ${err.message}`);
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+        setFileExists(fileInfo.exists);
+      } catch {
+        setFileExists(false);
+      }
+    })();
+  }, [content]);
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      const fileName = content.split('/').pop();
+      const targetUri = `${LESSONS_DIR}${fileName}`;
+      const targetFolder = await ensureLessonsDir();
+      if (!targetFolder) return;
+
+      const fileInfo = await FileSystem.getInfoAsync(targetUri);
+      if (fileInfo.exists) {
+        setFileExists(true);
+        setDownloading(false);
+        return targetUri;
       }
 
-      return;
+      const tempUri = FileSystem.cacheDirectory + fileName;
+      const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
+      await FileSystem.moveAsync({ from: downloadedUri, to: targetUri });
+      const newFileInfo = await FileSystem.getInfoAsync(targetUri);
+      setFileExists(newFileInfo.exists);
+      setDownloading(false);
+      return targetUri;
+    } catch (err) {
+      setDownloading(false);
+      console.error('Download error:', err);
+      Alert.alert('Error', err.message);
+      return null;
     }
-
-    // For test/match/flash -> keep as Start (navigation to respective handlers)
-    if (['test', 'match', 'flash'].includes(type)) {
-      // TODO: navigate to specific screens for tests/games if implemented
-      console.log(`Start action for type: ${type}`);
-      // Example: router.push({ pathname: '/quiz', params: {...} })
-      return;
-    }
-
-    // Other types (fallback)
-    console.log(`No handler implemented for type ${type}`);
   };
 
   const handleMarkAsDone = () => {
     const newState = !isDone;
     setIsDone(newState);
     router.setParams({ status: newState ? "true" : "false" });
-    console.log(isDone ? 'Marked as undone' : 'Marked as done');
   };
 
-  const buttonText = ['test', 'match', 'flash'].includes(type) ? 'Start' : 'Open';
+  const handleMarkAsDownloaded = async () => {
+    const fileName = content.split('/').pop();
+    const targetUri = `${LESSONS_DIR}${fileName}`;
+
+    if (fileExists) {
+      // Already saved → ask to delete
+      Alert.alert(
+        "Delete File",
+        "Do you want to delete this offline file?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await FileSystem.deleteAsync(targetUri, { idempotent: true });
+                setFileExists(false);
+                Alert.alert("Deleted", `${fileName} has been removed.`);
+              } catch (err) {
+                console.error("Delete error:", err);
+                Alert.alert("Error", "Could not delete file.");
+              }
+            }
+          }
+        ]
+      );
+    } else {
+      // Not saved → download
+      await handleDownload();
+    }
+  };
+
+  const handleOpen = async () => {
+    if (['pdf', 'ppt', 'pptx'].includes(type)) {
+      let fileUri = null;
+      if (!fileExists) fileUri = await handleDownload();
+      else {
+        const fileName = content.split('/').pop();
+        fileUri = `${LESSONS_DIR}${fileName}`;
+      }
+      if (fileUri) await openWithChooser(fileUri, title);
+    }
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -129,9 +202,7 @@ const ContentDetails = () => {
       backgroundColor: theme.background,
       paddingTop: 0,
     },
-    scrollContainer: {
-      flexGrow: 1,
-    },
+    scrollContainer: { flexGrow: 1 },
     topCard: {
       backgroundColor: theme.navBackground,
       height: 120,
@@ -146,10 +217,7 @@ const ContentDetails = () => {
       shadowRadius: 6,
       elevation: 5, // For Android
     },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
+    headerRow: { flexDirection: 'row', alignItems: 'center' },
     title: {
       fontSize: 20,
       fontWeight: 'bold',
@@ -166,14 +234,20 @@ const ContentDetails = () => {
       paddingHorizontal: 12,
       marginTop: 10,
       marginLeft: 20,
-      alignSelf: 'flex-start', // Align to the left
     },
-    doneText: {
-      color: '#0eb85f',
-      fontSize: 14, // Smaller font size
-      fontWeight: '600',
-      marginLeft: 6,
+    doneText: { color: '#0eb85f', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+    downloadButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#b1dcfcff',
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      marginTop: 10,
+      marginLeft: 10,
     },
+    downloadText: { color: '#1486DE', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+    actionsRow: { flexDirection: 'row', alignItems: 'center' },
     bottomCard: {
       backgroundColor: theme.navBackground,
       borderTopLeftRadius: 20,
@@ -182,29 +256,25 @@ const ContentDetails = () => {
       marginTop: 10,
       flex: 1,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 }, // Shadow at the top
+      shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.2,
       shadowRadius: 6,
-      elevation: 5, // For Android
+      elevation: 5,
     },
-    detailText: {
-      fontSize: 16,
-      lineHeight: 24,
-      color: theme.text,
-      marginBottom: 12,
-    },
-    startButton: {
-      backgroundColor: '#48cae4',
-      borderRadius: 8,
-      padding: 16,
-      alignItems: 'center',
-      marginHorizontal: 20,
-    },
-    startText: {
-      color: '#ffffff',
-      fontSize: 18,
-      fontWeight: 'bold',
-    },
+    detailText: { fontSize: 16, lineHeight: 24, color: theme.text, marginBottom: 12 },
+    startButton: { backgroundColor: '#48cae4', borderRadius: 8, padding: 16, alignItems: 'center', marginHorizontal: 20 },
+    startText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
+  });
+
+  const embedUrl = getYouTubeEmbedUrl(content);
+
+  const videoUri = content ? 
+  (fileExists ? `${LESSONS_DIR}${content.split('/').pop()}` : content) 
+  : null;
+
+  const videoPlayer = useVideoPlayer(videoUri || undefined, (player) => {
+    player.loop = false;
+    player.pause();
   });
 
   return (
@@ -216,33 +286,43 @@ const ContentDetails = () => {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.doneButton,
-          !isDone && {
-            backgroundColor: 'transparent',   // transparent background
-            borderWidth: 2,                   // visible border
-            borderColor: theme.cardBorder,    // theme border color
-          },
-        ]}
-        onPress={handleMarkAsDone}
-      >
-        {isDone && (
-          <Ionicons
-            name="checkmark-circle-outline"
-            size={20}
-            color="#0eb85f"
-          />
-        )}
-        <ThemedText
+      <View style={styles.actionsRow}>
+        <TouchableOpacity
           style={[
-            styles.doneText,
-            !isDone && { color: theme.text }, // adjust text color when undone
+            styles.doneButton,
+            !isDone && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder },
           ]}
+          onPress={handleMarkAsDone}
         >
-          {isDone ? 'Done' : 'Mark as Done'}
-        </ThemedText>
-      </TouchableOpacity>
+          {isDone && <Ionicons name="checkmark-circle" size={20} color="#0eb85f" />}
+          <ThemedText style={[styles.doneText, !isDone && { color: theme.text }]}>
+            {isDone ? 'Done' : 'Mark as Done'}
+          </ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.downloadButton,
+            !fileExists && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder },
+          ]}
+          onPress={handleMarkAsDownloaded}
+          disabled={downloading} // disable while downloading
+        >
+          {downloading ? (
+            <>
+              <Ionicons name="cloud-download" size={20} color="#1486DE" />
+              <ThemedText style={styles.downloadText}>Downloading…</ThemedText>
+            </>
+          ) : (
+            <>
+              {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
+              <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
+                {fileExists ? 'Available' : 'Download for offline use'}
+              </ThemedText>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.bottomCard}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -250,41 +330,34 @@ const ContentDetails = () => {
           <ThemedText style={styles.detailText}>Type: {type}</ThemedText>
 
           {type === 'video' && (
-            <VideoView
-              style={{ width: '100%', height: 250, backgroundColor: 'black' }}
-              player={useVideoPlayer(content, (player) => {
-                player.loop = false;
-                player.pause();
-              })}
-              allowsFullscreen
-              onFullscreenChange={async (isFullscreen) => {
-                if (isFullscreen) {
-                  await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-                } else {
-                  await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-                }
-              }}
-            />
+            videoUri ? (
+              <VideoView
+                style={{ width: '100%', height: 250, backgroundColor: 'black' }}
+                player={videoPlayer}
+                allowsFullscreen
+                onFullscreenChange={async (isFullscreen) => {
+                  await ScreenOrientation.lockAsync(
+                    isFullscreen
+                      ? ScreenOrientation.OrientationLock.LANDSCAPE
+                      : ScreenOrientation.OrientationLock.PORTRAIT
+                  );
+                }}
+              />
+            ) : (
+              <View style={{ width: '100%', height: 250, backgroundColor: 'grey' }} />
+            )
           )}
 
-          {/* Links: allow only YouTube links and open in WebView */}
-          {type === 'link' && isYouTubeUrl(content) && (
-            <View style={{ flex: 1, height: 300, }}>
-              <WebView
-                source={{ uri: embedUrl }}
-                javaScriptEnabled
-                domStorageEnabled
-                allowsFullscreenVideo={true}
-                startInLoadingState
-                mediaPlaybackRequiresUserAction={false}
-              />
+          {type === 'link' && embedUrl && (
+            <View style={{ flex: 1, height: 300 }}>
+              <WebView source={{ uri: embedUrl }} javaScriptEnabled domStorageEnabled allowsFullscreenVideo startInLoadingState />
             </View>
           )}
         </ScrollView>
 
-        {type !== 'general' && type !== 'video' && type !== 'link' && (
-          <ThemedButton style={styles.startButton} onPress={handleStart}>
-            <ThemedText style={styles.startText}>{buttonText}</ThemedText>
+        {['pdf', 'ppt', 'pptx'].includes(type) && (
+          <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
+            <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
           </ThemedButton>
         )}
 

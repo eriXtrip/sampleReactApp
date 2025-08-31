@@ -20,7 +20,7 @@ const CIRCLE_SIZE = 100;
 
 const Index = () => {
   return (
-    <SQLiteProvider databaseName="mquest.db" onInit={initializeDatabase}>
+    <SQLiteProvider databaseName="mydatabase.db" onInit={initializeDatabase}>
       <UserProvider>
         <SplashScreen />
       </UserProvider>

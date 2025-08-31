@@ -178,27 +178,29 @@ const SubjectPage = () => {
           } else {
             let fileUri = '';
             if (item.type === 'pdf') {
-              fileUri = ('https://github.com/vinzscam/react-native-file-viewer/raw/master/docs/react-native-file-viewer-certificate.pdf'
+              fileUri = ('https://github.com/eriXtrip/test-files/raw/refs/heads/main/Chapter-1.pdf'
                 //       await ensureLessonFile(
                 // require('../../assets/lessons/Chapter1.pdf'),
                 // 'Chapter1.pdf'
               );
             } else if (item.type === 'ppt') {
-              fileUri = await ensureLessonFile(
-                require('../../assets/lessons/Sample PPT.pptx'),
-                'Sample PPT.pptx'
+              fileUri = ('https://github.com/eriXtrip/test-files/raw/refs/heads/main/Sample-PPT.pptx'
+                // await ensureLessonFile(
+                //   require('../../assets/lessons/Sample PPT.pptx'),
+                //   'Sample PPT.pptx'
               );
             } else if (item.type === 'video') {
-              fileUri = await ensureLessonFile(
-                require('../../assets/lessons/Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'),
-                'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'
+              fileUri = ( 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'
+                // await ensureLessonFile(
+                //   require('../../assets/lessons/Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'),
+                //   'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'
               );
             } else if (item.type === 'link') {
               fileUri = item.content; // pass the external link directly
             }
 
             router.push({
-              pathname: '/content_details_test',
+              pathname: '/content_details',
               params: {
                 title: item.title,
                 shortDescription: item.shortDescription,
@@ -391,7 +393,7 @@ const SubjectPage = () => {
         </View>
       </Animated.ScrollView>
 
-      <Spacer height={20} />
+      <Spacer height={23} />
     </ThemedView>
   );
 };

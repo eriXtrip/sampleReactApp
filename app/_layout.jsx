@@ -1,5 +1,3 @@
-// app/_layout.jsx
-
 import { useColorScheme, Alert, Platform, Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { Colors } from '../constants/Colors';
@@ -13,11 +11,12 @@ import { getApiUrl } from '../utils/apiManager';
 import { UserProvider } from '../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
+import * as Application from 'expo-application';
 
 // Define your lessons folder path
-const LESSONS_DIR =
-  FileSystem.externalStorageDirectory +
-  'Android/media/com.mquest/lesson_contents/';
+const LESSONS_DIR = `${
+  FileSystem.documentDirectory
+}Android/media/${Application.applicationId}/lesson_contents/`;
 
 // Configure how notifications are shown when app is foregrounded
 Notifications.setNotificationHandler({
@@ -67,13 +66,21 @@ const askNotificationPermission = async () => {
 const askStoragePermission = async () => {
   if (Platform.OS === 'android') {
     try {
-      // Request granular media permissions for Android 13+
-      const permissions = [
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-        PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
-        PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO,
-      ];
+      const permissions = [];
+      const androidVersion = parseInt(Platform.Version, 10);
+
+      if (androidVersion >= 33) {
+        permissions.push(
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO
+        );
+      } else {
+        permissions.push(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+        );
+      }
 
       const results = await Promise.all(
         permissions.map(permission =>
@@ -119,10 +126,16 @@ const askStoragePermission = async () => {
 // Ensures lesson_contents folder exists
 const ensureLessonsDir = async () => {
   try {
+    console.log('🔍 Checking lessons folder:', LESSONS_DIR);
+    if (!LESSONS_DIR) {
+      throw new Error('LESSONS_DIR is undefined or invalid');
+    }
     const dirInfo = await FileSystem.getInfoAsync(LESSONS_DIR);
+    console.log('ℹ️ Dir exists?', dirInfo.exists);
+
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(LESSONS_DIR, { intermediates: true });
-      console.log('📂 Created lessons folder:', LESSONS_DIR);
+      console.log('✅ Created lessons folder:', LESSONS_DIR);
     } else {
       console.log('📂 Lessons folder already exists');
     }
@@ -136,6 +149,7 @@ const RootLayout = () => {
   const theme = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
   const [hasApi, setHasApi] = useState(null);
   const [hasApiUrl, setHasApiUrl] = useState(null);
+  const [setupReady, setSetupReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -156,11 +170,13 @@ const RootLayout = () => {
 
   useEffect(() => {
     (async () => {
-      await askNotificationPermission();
-      const granted = await askStoragePermission();
-      if (granted) {
-        await ensureLessonsDir(); // ✅ Create folder on first run
+      const hasStoragePermission = await askStoragePermission();
+      if (hasStoragePermission) {
+        await ensureLessonsDir();
+      } else {
+        console.warn('Storage permissions not granted, skipping directory creation.');
       }
+      await askNotificationPermission();
     })();
   }, []);
 
@@ -182,7 +198,11 @@ const RootLayout = () => {
               headerTintColor: theme.title,
             }}
           >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="index"
+              options={{ headerShown: false }}
+              initialParams={{ setupReady }}
+            />
             <Stack.Screen name="TestSQLInjectionScreen" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
