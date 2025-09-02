@@ -97,7 +97,7 @@ const Login = () => {
   }
 
   return (
-    <ThemedView style={styles.container} safe={true}>
+    <ThemedView style={styles.container} safe={false}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={

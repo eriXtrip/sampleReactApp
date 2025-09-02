@@ -14,18 +14,6 @@ export default function ThemedTabs() {
 
   return (
     <>
-      {Platform.OS === 'android' && (
-        <View style={{
-          height: 40,
-          backgroundColor: theme.statusbarBackground, 
-        }}>
-          <StatusBar 
-            translucent
-            backgroundColor="transparent"
-            barStyle={needsInvertedStatusBar ? "dark-content" : "light-content"}
-          />
-        </View>
-      )}
       <Tabs screenOptions={{ 
         headerShown: false,
         headerStyle: {

@@ -6,7 +6,6 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import { UserProvider } from '../../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
 import ThemedHeader from '../../components/ThemedHeader';
-import ThemedStatusBar from '../../components/ThemedStatusBar';
 
 export default function ProfileLayout() {
   const colorScheme = useColorScheme();
@@ -33,7 +32,6 @@ export default function ProfileLayout() {
   return (
     <SQLiteProvider databaseName="mydatabase.db">
       <UserProvider>
-        <ThemedStatusBar themeColors={themeColors} />
         <Stack screenOptions={screenOptions}>
           <Stack.Screen
             name="change-password"

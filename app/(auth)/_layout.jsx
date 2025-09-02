@@ -22,7 +22,7 @@ export default function AuthLayout() {
         >
             <UserProvider>
                 {/* Android-specific status bar handling */}
-                {Platform.OS === 'android' && (
+                {/* {Platform.OS === 'android' && (
                 <View style={{
                     height: 40,
                     backgroundColor: theme.statusbarBackground, 
@@ -33,7 +33,7 @@ export default function AuthLayout() {
                     barStyle={needsInvertedStatusBar ? "dark-content" : "light-content"}
                 />
                 </View>
-                )}
+                )} */}
                 <Stack screenOptions={{
                     headerShown: false,
                     animation: "none",

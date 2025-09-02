@@ -124,12 +124,14 @@ eas build -p ios
 ```
 See `eas.json` for profiles and configuration.
 
-## Build a Development Build
+## Build a Development Build (build your debug APK without launching it.)
 To build a development build, run the following command:
 ```
-npx expo prebuild
+npx expo prebuild          #regenerates native code to include it.
+cd android
+./gradlew assembleDebug    # on Windows PowerShell / CMD 
 ```
-This will create a `build/` directory with the production build files.
+This will create a `android\app\build\outputs\apk\debug\app-debug.apk` directory with the production build files.
 
 ## Troubleshooting
 - API not reachable

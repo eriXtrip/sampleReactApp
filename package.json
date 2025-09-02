@@ -51,7 +51,8 @@
     "react-native-sqlite-storage": "^6.0.1",
     "react-native-svg": "15.11.2",
     "react-native-webview": "13.13.5",
-    "expo-network": "~7.1.5"
+    "expo-network": "~7.1.5",
+    "expo-speech": "~13.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

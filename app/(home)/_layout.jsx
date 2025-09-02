@@ -36,7 +36,6 @@ export default function HomeLayout() {
   return (
     <SQLiteProvider databaseName="mydatabase.db">
       <UserProvider>
-        <ThemedStatusBar themeColors={themeColors} />
         <Stack screenOptions={screenOptions}>
           <Stack.Screen
             name="searchpage"

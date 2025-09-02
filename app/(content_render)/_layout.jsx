@@ -38,7 +38,6 @@ export default function ContentRenderLayout() {
   return (
     <SQLiteProvider databaseName="mydatabase.db">
       <UserProvider>
-        <ThemedStatusBar themeColors={themeColors} />
         <Stack screenOptions={screenOptions}>
           <Stack.Screen
             name="content_details"
@@ -60,6 +59,12 @@ export default function ContentRenderLayout() {
           />
           <Stack.Screen
             name="flashcard"
+            options={{
+              title: '',
+            }}
+          />
+          <Stack.Screen
+            name="SpeakGameScreen"
             options={{
               title: '',
             }}

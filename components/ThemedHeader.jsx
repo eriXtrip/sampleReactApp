@@ -82,7 +82,7 @@ const ThemedHeader = ({ options, navigation }) => {
                 <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
                   <Text style={{ color: theme.title }}>All</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setMenuVisible(false)} sstyle={[style.menu]}>
+                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
                   <Text style={{ color: theme.title }}>Unfinish</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu, { borderBottomWidth: 0 }]}>

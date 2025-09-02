@@ -98,6 +98,7 @@ const ContentDetails = () => {
     test: 'document-text-outline',
     match: 'game-controller-outline',
     flash: 'copy-outline',
+    speach: 'mic-outline',
   }[type] || 'book-outline';
 
   // Check if file exists
@@ -257,6 +258,27 @@ const ContentDetails = () => {
       } catch (err) {
         console.error("Flashcard load error:", err);
         Alert.alert("Error", "Unable to open flashcard.");
+      }
+    }
+
+    // speach (JSON file)
+    if (type === 'speach') {
+      try {
+        const fileName = content ? content.split('/').pop() : "speach.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+
+        router.push({
+          pathname: '/SpeakGameScreen',
+          params: { 
+            speakUri: fileInfo.exists ? targetUri : content, 
+            title,
+          },
+        });
+      } catch (err) {
+        console.error("Speak load error:", err);
+        Alert.alert("Error", "Unable to open speak.");
       }
     }
   };
@@ -424,7 +446,7 @@ const ContentDetails = () => {
           )}
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash'].includes(type) && (
+        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach'].includes(type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
             <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
           </ThemedButton>

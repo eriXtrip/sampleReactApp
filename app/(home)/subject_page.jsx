@@ -43,6 +43,7 @@ const LESSON_CARDS = [
     content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_'
   },
   { id: '9', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'},
+  { id: '10', title: 'Speak This Sentence', type: 'speach', status: true, shortDescription: 'A game to test your speaking skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/speak-english.json'},
 ];
 
 
@@ -55,6 +56,7 @@ const LESSON_TYPE_ICON_MAP = {
   test: 'document-text-outline',
   match: 'game-controller-outline',
   flash: 'copy-outline',
+  speach: 'mic-outline',
 };
 
 const SubjectPage = () => {
