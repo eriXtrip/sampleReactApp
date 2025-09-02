@@ -124,6 +124,13 @@ eas build -p ios
 ```
 See `eas.json` for profiles and configuration.
 
+## Build a Development Build
+To build a development build, run the following command:
+```
+npx expo prebuild
+```
+This will create a `build/` directory with the production build files.
+
 ## Troubleshooting
 - API not reachable
   - Verify the backend is running and reachable at the configured URL

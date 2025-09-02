@@ -1,3 +1,5 @@
+// app/contact.jsx
+
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { setApiUrl, getApiUrl } from '../utils/apiManager';

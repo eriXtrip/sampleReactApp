@@ -431,5 +431,3 @@ export function UserProvider({ children }) {
   );
 }
 
-
-// aplication abb for playstore: https://expo.dev/artifacts/eas/cX5mdRtNusKWcPfbzQRscu.aab

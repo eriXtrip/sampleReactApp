@@ -202,27 +202,61 @@ const ContentDetails = () => {
         const fileName = content ? content.split('/').pop() : "quiz.json";
         const targetUri = `${LESSONS_DIR}${fileName}`;
 
-        await ensureLessonsDir();
+        // check if offline file exists
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
 
-        let fileInfo = await FileSystem.getInfoAsync(targetUri);
-        if (!fileInfo.exists) {
-          // Download the quiz JSON
-          const { uri: downloadedUri } = await FileSystem.downloadAsync(content, targetUri);
-          fileInfo = await FileSystem.getInfoAsync(downloadedUri);
-        }
-
-        if (fileInfo.exists) {
-          // Navigate to quiz screen
-          router.push({
-            pathname: '/quiz',
-            params: { quizUri: targetUri, title },
-          });
-        } else {
-          Alert.alert("Error", "Quiz file could not be loaded.");
-        }
+        router.push({
+          pathname: '/quiz',
+          params: { 
+            quizUri: fileInfo.exists ? targetUri : content, // 📂 offline if available, else online
+            title,
+          },
+        });
       } catch (err) {
         console.error("Quiz load error:", err);
         Alert.alert("Error", "Unable to open quiz.");
+      }
+    }
+
+    // Matching (JSON file)
+    if (type === 'match') {
+      try {
+        const fileName = content ? content.split('/').pop() : "matching.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+
+        router.push({
+          pathname: '/matching',
+          params: { 
+            matchingUri: fileInfo.exists ? targetUri : content, 
+            title,
+          },
+        });
+      } catch (err) {
+        console.error("Matching load error:", err);
+        Alert.alert("Error", "Unable to open matching game.");
+      }
+    }
+
+    // Flashcard (JSON file)
+    if (type === 'flash') {
+      try {
+        const fileName = content ? content.split('/').pop() : "flashcard.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+
+        router.push({
+          pathname: '/flashcard',
+          params: { 
+            flashcardUri: fileInfo.exists ? targetUri : content, 
+            title,
+          },
+        });
+      } catch (err) {
+        console.error("Flashcard load error:", err);
+        Alert.alert("Error", "Unable to open flashcard.");
       }
     }
   };
@@ -332,29 +366,32 @@ const ContentDetails = () => {
           </ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.downloadButton,
-            !fileExists && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder },
-          ]}
-          onPress={handleMarkAsDownloaded}
-          disabled={downloading} // disable while downloading
-        >
-          {downloading ? (
-            <>
-              <Ionicons name="cloud-download" size={20} color="#1486DE" />
-              <ThemedText style={styles.downloadText}>Downloading…</ThemedText>
-            </>
-          ) : (
-            <>
-              {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
-              <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
-                {fileExists ? 'Available' : 'Download for offline use'}
-              </ThemedText>
-            </>
+          {type !== "link" && type !== "general" && (
+            <TouchableOpacity
+              style={[
+                styles.downloadButton,
+                !fileExists && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder },
+              ]}
+              onPress={handleMarkAsDownloaded}
+              disabled={downloading} // disable while downloading
+            >
+              {downloading ? (
+                <>
+                  <Ionicons name="cloud-download" size={20} color="#1486DE" />
+                  <ThemedText style={styles.downloadText}>Downloading…</ThemedText>
+                </>
+              ) : (
+                <>
+                  {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
+                  <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
+                    {fileExists ? 'Available' : 'Download for offline use'}
+                  </ThemedText>
+                </>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
       </View>
+        
 
       <View style={styles.bottomCard}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -387,13 +424,13 @@ const ContentDetails = () => {
           )}
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'test'].includes(type) && (
+        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash'].includes(type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
             <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
           </ThemedButton>
         )}
 
-        <Spacer height={20} />
+        <Spacer height={25} />
       </View>
     </ThemedView>
   );

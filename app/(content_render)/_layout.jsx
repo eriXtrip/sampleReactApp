@@ -58,6 +58,12 @@ export default function ContentRenderLayout() {
               title: '',
             }}
           />
+          <Stack.Screen
+            name="flashcard"
+            options={{
+              title: '',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

@@ -1,215 +1,234 @@
 // SAMPLEREACTAPP/app/(auth)/login.jsx
-import React, { useState, useContext, useEffect  } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Image, View, ActivityIndicator, Platform, TouchableOpacity } from 'react-native'
-import { Link, useRouter, Redirect } from 'expo-router'
-import { useColorScheme } from 'react-native'
-import { Colors } from '../../constants/Colors'
-import { useUser } from '../../hooks/useUser'
+import React, { useState, useContext, useEffect } from 'react';
+import { KeyboardAvoidingView, StyleSheet, Image, View, ActivityIndicator, Platform, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { Link, useRouter, Redirect } from 'expo-router';
+import { Colors } from '../../constants/Colors';
+import { useUser } from '../../hooks/useUser';
 import { UserContext } from '../../contexts/UserContext';
-
-import ThemedView from '../../components/ThemedView'
-import Spacer from '../../components/Spacer'
-import ThemedText from '../../components/ThemedText'
-import ThemedButton from '../../components/ThemedButton'
-import ThemedAlert from '../../components/ThemedAlert'
-import ThemedTextInput from '../../components/ThemedTextInput'
-import ThemedPasswordInput from '../../components/ThemedPasswordInput'
+import { ApiUrlContext } from '../../contexts/ApiUrlContext';
+import ThemedView from '../../components/ThemedView';
+import Spacer from '../../components/Spacer';
+import ThemedText from '../../components/ThemedText';
+import ThemedButton from '../../components/ThemedButton';
+import ThemedAlert from '../../components/ThemedAlert';
+import ThemedTextInput from '../../components/ThemedTextInput';
+import ThemedPasswordInput from '../../components/ThemedPasswordInput';
 import ApiConfigScreen from '../contact';
-import { clearApiUrl  } from '../../utils/apiManager';
+import { clearApiUrl } from '../../utils/apiManager';
 
-const login = () => {
-    const router = useRouter()
-    const {
-        login,
-    } = useContext(UserContext);
-    const [email, setemail] = useState('');
-    const [password, setPassword] = useState('');
-    const [alert, setAlert] = useState({ visible: false, message: '' });
-    const [ loading, setLoading] = useState(false);
-    const showAlert = (msg) => setAlert({ visible: true, message: msg });
-    const closeAlert = () => setAlert({ ...alert, visible: false });
-    const [cleared, setCleared] = useState(false);
-    const { user, isLoading } = useUser();
+const Login = () => {
+  const router = useRouter();
+  const { login } = useContext(UserContext);
+  const { refreshApiUrl } = useContext(ApiUrlContext);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [alert, setAlert] = useState({ visible: false, message: '' });
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cleared, setCleared] = useState(false);
+  const { user, isLoading } = useUser();
 
-    useEffect(() => {
-        if (user) {
-            router.replace('/home');
-        }
-    }, [user]); // Only run when user changes
-
-    const handleSubmit = async () => {
-        setLoading(true);
-        console.log('Login button pressed');
-        if (!!!email || !!!password){
-            return showAlert( 'Pls enter your email and password');
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return showAlert('Invalid email format.');
-        }
-            
-        try{
-            await login(email, password); // Use login from context
-            router.replace('/home');
-        } catch (error){
-            showAlert(error.message);
-        } finally {
-            setLoading(false);
-        }
-
-    };
-
-    const handleLogoPress = async () => {
-        setCleared(false);
-        router.replace('/');
-    };
-
-    const handleApiConfigComplete = () => {
-        setCleared(false);
-        router.replace('/login'); // Or your desired navigation
-    };
-
-    
-    const handleAccountPress = async () => {
-        await clearApiUrl();
-        console.log('✅ API URL cleared!');
-        setCleared(true); // Or your desired navigation
-    };
-
-    if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;
-
-    const handleTestSQLinjection = () => {
-        router.replace('/TestSQLInjectionScreen')
+  useEffect(() => {
+    if (user) {
+      router.replace('/home');
     }
+  }, [user]);
 
-    // Show loading indicator while checking auth state
-    if (isLoading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" />
-            </View>
-        );
+  const handleSubmit = async () => {
+    setLoading(true);
+    console.log('Login button pressed');
+    if (!email || !password) {
+      setLoading(false);
+      return showAlert('Please enter your email and password');
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setLoading(false);
+      return showAlert('Invalid email format.');
+    }
+    try {
+      await login(email, password);
+      router.replace('/home');
+    } catch (error) {
+      showAlert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const showAlert = (msg) => setAlert({ visible: true, message: msg });
+  const closeAlert = () => setAlert({ ...alert, visible: false });
+
+  const handleLogoPress = async () => {
+    setCleared(false);
+    router.replace('/');
+  };
+
+  const handleApiConfigComplete = () => {
+    setCleared(false);
+    router.replace('/login');
+  };
+
+  const handleAccountPress = async () => {
+    await clearApiUrl();
+    console.log('✅ API URL cleared!');
+    setCleared(true);
+  };
+
+  const handleTestSQLInjection = () => {
+    router.replace('/TestSQLInjectionScreen');
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    console.log('🔄 Pull-to-refresh triggered');
+    await refreshApiUrl();
+    console.log('🔄 Pull-to-refresh completed');
+    setRefreshing(false);
+  };
+
+  if (cleared) return <ApiConfigScreen onComplete={handleApiConfigComplete} />;
+
+  if (isLoading) {
     return (
-        <ThemedView style={styles.container} safe={true}>
-            <View style={styles.logoContainer}>
-                <TouchableOpacity onPress={handleLogoPress}>
-                    <Image 
-                        source={require('../../assets/img/Login_Logo.png')} // Update path to your logo
-                        style={styles.logo}
-                        resizeMode="contain"
-                        
-                    />
-                </TouchableOpacity>
-            </View>
-            {/* Welcome Message */}
-            
-            <TouchableOpacity onPress={handleTestSQLinjection}>
-                <ThemedText title={true} style={styles.welcome}>Welcome!</ThemedText>
-            </TouchableOpacity>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
-            <TouchableOpacity onPress={handleAccountPress}>
-                <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
-            </TouchableOpacity>
-            
-            
-            <Spacer height={30} />
-            
-            <ThemedText style={styles.label}>Email</ThemedText>
-            <KeyboardAvoidingView behavior={Platform.OS === 'android' ? 'padding' : undefined}>
-                <ThemedTextInput
-                    value={email}
-                    onChangeText={setemail}
-                    placeholder="Enter email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-            </KeyboardAvoidingView>
-            
-            
-            <Spacer height={20} />
-            
-            {/* Password with Forgot Password link */}
-            <View style={styles.passwordHeader}>
-                <ThemedText style={styles.label}>Password</ThemedText>
-                <Link href="/forgot-password" style={styles.forgotPassword}>
-                    <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
-                </Link>
-            </View>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                <ThemedPasswordInput
-                    value={password}
-                    onChangeText={setPassword}
-                />
-            </KeyboardAvoidingView>
-            
-            
-            <Spacer height={30} />
-            
-            <ThemedButton onPress={handleSubmit}  > Login </ThemedButton>
-            
-            <Spacer height={20} />
-            
-            <ThemedText style={{ textAlign: 'center' }}>Don't have an account? {''}
-                <Link href='/register' style={styles.link}>
-                    Register Instead
-                </Link>
-            </ThemedText>
+  return (
+    <ThemedView style={styles.container} safe={true}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.logoContainer}>
+          <TouchableOpacity onPress={handleLogoPress}>
+            <Image
+              source={require('../../assets/img/Login_Logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
 
-            <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
-        </ThemedView>
-    )
-}
+        <TouchableOpacity onPress={handleTestSQLInjection}>
+          <ThemedText title={true} style={styles.welcome}>
+            Welcome!
+          </ThemedText>
+        </TouchableOpacity>
 
-export default login
+        <TouchableOpacity onPress={handleAccountPress}>
+          <ThemedText style={styles.subtitle}>Please login to your account</ThemedText>
+        </TouchableOpacity>
+
+        <Spacer height={30} />
+
+        <ThemedText style={styles.label}>Email</ThemedText>
+        <KeyboardAvoidingView behavior={Platform.OS === 'android' ? 'padding' : undefined}>
+          <ThemedTextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Enter email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </KeyboardAvoidingView>
+
+        <Spacer height={20} />
+
+        <View style={styles.passwordHeader}>
+          <ThemedText style={styles.label}>Password</ThemedText>
+          <Link href="/forgot-password" style={styles.forgotPassword}>
+            <ThemedText style={styles.forgotPasswordText}>Forgot Password?</ThemedText>
+          </Link>
+        </View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ThemedPasswordInput
+            value={password}
+            onChangeText={setPassword}
+          />
+        </KeyboardAvoidingView>
+
+        <Spacer height={30} />
+
+        <ThemedButton onPress={handleSubmit} disabled={loading}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : 'Login'}
+        </ThemedButton>
+
+        <Spacer height={20} />
+
+        <ThemedText style={{ textAlign: 'center' }}>
+          Don't have an account?{' '}
+          <Link href="/register" style={styles.link}>
+            Register Instead
+          </Link>
+        </ThemedText>
+
+        <ThemedAlert visible={alert.visible} message={alert.message} onClose={closeAlert} />
+      </ScrollView>
+    </ThemedView>
+  );
+};
+
+export default Login;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        paddingHorizontal: 20,
-        
-    },
-    logoContainer: {
-        alignItems: 'center',
-        marginTop: 40,
-        marginBottom: 10,
-    },
-    logo: {
-        width: 100,  // Adjust as needed
-        height: 100, // Adjust as needed
-    },
-    welcome: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 5,
-    },
-    subtitle: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 0,
-    },
-    passwordHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    label: {
-        fontSize: 16,
-        marginLeft: 5,
-        marginBottom: 8,
-    },
-    forgotPassword: {
-        marginRight: 5,
-    },
-    forgotPasswordText: {
-        color: '#007AFF', // iOS-like blue link color
-        fontSize: 14,
-    },
-    link: {
-        marginTop: 10,
-        color: Colors.primary,
-        fontWeight: 'bold',
-    },
-})
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 10,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+  },
+  welcome: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 0,
+  },
+  passwordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 16,
+    marginLeft: 5,
+    marginBottom: 8,
+  },
+  forgotPassword: {
+    marginRight: 5,
+  },
+  forgotPasswordText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  link: {
+    marginTop: 10,
+    color: Colors.primary,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

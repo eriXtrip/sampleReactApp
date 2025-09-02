@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
+import * as Application from 'expo-application';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -26,22 +27,22 @@ const SUBJECT_ICON_MAP = {
 };
 
 const LESSON_CARDS = [
-  { id: 'gen', title: 'General', type: 'general', status: true, shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
-  { id: 't1', title: 'Topic 1', type: 'ppt', status: true, shortDescription: 'A detailed presentation on the first major topic of the subject.' },
-  { id: 'l2', title: 'Lesson 2', type: 'pdf',status: true, shortDescription: 'A comprehensive PDF guide for the second lesson.' },
-  { id: 'pre', title: 'Pretest', type: 'test', status: false, shortDescription: 'A preliminary test to assess your initial understanding.' },
-  { id: 'match', title: 'Matching Game', status: false, type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.' },
-  { id: 'flash', title: 'Flashcard', type: 'flash', status: false, shortDescription: 'Interactive flashcards to help memorize key terms and concepts.' },
-  { id: 'post', title: 'Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.' },
+  { id: '1', title: 'General', type: 'general', status: true, shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
+  { id: '2', title: 'Topic 1', type: 'ppt', status: true, shortDescription: 'A detailed presentation on the first major topic of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Sample-PPT.pptx'},
+  { id: '3', title: 'Lesson 2', type: 'pdf',status: true, shortDescription: 'A comprehensive PDF guide for the second lesson.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Chapter-1.pdf' },
+  { id: '4', title: 'Basic IT Concepts Pretest', type: 'test', status: false, shortDescription: 'A preliminary test to assess your initial understanding.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/test-quiz.json' },
+  { id: '5', title: 'Science Matching Game', status: false, type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/game-match.json'},
+  { id: '6', title: 'Flashcard', type: 'flash', status: false, shortDescription: 'Interactive flashcards to help memorize key terms and concepts.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Science-Flash-Cards.json' },
+  { id: '7', title: ' Grade 4 Science Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SCI4-M1-Q1json'},
   { 
-    id: 'l3', 
+    id: '8', 
     title: 'MATATAG - Science 4 Quarter 1 Week 1 - Science Inventions', 
     type: 'link', 
     status: true,
     shortDescription: 'An external resource link for deeper exploration of the topic.',
-    content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_' // ✅ add actual link here
+    content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_'
   },
-  { id: 'l4', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.' },
+  { id: '9', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'},
 ];
 
 
@@ -85,6 +86,9 @@ const SubjectPage = () => {
 
   // Animated scroll value used to lift the details view up as the list scrolls
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // File system directory for lesson contents
+  const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
 
   // no banner overlap in SubjectPage
   const initialOverlap = 0;
@@ -133,31 +137,44 @@ const SubjectPage = () => {
 
   // helper: maps lesson type to actual filename
   const getFileNameForLesson = (item) => {
-    if (item.type === 'pdf') return 'Chapter1.pdf';
-    if (item.type === 'ppt') return 'Sample PPT.pptx';
-    if (item.type === 'video') return 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4';
-    return null;
+    if (!item.content) return null;
+    try {
+      // take last part of the URL after slash
+      const urlParts = item.content.split('/');
+      return decodeURIComponent(urlParts[urlParts.length - 1]);
+    } catch {
+      return null;
+    }
   };
+
 
    // check if files exist in documentDirectory
   useEffect(() => {
-    const checkFiles = async () => {
+    (async () => {
       const status = {};
+
       for (let item of LESSON_CARDS) {
-        const fileName = getFileNameForLesson(item);
-        if (fileName) {
-          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-          const info = await FileSystem.getInfoAsync(fileUri);
-          status[item.id] = info.exists;
-        } else {
-          status[item.id] = false; // non-file lessons
+        if (!item.content) {
+          status[item.id] = false;
+          continue;
+        }
+
+        const fileName = item.content.split('/').pop(); // extract filename
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(targetUri);
+          status[item.id] = fileInfo.exists;  // true if saved locally
+        } catch {
+          status[item.id] = false;
         }
       }
-      setDownloadedFiles(status);
-    };
 
-    checkFiles();
+      setDownloadedFiles(status);
+    })();
   }, []);
+
+
   
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
@@ -168,7 +185,6 @@ const SubjectPage = () => {
     // left border green when done === '1'
     const rawDone = item?.status ?? item?.done ?? false;
     const isDone = rawDone === true || rawDone === 'true' || rawDone === 1 || rawDone === '1';
-    const leftBorderColor = isDone ? '#16a34a' : theme.cardBorder;
 
     return (
       <TouchableOpacity
@@ -176,31 +192,6 @@ const SubjectPage = () => {
           if (selectionMode) {
             toggleSelect(item.id);
           } else {
-            let fileUri = '';
-            if (item.type === 'pdf') {
-              fileUri = ('https://github.com/eriXtrip/test-files/raw/refs/heads/main/Chapter-1.pdf'
-                //       await ensureLessonFile(
-                // require('../../assets/lessons/Chapter1.pdf'),
-                // 'Chapter1.pdf'
-              );
-            } else if (item.type === 'ppt') {
-              fileUri = ('https://github.com/eriXtrip/test-files/raw/refs/heads/main/Sample-PPT.pptx'
-                // await ensureLessonFile(
-                //   require('../../assets/lessons/Sample PPT.pptx'),
-                //   'Sample PPT.pptx'
-              );
-            } else if (item.type === 'video') {
-              fileUri = ( 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'
-                // await ensureLessonFile(
-                //   require('../../assets/lessons/Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'),
-                //   'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum720p.mp4'
-              );
-            } else if (item.type === 'link') {
-              fileUri = item.content; // pass the external link directly
-            } else if (item.type === 'test') {
-              fileUri = 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/test-quiz.json';
-            }
-
             router.push({
               pathname: '/content_details',
               params: {
@@ -208,7 +199,7 @@ const SubjectPage = () => {
                 shortDescription: item.shortDescription,
                 type: item.type,
                 status: item.status,
-                content: fileUri,
+                content: item.content,
                 subjectName: subjectName,
                 subjectGrade: subjectGrade,
               },
@@ -226,7 +217,11 @@ const SubjectPage = () => {
             {
               borderStyle: 'solid',
               borderWidth: 2,
-              borderColor: isSelected ? '#48cae4' : theme.cardBorder,
+              borderColor: isSelected 
+                ? '#48cae4'        // highlight if selected
+                : isDone 
+                  ? '#969696ff'    // grey if marked done
+                  : theme.cardBorder,
               borderLeftWidth: 6,
               paddingLeft: 12,
             },
@@ -246,9 +241,9 @@ const SubjectPage = () => {
               <Ionicons name="ellipse-outline" size={35} color={theme.text} style={{ opacity: 0.6 }} />
             )
           ) : downloadedFiles[item.id] ? (
-            <Ionicons name="checkmark-circle-outline" size={35} color="green" />
+            <Ionicons name="checkmark-circle" size={35} color="#969696ff" />
           ) : (
-            <Ionicons name="arrow-down-circle-outline" size={35} color={theme.text} style={{ opacity: 0.6 }} />
+            <Ionicons name="arrow-down-circle-outline" size={35} color={theme.cardBorder} />
           )}
         </View>
       </TouchableOpacity>
