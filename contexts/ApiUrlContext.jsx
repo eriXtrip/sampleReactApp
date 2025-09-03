@@ -22,8 +22,8 @@ export const ApiUrlProvider = ({ children }) => {
       console.log('🔄 Refreshing API URL and network status...');
       // Check network status
       const networkState = await Network.getNetworkStateAsync();
-      //const isConnected = networkState.isConnected;
-      const isConnected = true;
+      const isConnected = networkState.isConnected;
+      //const isConnected = true;
       console.log('📶 Network state:', isConnected);
       setIsOffline(!isConnected);
 

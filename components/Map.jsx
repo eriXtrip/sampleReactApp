@@ -5,16 +5,6 @@ import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 
-// Candy-crush style trail (single wavy path)
-// - Start at the bottom
-// - Vertically scrollable
-// - Nodes (candies) spaced further apart to feel like a trail
-// Props:
-// - stops: total number of nodes (defaults to 20)
-// - cols: kept for compatibility (ignored in trail mode)
-// - progress: 0..100 percentage to position the marker along stops
-// - accentColor: color for trail/marker
-// - style: container style
 function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style }) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;

@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation, lockVisible } from "expo-router";
 import Spacer from "../../components/Spacer";
+import ThemedAlert from "../../components/ThemedAlert";
+import DangerAlert from "../../components/DangerAlert";
 
 export default function QuizScreen() {
   const { quizUri } = useLocalSearchParams(); 
@@ -22,6 +24,11 @@ export default function QuizScreen() {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [enteredPassword, setEnteredPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [exitAlertVisible, setExitAlertVisible] = useState(false);
+
 
   const theme = {
     cardBorder: "#ccc",
@@ -85,7 +92,8 @@ export default function QuizScreen() {
 
       } catch (err) {
         console.error("Failed to load quiz JSON:", err);
-        Alert.alert("Error", "Unable to load quiz file.");
+        setAlertMessage("Unable to load quiz file.");
+        setAlertVisible(true);
       }
     };
     loadQuiz();
@@ -131,8 +139,6 @@ export default function QuizScreen() {
                 if (enteredPassword === quizData.settings.password) {
                   setIsUnlocked(true);
                   setPasswordModalVisible(false);
-                } else {
-                  Alert.alert("Incorrect Password", "Please try again.");
                 }
               }}
             >
@@ -459,10 +465,7 @@ export default function QuizScreen() {
   };
 
   const handleExit = () => {
-    Alert.alert("Exit Quiz", "Are you sure you want to quit the quiz?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Exit", style: "destructive", onPress: () => router.back() },
-    ]);
+    setExitAlertVisible(true);
   };
 
   // Results screen
@@ -704,6 +707,22 @@ export default function QuizScreen() {
             </View>
         </Modal>
 
+        <ThemedAlert
+          visible={alertVisible}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+
+        <DangerAlert
+          visible={exitAlertVisible}
+          message="Are you sure you want to quit the quiz?"
+          onCancel={() => setExitAlertVisible(false)}
+          onConfirm={() => {
+            setExitAlertVisible(false);
+            router.back(); // exit quiz
+          }}
+        />
+
     </View>
   );
 }
@@ -725,12 +744,12 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   questionCard: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#ddf6fc1f",
     height: 150,
     padding: 20,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#92cbd6ff",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,

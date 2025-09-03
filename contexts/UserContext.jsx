@@ -207,7 +207,19 @@ export function UserProvider({ children }) {
   const logout = async () => {
     console.log('🚪 Logging out...');
 
-    // 1. Wait a bit if DB is still initializing
+    // 0. Check server reachability first
+    try {
+      const isReachable = await testServerConnection(API_URL);
+      if (!isReachable) {
+        console.warn('❌ Server not reachable — aborting logout');
+        return false; // <- explicitly return false if server is down
+      }
+    } catch (err) {
+      console.error('❌ Error checking server reachability:', err);
+      return false;
+    }
+
+    // 1. Wait if DB is still initializing
     if (!dbInitialized) {
       console.warn('⏳ Waiting for DB to finish initializing before logout...');
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -221,7 +233,7 @@ export function UserProvider({ children }) {
       ]);
       console.log('🧹 SecureStore cleared');
 
-      // 3. Clear user from local database if it's available
+      // 3. Clear local DB if available
       if (dbInitialized && UserService.db) {
         try {
           await UserService.clearUserData();
@@ -233,23 +245,26 @@ export function UserProvider({ children }) {
         console.warn('⚠️ DB not ready — skipped clearing user data');
       }
 
-      // 4. Clear local state
+      // 4. Clear React state
       setUser(null);
       console.log('✅ Logout successful');
 
-      // 5. Safely close the database
+      // 5. Close database connection safely
       try {
         if (UserService.db) {
           await UserService.db.closeAsync();
           console.log('🔒 Database closed after logout');
-          UserService.db = null; // Optional: Reset db reference
+          UserService.db = null;
         }
       } catch (closeError) {
         console.warn('⚠️ Failed to close DB after logout:', closeError);
       }
 
+      return true; // <- only return true if everything went fine
+
     } catch (logoutError) {
       console.error('❌ Logout failed:', logoutError);
+      return false;
     }
   };
 

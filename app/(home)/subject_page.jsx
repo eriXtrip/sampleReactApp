@@ -33,7 +33,7 @@ const LESSON_CARDS = [
   { id: '4', title: 'Basic IT Concepts Pretest', type: 'test', status: false, shortDescription: 'A preliminary test to assess your initial understanding.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/test-quiz.json' },
   { id: '5', title: 'Science Matching Game', status: false, type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/game-match.json'},
   { id: '6', title: 'Flashcard', type: 'flash', status: false, shortDescription: 'Interactive flashcards to help memorize key terms and concepts.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Science-Flash-Cards.json' },
-  { id: '7', title: ' Grade 4 Science Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SCI4-M1-Q1json'},
+  { id: '7', title: ' Grade 4 Science Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SCI4-M1-Q1.json'},
   { 
     id: '8', 
     title: 'MATATAG - Science 4 Quarter 1 Week 1 - Science Inventions', 
@@ -226,7 +226,7 @@ const SubjectPage = () => {
               borderColor: isSelected 
                 ? '#48cae4'        // highlight if selected
                 : isDone 
-                  ? '#969696ff'    // grey if marked done
+                  ? '#787878ff'    // grey if marked done
                   : theme.cardBorder,
               borderLeftWidth: 6,
               paddingLeft: 12,
@@ -240,16 +240,27 @@ const SubjectPage = () => {
               <ThemedText style={[styles.cardSub, { color: theme.text }]}>{subjectGrade}</ThemedText>
             )}
           </View>
-          {selectionMode ? (
-            isSelected ? (
-              <Ionicons name="checkmark-circle" size={35} color="#48cae4" />
+          {item.type !== "general" && item.type !== "link" && (
+            selectionMode ? (
+              isSelected ? (
+                <Ionicons name="checkmark-circle" size={35} color="#48cae4" />
+              ) : (
+                <Ionicons
+                  name="ellipse-outline"
+                  size={35}
+                  color={theme.text}
+                  style={{ opacity: 0.6 }}
+                />
+              )
+            ) : downloadedFiles[item.id] ? (
+              <Ionicons name="checkmark-circle" size={35} color="#969696ff" />
             ) : (
-              <Ionicons name="ellipse-outline" size={35} color={theme.text} style={{ opacity: 0.6 }} />
+              <Ionicons
+                name="arrow-down-circle-outline"
+                size={35}
+                color={theme.cardBorder}
+              />
             )
-          ) : downloadedFiles[item.id] ? (
-            <Ionicons name="checkmark-circle" size={35} color="#969696ff" />
-          ) : (
-            <Ionicons name="arrow-down-circle-outline" size={35} color={theme.cardBorder} />
           )}
         </View>
       </TouchableOpacity>

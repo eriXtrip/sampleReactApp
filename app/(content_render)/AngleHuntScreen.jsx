@@ -13,6 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import BadgeReward from "../../components/BadgeReward";
+import ThemedView from "../../components/ThemedView";
+import ThemedText from "../../components/ThemedText";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
@@ -45,9 +47,9 @@ export default function AngleHuntScreen() {
 
   if (!gameData) {
     return (
-      <View style={styles.container}>
-        <Text>Loading game...</Text>
-      </View>
+      <ThemedView style={styles.container}>
+        <ThemedText>Loading game...</ThemedText>
+      </ThemedView>
     );
   }
 
@@ -75,7 +77,7 @@ export default function AngleHuntScreen() {
 
   const renderQuestion = () => {
     if (currentItem.questionType === "text") {
-      return <Text style={styles.questionText}>{currentItem.question}</Text>;
+      return <ThemedText style={styles.questionText}>{currentItem.question}</ThemedText>;
     } else {
       return (
         <Image
@@ -89,9 +91,17 @@ export default function AngleHuntScreen() {
 
   const renderChoices = () => {
     const isImageChoices = currentItem.choices[0].type === "image";
-    const numColumns = isImageChoices ? 2 : currentItem.choices.length === 6 ? 2 : 1;
-    const rows = [];
+    let numColumns = 1;
 
+    if (isImageChoices) {
+      numColumns = 2; // always 2 columns for image choices
+    } else if (currentItem.choices.length === 4) {
+      numColumns = 2; // 4 text choices → 2x2 layout
+    } else if (currentItem.choices.length === 6) {
+      numColumns = 2; // 6 choices → 2 columns
+    }
+
+    const rows = [];
     for (let i = 0; i < currentItem.choices.length; i += numColumns) {
       rows.push(currentItem.choices.slice(i, i + numColumns));
     }
@@ -105,14 +115,23 @@ export default function AngleHuntScreen() {
               key={choice.id}
               style={[
                 styles.choiceButton,
-                { borderColor: isSelected ? "#48cae4" : "#ccc", width: isImageChoices ? (Dimensions.get("window").width - 60) / 2 : "45%" },
+                {
+                  borderColor: isSelected ? "#48cae4" : "#ccc",
+                  width: isImageChoices || currentItem.choices.length === 4
+                    ? (Dimensions.get("window").width - 60) / 2
+                    : "45%",
+                },
               ]}
               onPress={() => handleChoice(choice)}
             >
               {choice.type === "text" ? (
-                <Text style={styles.choiceText}>{choice.label}</Text>
+                <ThemedText style={styles.choiceText}>{choice.label}</ThemedText>
               ) : (
-                <Image source={{ uri: choice.img }} style={styles.choiceImage} resizeMode="contain" />
+                <Image
+                  source={{ uri: choice.img }}
+                  style={styles.choiceImage}
+                  resizeMode="contain"
+                />
               )}
             </TouchableOpacity>
           );
@@ -124,7 +143,7 @@ export default function AngleHuntScreen() {
   const progress = ((currentIndex + 1) / gameData.items.length) * 100;
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       {/* Progress Bar */}
       <View style={styles.progressBarBackground}>
         <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
@@ -143,18 +162,18 @@ export default function AngleHuntScreen() {
       <Modal transparent visible={showAlert} animationType="fade">
         <View style={styles.alertOverlay}>
           <View style={styles.alertBox}>
-            <Text style={styles.alertText}>❌ Wrong answer! Try again.</Text>
+            <ThemedText style={styles.alertText}>❌ Wrong answer! Try again.</ThemedText>
           </View>
         </View>
       </Modal>
-    </View>
+    </ThemedView>
   );
 }
 
 const screenWidth = Dimensions.get("window").width;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 20 },
+  container: { flex: 1, padding: 20, paddingTop: 10 },
   progressBarBackground: { width: "100%", height: 12, backgroundColor: "#eee", borderRadius: 10, marginBottom: 15 },
   progressBarFill: { height: 12, backgroundColor: "#48cae4", borderRadius: 10 },
   questionContainer: {
@@ -164,12 +183,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "#92cbd6ff",
-    backgroundColor: "#ddf6fc91",
+    backgroundColor: "#ddf6fc1f",
     minHeight: 100,  // minimum height for text
     padding: 15,
     width: "100%",
   },
-  questionText: { fontSize: 22, fontWeight: "bold", textAlign: "center", padding: 50, },
+  questionText: { fontSize: 30, fontWeight: "bold", textAlign: "center", padding: 10, paddingVertical: 30 },
   questionImage: {
     width: screenWidth - 40,
     height: 200,
@@ -180,11 +199,12 @@ const styles = StyleSheet.create({
   choiceRow: { flexDirection: "row", justifyContent: "space-between", width: "100%", marginBottom: 12 },
   choiceButton: {
     padding: 15,
+    paddingVertical:20,
     borderWidth: 2,
     borderRadius: 12,
     marginVertical: 8,
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#f9f9f944",
   },
   choiceText: { fontSize: 18, fontWeight: "bold" },
   choiceImage: { width: (screenWidth - 80) / 2, height: 120, borderRadius: 10 },

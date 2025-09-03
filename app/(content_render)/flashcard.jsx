@@ -141,6 +141,8 @@ export default function FlashCardScreen() {
                         left: 0,
                         width: "100%",
                         height: "100%",
+                        borderColor: "#89d1dfff",
+                        backgroundColor: "#ddf6fc91",
                       },
                     ]}
                   >
@@ -158,7 +160,8 @@ export default function FlashCardScreen() {
                         left: 0,
                         width: "100%",
                         height: "100%",
-                        backgroundColor: "#f0f0f0",
+                        borderColor: "#89d1dfff",
+                        backgroundColor: "#ddf6fc91",
                       },
                     ]}
                   >
@@ -213,7 +216,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f9f9f9",
   },
   cardText: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
 });

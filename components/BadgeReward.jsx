@@ -1,9 +1,36 @@
-import React from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ConfettiCannon from "react-native-confetti-cannon";
 
+const screenHeight = Dimensions.get("window").height;
+
 const BadgeReward = ({ visible, badge, onClose }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current; // for scaling badge
+  const translateYAnim = useRef(new Animated.Value(50)).current; // for vertical slide
+
+  useEffect(() => {
+    if (visible) {
+      // Animate badge entrance: slide + scale
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateYAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0);
+      translateYAnim.setValue(50);
+    }
+  }, [visible]);
+
   if (!badge) return null;
 
   return (
@@ -14,23 +41,30 @@ const BadgeReward = ({ visible, badge, onClose }) => {
           count={80}
           origin={{ x: 0, y: 0 }}
           fadeOut={true}
-          fallSpeed={2500}       // slower fall
-          explosionSpeed={150}   // smoother explosion
+          fallSpeed={2500}
+          explosionSpeed={150}
           autoStart={true}
         />
 
         {/* 🎉 Confetti Right */}
         <ConfettiCannon
           count={80}
-          origin={{ x: 400, y: 0 }}  // right side (adjust if needed based on screen width)
+          origin={{ x: Dimensions.get("window").width, y: 0 }}
           fadeOut={true}
           fallSpeed={2500}
           explosionSpeed={150}
           autoStart={true}
         />
 
-        <View style={[styles.container, { borderColor: badge.color }]}>
-          {/* Close Button (Top Right) */}
+        {/* Badge Container Animated at Center */}
+        <Animated.View
+          style={[
+            styles.container,
+            { borderColor: badge.color },
+            { transform: [{ scale: scaleAnim }, { translateY: translateYAnim }] },
+          ]}
+        >
+          {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
@@ -40,10 +74,10 @@ const BadgeReward = ({ visible, badge, onClose }) => {
             <Ionicons name={badge.icon} size={50} color={badge.color} />
           </View>
 
-          {/* Text Content */}
+          {/* Text */}
           <Text style={[styles.title, { color: badge.color }]}>{badge.title}</Text>
-          <Text style={styles.points}>+{badge.points} Points</Text>
-        </View>
+          <Text style={styles.subtext}>{badge.subtext}</Text>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -94,10 +128,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
-  points: {
+  subtext: {
     fontSize: 18,
     marginVertical: 5,
     color: "#666",
+    textAlign: "center",
   },
 });
 

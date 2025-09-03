@@ -34,28 +34,25 @@ const Profile = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
-      router.replace('/login');
+      const success = await logout();
+      if (success) {
+        router.replace('/login');
+      } else {
+        Alert.alert(
+          'Logout Failed',
+          'Server not reachable. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout error:', error);
       Alert.alert(
         'Logout Failed',
-        'Could not complete logout. Please try again.',
+        'Unexpected error occurred. Please try again.',
         [{ text: 'OK' }]
       );
     }
   };
-
-  // if (!user) {
-  //   return (
-  //     <ThemedView style={[styles.container, styles.loadingContainer]}>
-  //       <ThemedText>No user data found</ThemedText>
-  //       <ThemedButton onPress={() => router.replace('/login')}>
-  //         Go to Login
-  //       </ThemedButton>
-  //     </ThemedView>
-  //   );
-  // }
 
   return (
     <ThemedView style={styles.container} safe={true}>
@@ -95,9 +92,9 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
 
-        <Spacer height={5} />
+        {/* <Spacer height={5} />
 
-        {/* APPEARANCE Card */}
+        
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>APPEARANCE</ThemedText>
           <TouchableOpacity
@@ -107,7 +104,7 @@ const Profile = () => {
             <ThemedText>Theme</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
-        </View>
+        </View> */}
 
          <Spacer height={5} />
 

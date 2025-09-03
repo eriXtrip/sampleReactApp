@@ -18,18 +18,20 @@ const ApiConfigScreen = ({ onComplete }) => {
 
   const handleSave = async () => {
     if (!url) {
-      alert('Please enter a valid API URL (e.g. http://192.168.0.101:3001/api)');
+      alert('Please enter a valid API URL');
       return;
     }
 
     const isReachable = await testServerConnection(url);
     if (!isReachable) {
-      return; // Don't proceed if server is unreachable
+      alert('Server unreachable. Check your network or API URL.');
+      return;
     }
 
     await setApiUrl(url);
-    onComplete(); // This should call handleApiConfigComplete and close this screen
+    onComplete();
   };
+
 
   return (
     <View

@@ -18,6 +18,7 @@ import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { getYouTubeEmbedUrl } from "../../utils/youtube";
+import DangerAlert from '../../components/DangerAlert';
 
 const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
 
@@ -88,6 +89,8 @@ const ContentDetails = () => {
   const [isDone, setIsDone] = useState(normalizeStatus(status));
   const [fileExists, setFileExists] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
 
   const iconName = {
     general: 'information-circle-outline',
@@ -133,12 +136,74 @@ const ContentDetails = () => {
         return targetUri;
       }
 
+      // Step 1: Download
       const tempUri = FileSystem.cacheDirectory + fileName;
       const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
-      await FileSystem.moveAsync({ from: downloadedUri, to: targetUri });
+
+      // ✅ If JSON-based type, parse and fix image references
+      if (['test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext'].includes(type)) {
+        const jsonString = await FileSystem.readAsStringAsync(downloadedUri);
+        const parsed = JSON.parse(jsonString);
+
+        // Case 1: JSON with "items"
+        if (Array.isArray(parsed.items)) {
+          for (let item of parsed.items) {
+            if (item.questionType === "image" && item.question?.startsWith("http")) {
+              const qName = item.question.split("/").pop();
+              const qLocalUri = `${targetFolder}${qName}`;
+              await FileSystem.downloadAsync(item.question, qLocalUri);
+              item.question = qLocalUri;
+            }
+
+            if (Array.isArray(item.choices)) {
+              for (let choice of item.choices) {
+                if (choice.type === "image" && choice.img?.startsWith("http")) {
+                  const cName = choice.img.split("/").pop();
+                  const cLocalUri = `${targetFolder}${cName}`;
+                  await FileSystem.downloadAsync(choice.img, cLocalUri);
+                  choice.img = cLocalUri;
+                }
+              }
+            }
+          }
+        }
+
+        // Case 2: JSON with "questions"
+        if (Array.isArray(parsed.questions)) {
+          for (let q of parsed.questions) {
+            // Example: if some future "question" field itself is an image URL
+            if (q.type === "image" && q.question?.startsWith("http")) {
+              const qName = q.question.split("/").pop();
+              const qLocalUri = `${targetFolder}${qName}`;
+              await FileSystem.downloadAsync(q.question, qLocalUri);
+              q.question = qLocalUri;
+            }
+
+            if (Array.isArray(q.choices)) {
+              for (let choice of q.choices) {
+                if (choice.type === "image" && choice.img?.startsWith("http")) {
+                  const cName = choice.img.split("/").pop();
+                  const cLocalUri = `${targetFolder}${cName}`;
+                  await FileSystem.downloadAsync(choice.img, cLocalUri);
+                  choice.img = cLocalUri;
+                }
+              }
+            }
+          }
+        }
+
+        // Save updated JSON locally
+        await FileSystem.writeAsStringAsync(targetUri, JSON.stringify(parsed));
+      } else {
+        // ✅ Non-JSON (pdf, ppt, etc.) → just copy file
+        await FileSystem.copyAsync({ from: downloadedUri, to: targetUri });
+      }
+
+      // Step 2: Update state
       const newFileInfo = await FileSystem.getInfoAsync(targetUri);
       setFileExists(newFileInfo.exists);
       setDownloading(false);
+
       return targetUri;
     } catch (err) {
       setDownloading(false);
@@ -147,6 +212,7 @@ const ContentDetails = () => {
       return null;
     }
   };
+
 
   const handleMarkAsDone = () => {
     const newState = !isDone;
@@ -159,28 +225,8 @@ const ContentDetails = () => {
     const targetUri = `${LESSONS_DIR}${fileName}`;
 
     if (fileExists) {
-      // Already saved → ask to delete
-      Alert.alert(
-        "Delete File",
-        "Do you want to delete this offline file?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await FileSystem.deleteAsync(targetUri, { idempotent: true });
-                setFileExists(false);
-                Alert.alert("Deleted", `${fileName} has been removed.`);
-              } catch (err) {
-                console.error("Delete error:", err);
-                Alert.alert("Error", "Could not delete file.");
-              }
-            }
-          }
-        ]
-      );
+    // Show custom DangerAlert
+    setShowDeleteAlert(true);
     } else {
       // Not saved → download
       await handleDownload();
@@ -498,6 +544,23 @@ const ContentDetails = () => {
 
         <Spacer height={25} />
       </View>
+      <DangerAlert
+        visible={showDeleteAlert}
+        message="Do you want to delete this offline file?"
+        onCancel={() => setShowDeleteAlert(false)}
+        onConfirm={async () => {
+          setShowDeleteAlert(false);
+          try {
+            const fileName = content.split('/').pop();
+            const targetUri = `${LESSONS_DIR}${fileName}`;
+            await FileSystem.deleteAsync(targetUri, { idempotent: true });
+            setFileExists(false);
+            // Optionally also show a ThemedAlert after deletion
+          } catch (err) {
+            console.error("Delete error:", err);
+          }
+        }}
+      />
     </ThemedView>
   );
 };
