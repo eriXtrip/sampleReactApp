@@ -69,6 +69,18 @@ export default function ContentRenderLayout() {
               title: '',
             }}
           />
+          <Stack.Screen
+            name="CompleteSentenceGameScreen"
+            options={{
+              title: '',
+            }}
+          />
+          <Stack.Screen
+            name="AngleHuntScreen"
+            options={{
+              title: '',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

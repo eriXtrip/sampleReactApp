@@ -99,6 +99,8 @@ const ContentDetails = () => {
     match: 'game-controller-outline',
     flash: 'copy-outline',
     speach: 'mic-outline',
+    sentence: 'extension-puzzle-outline',
+    gameIMGtext: 'dice-outline',
   }[type] || 'book-outline';
 
   // Check if file exists
@@ -281,6 +283,48 @@ const ContentDetails = () => {
         Alert.alert("Error", "Unable to open speak.");
       }
     }
+
+    // spell (JSON file)
+    if (type === 'sentence') {
+      try {
+        const fileName = content ? content.split('/').pop() : "spell.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+
+        router.push({
+          pathname: '/CompleteSentenceGameScreen',
+          params: { 
+            spellUri: fileInfo.exists ? targetUri : content, 
+            title,
+          },
+        });
+      } catch (err) {
+        console.error("Spell load error:", err);
+        Alert.alert("Error", "Unable to open speel.");
+      }
+    }
+
+    // gameIMGtext (JSON file)
+    if (type === 'gameIMGtext') {
+      try {
+        const fileName = content ? content.split('/').pop() : "gameIMGtext.json";
+        const targetUri = `${LESSONS_DIR}${fileName}`;
+
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+
+        router.push({
+          pathname: '/AngleHuntScreen',
+          params: { 
+            mathUri: fileInfo.exists ? targetUri : content, 
+            title,
+          },
+        });
+      } catch (err) {
+        console.error("Math load error:", err);
+        Alert.alert("Error", "Unable to open math json.");
+      }
+    }
   };
 
 
@@ -446,7 +490,7 @@ const ContentDetails = () => {
           )}
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach'].includes(type) && (
+        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext'].includes(type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
             <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
           </ThemedButton>

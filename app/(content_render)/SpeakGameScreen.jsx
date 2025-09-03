@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import * as Speech from "expo-speech";
-import Spacer from "../../components/Spacer";
+import MicWaveButton from "../../components/MicWaveButton";
+import BadgeReward from "../../components/BadgeReward"; // 👈 import the badge component
 
 export default function SpeakGameScreen() {
   const { speakUri } = useLocalSearchParams();
@@ -15,6 +16,9 @@ export default function SpeakGameScreen() {
   const [currentSentence, setCurrentSentence] = useState(0);
   const [gridVisible, setGridVisible] = useState(false);
   const [voiceIdentifier, setVoiceIdentifier] = useState(null);
+
+  // 👇 state for showing badge reward
+  const [showBadge, setShowBadge] = useState(false);
 
   const theme = {
     cardBorder: "#ccc",
@@ -30,33 +34,28 @@ export default function SpeakGameScreen() {
 
   useEffect(() => {
     const loadGame = async () => {
-        try {
+      try {
         let parsed;
         if (speakUri.startsWith("http")) {
-            const response = await fetch(speakUri);
-            const json = await response.json();
-            parsed = json;
+          const response = await fetch(speakUri);
+          const json = await response.json();
+          parsed = json;
         } else {
-            const jsonString = await FileSystem.readAsStringAsync(speakUri);
-            parsed = JSON.parse(jsonString);
+          const jsonString = await FileSystem.readAsStringAsync(speakUri);
+          parsed = JSON.parse(jsonString);
         }
         setGameData(parsed);
 
-        // Log all available voices
         const voices = await Speech.getAvailableVoicesAsync();
-        //console.log("Available voices:", voices);
-
-        // Pick a voice (example: first English US voice)
         const selectedVoice = voices.find(v => v.language === "en-US")?.identifier || null;
         setVoiceIdentifier(selectedVoice);
-
-        } catch (err) {
+      } catch (err) {
         console.error("Failed to load speak JSON:", err);
         Alert.alert("Error", "Unable to load game file.");
-        }
+      }
     };
     loadGame();
-    }, [speakUri]);
+  }, [speakUri]);
 
   if (!gameData) {
     return (
@@ -68,25 +67,18 @@ export default function SpeakGameScreen() {
 
   const sentence = gameData.items[currentSentence].sentence;
 
-  const handleSpeak = () => {
-    if (!voiceIdentifier) {
-      Alert.alert("Voice not ready", "Please wait a moment.");
-      return;
-    }
-    Speech.speak(sentence, {
-      voice: voiceIdentifier, // hardcoded voice
-      rate: 1.0, // speaking speed (0.0 to 1.0)
-      pitch: 1.0, // voice pitch
-    });
-  };
-
   const handleNext = () => {
     if (currentSentence + 1 < gameData.items.length) {
       setCurrentSentence(currentSentence + 1);
     } else {
-      Alert.alert("Finished", "You have completed all sentences.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      // 👇 instead of Alert, show badge
+      if (gameData.badge) {
+        setShowBadge(true);
+      } else {
+        Alert.alert("Finished", "You have completed all sentences.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
+      }
     }
   };
 
@@ -124,14 +116,14 @@ export default function SpeakGameScreen() {
 
       {/* Sentence Card */}
       <View style={styles.sentenceCard}>
-        <Text style={styles.sentenceText}>{sentence}</Text>
-        
+        <View style={styles.sentenceHeader}>
+          <Text style={styles.sentenceSpeach}>SPEAK THIS SENTENCE</Text>
+        </View>
+        <Text style={styles.sentenceText}>"{sentence}"</Text>
       </View>
-      
-    {/* Mic button */}
-    <TouchableOpacity style={styles.micButton} onPress={handleSpeak}>
-        <Ionicons name="mic-outline" size={36} color="#48cae4" />
-    </TouchableOpacity>
+
+      {/* ✅ Mic Wave Button */}
+      <MicWaveButton sentence={sentence} voiceIdentifier={voiceIdentifier} />
 
       {/* Navigation buttons */}
       <View style={styles.navRow}>
@@ -178,6 +170,16 @@ export default function SpeakGameScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ✅ Badge Reward Modal with Confetti */}
+      <BadgeReward
+        visible={showBadge}
+        badge={gameData.badge}
+        onClose={() => {
+          setShowBadge(false);
+          router.back();
+        }}
+      />
     </View>
   );
 }
@@ -186,10 +188,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
   progressBarBackground: { height: 6, width: "100%", backgroundColor: "#eee", borderRadius: 3, overflow: "hidden", marginBottom: 15 },
   progressBarFill: { height: "100%", backgroundColor: "#48cae4", borderRadius: 3 },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  sentenceCard: { backgroundColor: "#f9f9f9", height: 180, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: "#ddd", alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  sentenceText: { fontSize: 18, fontWeight: "bold", textAlign: "center", marginBottom: 15 },
-  micButton: { padding: 10, backgroundColor: "#fff", borderRadius: 50, borderWidth: 1, borderColor: "#48cae4" },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  sentenceCard: { backgroundColor: "#ddf6fc91", height: 190, padding: 15, borderRadius: 18, borderWidth: 1, borderColor: "#92cbd6ff", alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  sentenceHeader: { top: -15, marginBottom: 10, backgroundColor: "#76767609", paddingHorizontal: 15, paddingVertical: 5, borderRadius: 30, borderColor: "#76767636", borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  sentenceSpeach: { fontSize: 13, color: "#767676ff", fontWeight: "bold" },
+  sentenceText: { top: -5, fontSize: 20, fontWeight: "bold", textAlign: "center", color: "#333" },
   navRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 15, marginTop: "auto", marginBottom: 20 },
   navButton: { backgroundColor: "#48cae4", padding: 15, borderRadius: 8, alignItems: "center" },
   navText: { color: "#fff", fontWeight: "bold", fontSize: 16 },

@@ -44,6 +44,8 @@ const LESSON_CARDS = [
   },
   { id: '9', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'},
   { id: '10', title: 'Speak This Sentence', type: 'speach', status: true, shortDescription: 'A game to test your speaking skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/speak-english.json'},
+  { id: '11', title: 'Complete The Sentence', type: 'sentence', status: true, shortDescription: 'A game to test your spelling skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SpellTheBea.json'},
+  { id: '12', title: 'MathTINIK', type: 'gameIMGtext', status: true, shortDescription: 'A game to test your math skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/mathGame.json'},
 ];
 
 
@@ -57,6 +59,8 @@ const LESSON_TYPE_ICON_MAP = {
   match: 'game-controller-outline',
   flash: 'copy-outline',
   speach: 'mic-outline',
+  sentence: 'extension-puzzle-outline',
+  gameIMGtext: 'dice-outline',
 };
 
 const SubjectPage = () => {
