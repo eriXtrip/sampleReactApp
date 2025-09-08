@@ -51,6 +51,11 @@ This guide shows how to configure and build an Android APK using EAS Build with 
   Notes:
   - buildType: "apk" is required to produce an .apk (default is .aab)
   - distribution: "internal" is convenient for testing; you can omit or change as needed
+  - Add this inside android/app/src/main/AndroidManifest.xml
+  <application
+      android:usesCleartextTraffic="true"
+      ...
+  >
 
 5) Run the build
 - From the project root, run:
