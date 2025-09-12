@@ -18,7 +18,7 @@ import ThemedText from "../../components/ThemedText";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
-  const { mathUri } = useLocalSearchParams();
+  const { uri } = useLocalSearchParams();
   const [gameData, setGameData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedChoice, setSelectedChoice] = useState(null);
@@ -29,11 +29,11 @@ export default function AngleHuntScreen() {
     const loadJson = async () => {
       try {
         let parsed;
-        if (mathUri.startsWith("http")) {
-          const response = await fetch(mathUri);
+        if (uri.startsWith("http")) {
+          const response = await fetch(uri);
           parsed = await response.json();
         } else {
-          const jsonString = await FileSystem.readAsStringAsync(mathUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
         setGameData(parsed);
@@ -43,7 +43,7 @@ export default function AngleHuntScreen() {
       }
     };
     loadJson();
-  }, [mathUri]);
+  }, [uri]);
 
   if (!gameData) {
     return (

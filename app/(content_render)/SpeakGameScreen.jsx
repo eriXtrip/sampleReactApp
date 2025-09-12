@@ -8,7 +8,7 @@ import MicWaveButton from "../../components/MicWaveButton";
 import BadgeReward from "../../components/BadgeReward"; // 👈 import the badge component
 
 export default function SpeakGameScreen() {
-  const { speakUri } = useLocalSearchParams();
+  const { uri } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -36,12 +36,12 @@ export default function SpeakGameScreen() {
     const loadGame = async () => {
       try {
         let parsed;
-        if (speakUri.startsWith("http")) {
-          const response = await fetch(speakUri);
+        if (uri.startsWith("http")) {
+          const response = await fetch(uri);
           const json = await response.json();
           parsed = json;
         } else {
-          const jsonString = await FileSystem.readAsStringAsync(speakUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
         setGameData(parsed);
@@ -55,7 +55,7 @@ export default function SpeakGameScreen() {
       }
     };
     loadGame();
-  }, [speakUri]);
+  }, [uri]);
 
   if (!gameData) {
     return (

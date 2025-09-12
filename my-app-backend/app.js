@@ -4,6 +4,9 @@
 
 import express from 'express';
 import cors from 'cors';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { 
   startRegistration,
   verifyCode,
@@ -17,17 +20,40 @@ import {
   secureFunction,
   vulnerableFunction,
 } from './controllers/authController.js';
+import {
+  uploadFile,
+  deleteFile,
+  shareFile,
+  generateDownloadLink,
+  getFileMetadata,
+} from './controllers/driveController.js';
 import config from './config.js';
 import os from 'os';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = config.port;
+
+// Setup file upload handling (limit to 10MB)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadDir = path.join(__dirname, 'Uploads');
+import fsPromises from 'fs/promises';
+fsPromises.mkdir(uploadDir, { recursive: true }).catch(err => {
+  console.error('Failed to create uploads directory:', err);
+});
+
+const upload = multer({
+  dest: 'Uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Routes (Auth)
 app.post('/api/auth/start-registration', startRegistration);
 app.post('/api/auth/verify-code', verifyCode);
 app.post('/api/auth/complete-registration', completeRegistration);
@@ -39,6 +65,13 @@ app.post('/api/auth/complete-password-reset', completePasswordReset);
 app.post('/api/auth/change-password', changePassword);
 app.post('/api/auth/secure-function', secureFunction);
 app.post('/api/auth/vulnerable-function', vulnerableFunction);
+
+// Routes (Google Drive)
+app.post('/api/drive/upload', upload.single('file'), uploadFile);
+app.delete('/api/drive/delete/:id', deleteFile);
+app.get('/api/drive/share/:id', shareFile);
+app.get('/api/drive/download/:id', generateDownloadLink);
+app.get('/api/drive/metadata/:id', getFileMetadata);
 
 // Health check
 app.get('/api/health', (req, res) => {

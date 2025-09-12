@@ -1,3 +1,5 @@
+// samplereactnative/app/(dashboard)/home
+
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Image, ScrollView, TouchableOpacity, Animated  } from 'react-native';
 import { Link, useRouter } from 'expo-router';

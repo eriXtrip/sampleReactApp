@@ -10,7 +10,7 @@ import BadgeReward from "../../components/BadgeReward";
 import LoginLogo from "../../assets/img/Login_Logo.png";
 
 export default function MatchingScreen() {
-  const { matchingUri } = useLocalSearchParams();
+  const { uri } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -39,11 +39,11 @@ export default function MatchingScreen() {
     const loadMatching = async () => {
       try {
         let parsed;
-        if (matchingUri.startsWith("http")) {
-          const response = await fetch(matchingUri);
+        if (uri.startsWith("http")) {
+          const response = await fetch(uri);
           parsed = await response.json();
         } else {
-          const jsonString = await FileSystem.readAsStringAsync(matchingUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
 
@@ -66,7 +66,7 @@ export default function MatchingScreen() {
     loadMatching();
 
     return () => clearInterval(timerRef.current);
-  }, [matchingUri]);
+  }, [uri]);
 
   useEffect(() => {
     if (!matchingData) return;

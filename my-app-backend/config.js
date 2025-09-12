@@ -27,4 +27,10 @@ export default {
   },
   port: process.env.PORT,
   apiUrl: process.env.API_URL,
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI,
+  googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+  port: process.env.PORT,
+  environment: process.env.NODE_ENV,
 };

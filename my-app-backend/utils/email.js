@@ -1,3 +1,5 @@
+// my-app-backend/utils/email.js SMTP(Simple Mail Transfer Protocol)
+
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();

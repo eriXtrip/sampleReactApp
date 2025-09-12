@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import BadgeReward from "../../components/BadgeReward";
 
 export default function FlashCardScreen() {
-  const { flashcardUri } = useLocalSearchParams() || {};
+  const { uri } = useLocalSearchParams() || {};
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -30,7 +30,7 @@ export default function FlashCardScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    if (!flashcardUri) {
+    if (!uri) {
       Alert.alert("Error", "Flashcard file not provided.");
       return;
     }
@@ -38,11 +38,11 @@ export default function FlashCardScreen() {
     const loadFlashcards = async () => {
       try {
         let parsed;
-        if (flashcardUri.startsWith("http")) {
-          const response = await fetch(flashcardUri);
+        if (uri.startsWith("http")) {
+          const response = await fetch(uri);
           parsed = await response.json();
         } else {
-          const jsonString = await FileSystem.readAsStringAsync(flashcardUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
         setFlashData(parsed.items || []);
@@ -62,7 +62,7 @@ export default function FlashCardScreen() {
       }
     };
     loadFlashcards();
-  }, [flashcardUri]);
+  }, [uri]);
 
   const flipCard = (index) => {
     const animValue = flipAnimations[index];

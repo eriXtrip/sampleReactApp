@@ -8,7 +8,7 @@ import ThemedAlert from "../../components/ThemedAlert";
 import DangerAlert from "../../components/DangerAlert";
 
 export default function QuizScreen() {
-  const { quizUri } = useLocalSearchParams(); 
+  const { uri } = useLocalSearchParams(); 
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -58,14 +58,14 @@ export default function QuizScreen() {
     const loadQuiz = async () => {
       try {
         let parsed;
-        if (quizUri.startsWith("http")) {
+        if (uri.startsWith("http")) {
           // 🌍 Remote file
-          const response = await fetch(quizUri);
+          const response = await fetch(uri);
           const json = await response.json();
           parsed = json;
         } else {
           // 📂 Local file
-          const jsonString = await FileSystem.readAsStringAsync(quizUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
 
@@ -97,7 +97,7 @@ export default function QuizScreen() {
       }
     };
     loadQuiz();
-  }, [quizUri]);
+  }, [uri]);
 
 
   if (!quizData) {

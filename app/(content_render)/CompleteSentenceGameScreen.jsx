@@ -21,7 +21,7 @@ const cardWidth = width - 60;
 const cardHeight = height / 2;
 
 export default function CompleteSentenceScreen() {
-  const { spellUri } = useLocalSearchParams() || {};
+  const { uri } = useLocalSearchParams() || {};
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -48,7 +48,7 @@ export default function CompleteSentenceScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    if (!spellUri) {
+    if (!uri) {
       Alert.alert("Error", "Game file not provided.");
       return;
     }
@@ -56,11 +56,11 @@ export default function CompleteSentenceScreen() {
     const loadGame = async () => {
       try {
         let parsed;
-        if (spellUri.startsWith("http")) {
-          const response = await fetch(spellUri);
+        if (uri.startsWith("http")) {
+          const response = await fetch(uri);
           parsed = await response.json();
         } else {
-          const jsonString = await FileSystem.readAsStringAsync(spellUri);
+          const jsonString = await FileSystem.readAsStringAsync(uri);
           parsed = JSON.parse(jsonString);
         }
         setGameData(parsed.items || []);
@@ -71,7 +71,7 @@ export default function CompleteSentenceScreen() {
       }
     };
     loadGame();
-  }, [spellUri]);
+  }, [uri]);
 
   const currentCard = gameData[currentIndex];
 

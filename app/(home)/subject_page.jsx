@@ -18,50 +18,9 @@ import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ensureLessonFile } from '../../utils/fileHelper';
+import  lessonData from '../../data/lessonData';
 
-const SUBJECT_ICON_MAP = {
-  Mathematics: require('../../assets/icons/math_.png'),
-  Science: require('../../assets/icons/saturn_.png'),
-  English: require('../../assets/icons/english_.png'),
-  Filipino: require('../../assets/icons/filipino_.png'),
-};
-
-const LESSON_CARDS = [
-  { id: '1', title: 'General', type: 'general', status: true, shortDescription: 'An introductory overview of the subject, covering key concepts and foundations.' },
-  { id: '2', title: 'Topic 1', type: 'ppt', status: true, shortDescription: 'A detailed presentation on the first major topic of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Sample-PPT.pptx'},
-  { id: '3', title: 'Lesson 2', type: 'pdf',status: true, shortDescription: 'A comprehensive PDF guide for the second lesson.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Chapter-1.pdf' },
-  { id: '4', title: 'Basic IT Concepts Pretest', type: 'test', status: false, shortDescription: 'A preliminary test to assess your initial understanding.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/test-quiz.json' },
-  { id: '5', title: 'Science Matching Game', status: false, type: 'match', shortDescription: 'An interactive game to reinforce learning through matching exercises.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/game-match.json'},
-  { id: '6', title: 'Flashcard', type: 'flash', status: false, shortDescription: 'Interactive flashcards to help memorize key terms and concepts.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Science-Flash-Cards.json' },
-  { id: '7', title: ' Grade 4 Science Post Test', type: 'test', status: false, shortDescription: 'A final test to evaluate your mastery of the subject.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SCI4-M1-Q1.json'},
-  { 
-    id: '8', 
-    title: 'MATATAG - Science 4 Quarter 1 Week 1 - Science Inventions', 
-    type: 'link', 
-    status: true,
-    shortDescription: 'An external resource link for deeper exploration of the topic.',
-    content: 'https://youtu.be/MxHmfZKHLJg?si=G4v1OWHwGmotN5u_'
-  },
-  { id: '9', title: 'Illustrate Different Angles Grade 4 Q1 LC1 MATATAG Curriculum', type: 'video', status: true, shortDescription: 'A video lesson explaining advanced concepts visually.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/Illustrate-Different-Angles-Grade-4-Q1-LC1-MATATAG-Curriculum720p.mp4'},
-  { id: '10', title: 'Speak This Sentence', type: 'speach', status: true, shortDescription: 'A game to test your speaking skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/speak-english.json'},
-  { id: '11', title: 'Complete The Sentence', type: 'sentence', status: true, shortDescription: 'A game to test your spelling skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/SpellTheBea.json'},
-  { id: '12', title: 'MathTINIK', type: 'gameIMGtext', status: true, shortDescription: 'A game to test your math skills.', content: 'https://github.com/eriXtrip/test-files/raw/refs/heads/main/mathGame.json'},
-];
-
-
-const LESSON_TYPE_ICON_MAP = {
-  general: 'information-circle-outline',
-  ppt: 'easel-outline',
-  pdf: 'document-attach-outline',
-  video: 'videocam-outline',
-  link: 'link-outline',
-  test: 'document-text-outline',
-  match: 'game-controller-outline',
-  flash: 'copy-outline',
-  speach: 'mic-outline',
-  sentence: 'extension-puzzle-outline',
-  gameIMGtext: 'dice-outline',
-};
+const { LESSON_CARDS, LESSON_TYPE_ICON_MAP, SUBJECT_ICON_MAP } = lessonData;
 
 const SubjectPage = () => {
   const colorScheme = useColorScheme();
@@ -160,13 +119,12 @@ const SubjectPage = () => {
       const status = {};
 
       for (let item of LESSON_CARDS) {
-        if (!item.content) {
+        if (!item.file) {  // use file instead of content
           status[item.id] = false;
           continue;
         }
 
-        const fileName = item.content.split('/').pop(); // extract filename
-        const targetUri = `${LESSONS_DIR}${fileName}`;
+        const targetUri = `${LESSONS_DIR}${item.file}`; // use file as filename
 
         try {
           const fileInfo = await FileSystem.getInfoAsync(targetUri);
@@ -202,12 +160,13 @@ const SubjectPage = () => {
               pathname: '/content_details',
               params: {
                 title: item.title,
-                shortDescription: item.shortDescription,
                 type: item.type,
                 status: item.status,
+                shortDescription: item.shortDescription,
+                file: item.file,
+                MIME: item.MIME,
+                size: item.size,
                 content: item.content,
-                subjectName: subjectName,
-                subjectGrade: subjectGrade,
               },
             });
           }

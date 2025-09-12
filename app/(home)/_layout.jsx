@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useContext, useMemo } from 'react';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { ProfileProvider } from '../../contexts/ProfileContext';
 import { UserProvider } from '../../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
 import ThemedHeader from '../../components/ThemedHeader';
@@ -35,46 +36,48 @@ export default function HomeLayout() {
 
   return (
     <SQLiteProvider databaseName="mydatabase.db">
-      <UserProvider>
-        <Stack screenOptions={screenOptions}>
-          <Stack.Screen
-            name="searchpage"
-            options={{
-              title: 'Search',
-            }}
-          />
-          <Stack.Screen
-            name="subject_detail"
-            options={{
-              title: '',
-            }}
-          />
-          <Stack.Screen
-            name="subject_page"
-            options={{
-              title: '',
-            }}
-          />
-          <Stack.Screen
-            name="section_page"
-            options={{
-              title: '',
-            }}
-          />
-          <Stack.Screen
-            name="achievements_page"
-            options={{
-              title: '🌟 Your Achievements',
-            }}
-          />
-          <Stack.Screen
-            name="recent_activity_page"
-            options={{
-              title: '📚 Recent Activity',
-            }}
-          />
-        </Stack>
-      </UserProvider>
+      <ProfileProvider>
+        <UserProvider>
+          <Stack screenOptions={screenOptions}>
+            <Stack.Screen
+              name="searchpage"
+              options={{
+                title: 'Search',
+              }}
+            />
+            <Stack.Screen
+              name="subject_detail"
+              options={{
+                title: '',
+              }}
+            />
+            <Stack.Screen
+              name="subject_page"
+              options={{
+                title: '',
+              }}
+            />
+            <Stack.Screen
+              name="section_page"
+              options={{
+                title: '',
+              }}
+            />
+            <Stack.Screen
+              name="achievements_page"
+              options={{
+                title: '🌟 Your Achievements',
+              }}
+            />
+            <Stack.Screen
+              name="recent_activity_page"
+              options={{
+                title: '📚 Recent Activity',
+              }}
+            />
+          </Stack>
+        </UserProvider>
+      </ProfileProvider>
     </SQLiteProvider>
   );
 }
