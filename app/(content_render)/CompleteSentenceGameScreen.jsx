@@ -16,7 +16,7 @@ import Spacer from "../../components/Spacer";
 import BadgeReward from "../../components/BadgeReward";
 import TryAgainModal from "../../components/TryAgainModal";
 import ThemedView from "../../components/ThemedView";
-import ThemedText from "../../components/ThemedText";
+import LoadingAnimation from "../../components/loadingAnimation";
 
 
 const { width, height } = Dimensions.get("window");
@@ -169,16 +169,7 @@ export default function CompleteSentenceScreen() {
 
 
   if (!currentCard) {
-    return (
-      <ThemedView style={[styles.container, {justifyContent: "center",}]}>
-        <LottieView
-          source={require("../../assets/animations/Material wave loading.json")}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
-      </ThemedView>
-    );
+    return <LoadingAnimation />;
   }
 
   const frontRotate = flipAnim.interpolate({

@@ -1,17 +1,23 @@
 import React, { useEffect, useRef } from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import ConfettiCannon from "react-native-confetti-cannon";
-
-const screenHeight = Dimensions.get("window").height;
+import Confetti from "./Confetti"; // ✅ import new component
 
 const BadgeReward = ({ visible, badge, onClose }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current; // for scaling badge
-  const translateYAnim = useRef(new Animated.Value(50)).current; // for vertical slide
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(50)).current;
+  const confettiRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
-      // Animate badge entrance: slide + scale
+      // Badge animation
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -25,9 +31,13 @@ const BadgeReward = ({ visible, badge, onClose }) => {
           useNativeDriver: true,
         }),
       ]).start();
+
+      // Confetti animation
+      confettiRef.current?.play();
     } else {
       scaleAnim.setValue(0);
       translateYAnim.setValue(50);
+      confettiRef.current?.reset();
     }
   }, [visible]);
 
@@ -36,27 +46,10 @@ const BadgeReward = ({ visible, badge, onClose }) => {
   return (
     <Modal transparent={true} visible={visible} animationType="fade">
       <View style={styles.overlay}>
-        {/* 🎉 Confetti Left */}
-        <ConfettiCannon
-          count={80}
-          origin={{ x: 0, y: 0 }}
-          fadeOut={true}
-          fallSpeed={2500}
-          explosionSpeed={150}
-          autoStart={true}
-        />
+        {/* 🎉 Confetti component */}
+        <Confetti ref={confettiRef} />
 
-        {/* 🎉 Confetti Right */}
-        <ConfettiCannon
-          count={80}
-          origin={{ x: Dimensions.get("window").width, y: 0 }}
-          fadeOut={true}
-          fallSpeed={2500}
-          explosionSpeed={150}
-          autoStart={true}
-        />
-
-        {/* Badge Container Animated at Center */}
+        {/* Badge Container */}
         <Animated.View
           style={[
             styles.container,
@@ -64,17 +57,14 @@ const BadgeReward = ({ visible, badge, onClose }) => {
             { transform: [{ scale: scaleAnim }, { translateY: translateYAnim }] },
           ]}
         >
-          {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
 
-          {/* Badge Icon */}
           <View style={[styles.achievementBadge, { borderColor: badge.color }]}>
             <Ionicons name={badge.icon} size={50} color={badge.color} />
           </View>
 
-          {/* Text */}
           <Text style={[styles.title, { color: badge.color }]}>{badge.title}</Text>
           <Text style={styles.subtext}>{badge.subtext}</Text>
         </Animated.View>
@@ -86,9 +76,9 @@ const BadgeReward = ({ visible, badge, onClose }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#ffffffc6"
   },
   container: {
     width: "85%",
@@ -97,19 +87,15 @@ const styles = StyleSheet.create({
     padding: 25,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
     backgroundColor: "#FFF9E6",
     borderWidth: 3,
+    zIndex: 1,
   },
   closeButton: {
     position: "absolute",
     top: 15,
     right: 15,
-    zIndex: 1,
+    zIndex: 999,
   },
   achievementBadge: {
     backgroundColor: "rgba(255, 255, 255, 0.8)",

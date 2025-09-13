@@ -15,6 +15,7 @@ import * as FileSystem from "expo-file-system";
 import BadgeReward from "../../components/BadgeReward";
 import ThemedView from "../../components/ThemedView";
 import ThemedText from "../../components/ThemedText";
+import LoadingAnimation from "../../components/loadingAnimation";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
@@ -46,11 +47,7 @@ export default function AngleHuntScreen() {
   }, [uri]);
 
   if (!gameData) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading game...</ThemedText>
-      </ThemedView>
-    );
+    return <LoadingAnimation />;
   }
 
   const currentItem = gameData.items[currentIndex];

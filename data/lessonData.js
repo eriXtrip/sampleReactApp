@@ -36,8 +36,70 @@ export const SUBJECT_ICON_MAP = {
   Filipino: require('../assets/icons/filipino_.png'),
 };
 
+export const feedbackMessages = {
+    multipleChoice: {
+      correct: [
+        "Great job!",
+        "Nice work, that’s correct!",
+        "You nailed it!"
+      ],
+      incorrect: [
+        "Not quite, try again next time",
+        "Hmm, that wasn’t right",
+        "Close, but not correct"
+      ]
+    },
+    trueFalse: {
+      correct: [
+        "Exactly right!",
+        "Correct answer!",
+        "You got it!"
+      ],
+      incorrect: [
+        "Nope, that’s not it",
+        "That’s false",
+        "Oops, wrong choice"
+      ]
+    },
+    enumeration: {
+      partial: [
+        "Nice! You got some correct!",
+        "Good try, you got a few right!",
+        "Almost there, some answers were correct!"
+      ],
+      perfect: [
+        "Wow, you got them all correct!",
+        "Perfect enumeration!",
+        "You listed everything right!"
+      ],
+      incorrect: [
+        "None matched, review again!",
+        "Not correct, keep practicing",
+        "That didn’t match, try again"
+      ]
+    },
+    multiselect: {
+      correct: [
+        "Great selection!",
+        "Perfect choices!",
+        "You picked all the right ones!"
+      ],
+      partial: [
+        "Good try, you got some correct",
+        "Almost there, a few were right",
+        "Nice effort, but missing some answers"
+      ],
+      incorrect: [
+        "Oops, wrong picks",
+        "That didn’t work out",
+        "Try again, not correct"
+      ]
+    }
+  };
+
 export default {
   LESSON_CARDS,
   LESSON_TYPE_ICON_MAP,
   SUBJECT_ICON_MAP,
+  feedbackMessages,
 }

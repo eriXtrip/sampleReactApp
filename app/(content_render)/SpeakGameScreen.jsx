@@ -5,7 +5,8 @@ import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import * as Speech from "expo-speech";
 import MicWaveButton from "../../components/MicWaveButton";
-import BadgeReward from "../../components/BadgeReward"; // 👈 import the badge component
+import BadgeReward from "../../components/BadgeReward"; 
+import LoadingAnimation from "../../components/loadingAnimation";
 
 export default function SpeakGameScreen() {
   const { uri } = useLocalSearchParams();
@@ -58,11 +59,7 @@ export default function SpeakGameScreen() {
   }, [uri]);
 
   if (!gameData) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading game...</Text>
-      </View>
-    );
+    return <LoadingAnimation />
   }
 
   const sentence = gameData.items[currentSentence].sentence;

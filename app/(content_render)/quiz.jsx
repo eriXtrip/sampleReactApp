@@ -1,11 +1,26 @@
+// samplereactnative/app/(content_render)/quiz.jsx
+
 import React, { useState, useEffect, useLayoutEffect } from "react";
 import { View, Text, TouchableOpacity, Alert, TextInput, StyleSheet, Modal, FlatList, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation, lockVisible } from "expo-router";
+
 import Spacer from "../../components/Spacer";
 import ThemedAlert from "../../components/ThemedAlert";
 import DangerAlert from "../../components/DangerAlert";
+import LoadingAnimation from "../../components/loadingAnimation";
+
+import QuizHeader from "../../components/QuizHeader";
+import ProgressBar from "../../components/ProgressBar";
+import QuestionCard from "../../components/QuestionCard";
+import NavButtons from "../../components/NavButtons";
+import QuestionGridModal from "../../components/QuestionGridModal";
+import ResultsScreen from "../../components/ResultsScreen";
+import PasswordModal from "../../components/PasswordModal";
+import lessonData from "../../data/lessonData";
+
+
 
 export default function QuizScreen() {
   const { uri } = useLocalSearchParams(); 
@@ -19,6 +34,7 @@ export default function QuizScreen() {
   const [score, setScore] = useState(0);
   const [gridVisible, setGridVisible] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const { feedbackMessages } = lessonData;
   const [lockedAnswers, setLockedAnswers] = useState({});
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -101,118 +117,12 @@ export default function QuizScreen() {
 
 
   if (!quizData) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading quiz...</Text>
-      </View>
-    );
-  }
-
-  // ✅ lock screen until password is entered
-  if (quizData.settings.mode === "close" && !isUnlocked) {
-    return (
-      <Modal visible={passwordModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.title}>Enter Password</Text>
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name="close-outline" size={28} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Password Input */}
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#888"
-              secureTextEntry
-              value={enteredPassword}          // ✅ use correct state
-              onChangeText={setEnteredPassword} // ✅ use correct setter
-            />
-
-            {/* Unlock Button */}
-            <TouchableOpacity
-              style={styles.unlockButton}
-              onPress={() => {
-                if (enteredPassword === quizData.settings.password) {
-                  setIsUnlocked(true);
-                  setPasswordModalVisible(false);
-                }
-              }}
-            >
-              <Text style={styles.unlockText}>Unlock</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    );
+    return <LoadingAnimation />
   }
 
 
   const question = quizData.questions[currentQuestion];
 
-  const feedbackMessages = {
-    multipleChoice: {
-      correct: [
-        "Great job! 🎉",
-        "Nice work, that’s correct! ✅",
-        "You nailed it! 💯"
-      ],
-      incorrect: [
-        "Not quite, try again next time ❌",
-        "Hmm, that wasn’t right 🤔",
-        "Close, but not correct 😢"
-      ]
-    },
-    trueFalse: {
-      correct: [
-        "Exactly right! 👍",
-        "Correct answer! ✅",
-        "You got it! 🎯"
-      ],
-      incorrect: [
-        "Nope, that’s not it ❌",
-        "That’s false 😕",
-        "Oops, wrong choice 😢"
-      ]
-    },
-    enumeration: {
-      partial: [
-        "Nice! You got some correct! ✨",
-        "Good try, you got a few right! 👍",
-        "Almost there, some answers were correct! 💡"
-      ],
-      perfect: [
-        "Wow, you got them all correct! 🏆",
-        "Perfect enumeration! ✅",
-        "You listed everything right! 🎉"
-      ],
-      incorrect: [
-        "None matched 😢, review again!",
-        "Not correct, keep practicing 📘",
-        "That didn’t match, try again 💭"
-      ]
-    },
-    multiselect: {
-      correct: [
-        "Great selection! ✅",
-        "Perfect choices! 🎯",
-        "You picked all the right ones! 🏆"
-      ],
-      partial: [
-        "Good try, you got some correct 👍",
-        "Almost there, a few were right 💡",
-        "Nice effort, but missing some answers ✨"
-      ],
-      incorrect: [
-        "Oops, wrong picks ❌",
-        "That didn’t work out 😕",
-        "Try again, not correct 💭"
-      ]
-    }
-  };
 
   function getRandomFeedback(type, result) {
     const messages = feedbackMessages[type][result];
@@ -471,97 +381,30 @@ export default function QuizScreen() {
   // Results screen
   if (showResults) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Quiz Finished!</Text>
-        <Text style={styles.resultText}>
-          Total Score: {score} / {quizData.settings.totalItems}
-        </Text>
-
-        {score >= quizData.settings.passingScore ? (
-          <Text style={styles.passText}>🎉 Congratulations! You passed!</Text>
-        ) : (
-          <Text style={styles.failText}>
-            😢 Aww don’t be sad, there’s always room for improvement!
-          </Text>
-        )}
-
-        {/* 🔽 Review Section if enabled */}
-        {quizData.settings.review && (
-          <FlatList
-            data={quizData.questions}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => {
-              let userAns = answers[item.id];
-              let correctAns = "";
-
-              if (item.type === "multichoice") {
-                const correctChoice = item.choices.find((c) => c.points > 0);
-                correctAns = correctChoice ? correctChoice.text : "";
-              } else if (item.type === "truefalse") {
-                correctAns = item.answer ? "True" : "False";
-              } else if (item.type === "enumeration") {
-                correctAns = item.answer.join(", ");
-              } else if (item.type === "multiselect") {
-                correctAns = item.choices
-                  .filter((c) => c.points > 0)
-                  .map((c) => c.text)
-                  .join(", ");
-                userAns = (userAns || []).join(", ");
-              }
-
-              return (
-                <View style={styles.reviewCard}>
-                  <Text style={styles.reviewQuestion}>{item.question}</Text>
-                  <Text style={styles.reviewLabel}>
-                    Your Answer: <Text style={styles.reviewUser}>{userAns || "No answer"}</Text>
-                  </Text>
-                  <Text style={styles.reviewLabel}>
-                    Correct Answer: <Text style={styles.reviewCorrect}>{correctAns}</Text>
-                  </Text>
-                </View>
-              );
-            }}
-          />
-        )}
-
-        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-          <Text style={styles.closeText}>Close</Text>
-        </TouchableOpacity>
-
-        <Spacer height={40} />
-      </View>
+      <ResultsScreen
+        score={score}
+        quizData={quizData}
+        answers={answers}
+        onClose={() => router.back()}
+      />
     );
   }
-
-
 
   return (
     
     <View style={styles.container}>
       {/* Progress Bar */}
-      <View style={styles.progressBarBackground}>
-        <View
-          style={[
-            styles.progressBarFill,
-            { width: `${((currentQuestion + 1) / quizData.questions.length) * 100}%` },
-          ]}
-        />
-      </View>
+      <ProgressBar current={currentQuestion} total={quizData.questions.length} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleExit}>
-          <Ionicons name="close-outline" size={32} color={theme.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setGridVisible(true)}>
-          <Ionicons name="apps-outline" size={28} color={theme.text} />
-        </TouchableOpacity>
-      </View>
+      <QuizHeader 
+        onExit={handleExit} 
+        onGrid={() => setGridVisible(true)} 
+        theme={theme}
+      />
 
       {/* Question card */}
-      <View style={styles.questionCard}>
-        <Text style={styles.questionText}>{question.question}</Text>
-      </View>
+      <QuestionCard question={question.question} />
 
       {/* feedback msg */}
       <View style={styles.feedbackContainer}>
@@ -641,87 +484,55 @@ export default function QuizScreen() {
       </View>
 
       {/* Navigation buttons */}
-      <View style={styles.navRow}>
-        {quizData.settings.allowBack && !quizData.settings.instantFeedback && currentQuestion > 0 ? (
-          <>
-            <TouchableOpacity style={[styles.navButton, { width: "48%" }]} onPress={handlePrev}>
-              <Text style={styles.navText}>Prev</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.navButton, { width: "48%" }]} onPress={handleNext}>
-              <Text style={styles.navText}>
-                {currentQuestion + 1 === quizData.questions.length ? "Finish" : "Next"}
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity style={[styles.navButton, { width: "100%" }]} onPress={handleNext}>
-            <Text style={styles.navText}>
-              {currentQuestion + 1 === quizData.questions.length ? "Finish" : "Next"}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
+      <NavButtons
+        showPrev={quizData.settings.allowBack && !quizData.settings.instantFeedback && currentQuestion > 0}
+        showNext={true}
+        isLast={currentQuestion + 1 === quizData.questions.length}
+        onPrev={handlePrev}
+        onNext={handleNext}
+      />
 
       {/* Question grid modal */}
-        <Modal visible={gridVisible} animationType="slide" transparent={true}>
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                {/* Header inside modal */}
-                <View style={styles.modalHeader}>
-                    <Text style={styles.title}>Jump to Question</Text>
-                    <TouchableOpacity onPress={() => setGridVisible(false)}>
-                    <Ionicons name="close-outline" size={28} color="#333" />
-                    </TouchableOpacity>
-                </View>
+      <QuestionGridModal
+        visible={gridVisible}
+        onClose={() => setGridVisible(false)}
+        questions={quizData.questions}
+        answers={answers}
+        currentQuestion={currentQuestion}
+        setCurrentQuestion={setCurrentQuestion}
+        quizData={quizData}
+        theme={theme}
+      />
 
-                {/* Question grid */}
-                    <View style={styles.gridWrapper}>
-                        {quizData.questions.map((item, index) => {
-                            const isAnswered = answers[item.id];
-                            const isClickable =!quizData.settings.instantFeedback &&
-                              (quizData.settings.allowBack || index === currentQuestion);
-
-                            return (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                styles.gridItem,
-                                { borderColor: isAnswered ? "#48cae4" : theme.cardBorder },
-                                !isClickable && { opacity: 0.4 }, // show disabled visually
-                                ]}
-                                disabled={!isClickable} // 🔽 disables pressing if not allowed
-                                onPress={() => {
-                                if (isClickable) {
-                                    setCurrentQuestion(index);
-                                    setGridVisible(false);
-                                }
-                                }}
-                            >
-                                <Text>{index + 1}</Text>
-                            </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
-            </View>
-        </Modal>
-
-        <ThemedAlert
-          visible={alertVisible}
-          message={alertMessage}
-          onClose={() => setAlertVisible(false)}
-        />
-
-        <DangerAlert
-          visible={exitAlertVisible}
-          message="Are you sure you want to quit the quiz?"
-          onCancel={() => setExitAlertVisible(false)}
-          onConfirm={() => {
-            setExitAlertVisible(false);
-            router.back(); // exit quiz
+      {/* Password Modal */}
+      {quizData.settings.mode === "close" && !isUnlocked && (
+        <PasswordModal
+          visible={passwordModalVisible}
+          correctPassword={quizData.settings.password}
+          onClose={() => router.back()}
+          onUnlock={() => {
+            setIsUnlocked(true);
+            setPasswordModalVisible(false);
           }}
         />
+      )}
+
+       {/* Alerts */}
+      <ThemedAlert
+        visible={alertVisible}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
+
+      <DangerAlert
+        visible={exitAlertVisible}
+        message="Are you sure you want to quit the quiz?"
+        onCancel={() => setExitAlertVisible(false)}
+        onConfirm={() => {
+          setExitAlertVisible(false);
+          router.back(); // exit quiz
+        }}
+      />
 
     </View>
   );
@@ -729,32 +540,6 @@ export default function QuizScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
-  progressBarBackground: {
-    height: 6,
-    width: "100%",
-    backgroundColor: "#eee",
-    borderRadius: 3,
-    overflow: "hidden",
-    marginBottom: 15,
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#48cae4",
-    borderRadius: 3,
-  },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  questionCard: {
-    backgroundColor: "#ddf6fc1f",
-    height: 150,
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#92cbd6ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  questionText: { fontSize: 18, fontWeight: "bold", textAlign: "center" },
   feedbackContainer: { minHeight: 25,},
   choicesWrapper: { alignItems: "center" },
   choiceButton: {
@@ -772,101 +557,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
   },
-  unlockButton: {
-    backgroundColor: "#48cae4",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: "center",
-  },
-
-  unlockText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  navRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center",
-    paddingVertical: 15,
-    marginTop: "auto",   // 🔽 pushes it to the bottom
-    marginBottom: 20,
-  },
-  navButton: {
-    backgroundColor: "#48cae4",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  navText: { 
-    color: "#fff", 
-    fontWeight: "bold", 
-    fontSize: 16 
-  },
-  title: { fontSize: 20, fontWeight: "bold", textAlign: "center", marginBottom: 10 },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 12,
-    width: "85%",
-    maxHeight: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  gridWrapper: {
-    flexDirection: "row",
-    flexWrap: "wrap",   // 🔽 wrap to next line if too many items
-    justifyContent: "center",
-  },
-  gridItem: {
-    borderWidth: 2,
-    borderRadius: 8,
-    padding: 15,
-    margin: 5,
-    minWidth: 50,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-    resultText: { fontSize: 18, textAlign: "center", marginBottom: 10 },
-    passText: { color: "green", fontSize: 18, textAlign: "center" },
-    failText: { color: "red", fontSize: 18, textAlign: "center" },
-    closeButton: { marginTop: 20, backgroundColor: "#333", padding: 15, borderRadius: 8 },
-    closeText: { color: "#fff", textAlign: "center" },
-    reviewCard: {
-    backgroundColor: "#f9f9f9",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginVertical: 8,
-  },
-  reviewQuestion: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  reviewLabel: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  reviewUser: {
-    color: "red",
-    fontWeight: "600",
-  },
-  reviewCorrect: {
-    color: "green",
-    fontWeight: "600",
-  },
-
 });

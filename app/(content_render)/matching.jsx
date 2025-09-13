@@ -8,6 +8,7 @@ import Spacer from "../../components/Spacer";
 import { Ionicons } from "@expo/vector-icons";
 import BadgeReward from "../../components/BadgeReward";
 import LoginLogo from "../../assets/img/Login_Logo.png";
+import LoadingAnimation from "../../components/loadingAnimation";
 
 export default function MatchingScreen() {
   const { uri } = useLocalSearchParams();
@@ -165,11 +166,7 @@ export default function MatchingScreen() {
     }
   };
 
-  if (!matchingData) return (
-    <View style={styles.container}>
-      <Text>Loading matching game...</Text>
-    </View>
-  );
+  if (!matchingData) return <LoadingAnimation />;
 
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;

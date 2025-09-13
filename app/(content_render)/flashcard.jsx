@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import Spacer from "../../components/Spacer";
 import { Ionicons } from "@expo/vector-icons";
 import BadgeReward from "../../components/BadgeReward";
+import LoadingAnimation from "../../components/loadingAnimation";
 
 export default function FlashCardScreen() {
   const { uri } = useLocalSearchParams() || {};
@@ -89,11 +90,7 @@ export default function FlashCardScreen() {
   };
 
   if (!flashData || flashData.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading flashcards...</Text>
-      </View>
-    );
+    return <LoadingAnimation />;
   }
 
   return (
