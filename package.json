@@ -40,6 +40,7 @@
     "expo-web-browser": "~14.2.0",
     "express-rate-limit": "^7.5.1",
     "lodash": "^4.17.21",
+    "lottie-react-native": "^7.3.4",
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.3",
     "react": "19.0.0",

@@ -8,12 +8,15 @@ import {
   Dimensions,
   Animated,
 } from "react-native";
+import LottieView from "lottie-react-native";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Spacer from "../../components/Spacer";
 import BadgeReward from "../../components/BadgeReward";
 import TryAgainModal from "../../components/TryAgainModal";
+import ThemedView from "../../components/ThemedView";
+import ThemedText from "../../components/ThemedText";
 
 
 const { width, height } = Dimensions.get("window");
@@ -167,9 +170,14 @@ export default function CompleteSentenceScreen() {
 
   if (!currentCard) {
     return (
-      <View style={styles.container}>
-        <Text>Loading game...</Text>
-      </View>
+      <ThemedView style={[styles.container, {justifyContent: "center",}]}>
+        <LottieView
+          source={require("../../assets/animations/Material wave loading.json")}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </ThemedView>
     );
   }
 
@@ -279,6 +287,11 @@ export default function CompleteSentenceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  lottie: {
+    width: 120,
+    height: 120,
+    alignSelf: "center",
+  },
   header: {
     width: "100%",
     flexDirection: "row",

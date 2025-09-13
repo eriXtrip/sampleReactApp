@@ -109,33 +109,83 @@ const ContentDetails = () => {
       const targetFolder = await ensureLessonsDir();
       if (!targetFolder) return null;
 
-      const localPath = resolveLocalPath(file); // use file param as filename
+      const localPath = resolveLocalPath(file); // ✅ use file param as filename
       const fileInfo = await FileSystem.getInfoAsync(localPath);
       if (fileInfo.exists) {
         setFileExists(true);
         setDownloading(false);
+        console.log("Already exists ✅:", localPath);
         return localPath;
       }
 
       // Step 1: Download into cache first
       const tempUri = FileSystem.cacheDirectory + file;
       const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
+      console.log("Downloaded main file ✅:", file);
 
       // Step 2: Handle JSON or normal file
-      if (['test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext'].includes(type)) {
+      if (['test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext', 'angleMathHunt'].includes(type)) {
         const jsonString = await FileSystem.readAsStringAsync(downloadedUri);
         const parsed = JSON.parse(jsonString);
 
-        // ... (your JSON image download + rewrite logic here) ...
+        // Case 1: JSON with "items"
+        if (Array.isArray(parsed.items)) {
+          for (let item of parsed.items) {
+            if (item.questionType === "image" && item.question?.startsWith("http") && item.file) {
+              const qLocalUri = `${targetFolder}${item.file}`;
+              await FileSystem.downloadAsync(item.question, qLocalUri);
+              console.log("Downloaded question image ✅:", item.file);
+              item.question = qLocalUri;
+            }
 
+            if (Array.isArray(item.choices)) {
+              for (let choice of item.choices) {
+                if (choice.type === "image" && choice.img?.startsWith("http") && choice.file) {
+                  const cLocalUri = `${targetFolder}${choice.file}`;
+                  await FileSystem.downloadAsync(choice.img, cLocalUri);
+                  console.log("Downloaded choice image ✅:", choice.file);
+                  choice.img = cLocalUri;
+                }
+              }
+            }
+          }
+        }
+
+        // Case 2: JSON with "questions"
+        if (Array.isArray(parsed.questions)) {
+          for (let q of parsed.questions) {
+            if (q.type === "image" && q.question?.startsWith("http") && q.file) {
+              const qLocalUri = `${targetFolder}${q.file}`;
+              await FileSystem.downloadAsync(q.question, qLocalUri);
+              console.log("Downloaded question image ✅:", q.file);
+              q.question = qLocalUri;
+            }
+
+            if (Array.isArray(q.choices)) {
+              for (let choice of q.choices) {
+                if (choice.type === "image" && choice.img?.startsWith("http") && choice.file) {
+                  const cLocalUri = `${targetFolder}${choice.file}`;
+                  await FileSystem.downloadAsync(choice.img, cLocalUri);
+                  console.log("Downloaded choice image ✅:", choice.file);
+                  choice.img = cLocalUri;
+                }
+              }
+            }
+          }
+        }
+
+        // Save updated JSON locally
         await FileSystem.writeAsStringAsync(localPath, JSON.stringify(parsed));
+        console.log("Saved updated JSON ✅:", file);
       } else {
+        // Non-JSON files (pdf, ppt, etc.)
         await FileSystem.copyAsync({ from: downloadedUri, to: localPath });
+        console.log("Saved non-JSON file ✅:", file);
       }
 
       setFileExists(true);
       setDownloading(false);
-      console.log("Downloaded", "The file has been downloaded successfully.", localPath);
+      console.log("Final path:", localPath);
       return localPath;
     } catch (err) {
       setDownloading(false);
@@ -326,7 +376,6 @@ const ContentDetails = () => {
       <View style={styles.bottomCard}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <ThemedText style={styles.detailText}>Short Description: {shortDescription}</ThemedText>
-          <ThemedText style={styles.detailText}>Type: {type}</ThemedText>
 
           {type === 'video' && (
             videoUri ? (
@@ -370,7 +419,8 @@ const ContentDetails = () => {
         onConfirm={async () => {
           setShowDeleteAlert(false);
           try {
-            await FileSystem.deleteAsync(file, { idempotent: true });
+            const localPath = resolveLocalPath(file);
+            await FileSystem.deleteAsync(localPath, { idempotent: true });
             setFileExists(false);
           } catch (err) {
             console.error("Delete error:", err);

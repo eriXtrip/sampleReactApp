@@ -7,6 +7,8 @@ import config from '../config.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const folder = 'MQuest_Contents';
+
 // Google Drive API setup
 const oauth2Client = new google.auth.OAuth2(
   config.googleClientId,
@@ -42,23 +44,74 @@ const logToFile = async ({ filename, fileId, url, type }) => {
   }
 };
 
+// Ensure folder exists or create it
+const ensureDriveFolder = async (folderName, parentId = null) => {
+  // Search for the folder by name
+  const query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
+  const res = await drive.files.list({
+    q: parentId ? `${query} and '${parentId}' in parents` : query,
+    fields: 'files(id, name)',
+    spaces: 'drive',
+  });
+
+  if (res.data.files.length > 0) {
+    return res.data.files[0].id; // Folder already exists
+  }
+
+  // Otherwise create new folder
+  const fileMetadata = {
+    name: folderName,
+    mimeType: 'application/vnd.google-apps.folder',
+  };
+  if (parentId) fileMetadata.parents = [parentId];
+
+  const folder = await drive.files.create({
+    requestBody: fileMetadata,
+    fields: 'id',
+    supportsAllDrives: true,
+  });
+
+  return folder.data.id;
+};
+
+// ✅ helper to verify file belongs to target folder
+const ensureFileInFolder = async (fileId, folderName) => {
+  const folderId = await ensureDriveFolder(folderName);
+
+  const fileInfo = await drive.files.get({
+    fileId,
+    fields: 'id, name, parents, mimeType',
+    supportsAllDrives: true,
+  });
+
+  if (!fileInfo.data.parents || !fileInfo.data.parents.includes(folderId)) {
+    throw new Error(`File is not inside the ${folderName} folder`);
+  }
+
+  return fileInfo;
+};
+
 export const uploadFile = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
+    // Ensure target folder exists (or create it)
+    const folderId = await ensureDriveFolder(folder); // change folder name here
+
     const filePath = req.file.path;
     const response = await drive.files.create({
       requestBody: {
         name: req.file.originalname,
         mimeType: req.file.mimetype,
+        parents: [folderId],  // ✅ save file inside the folder
       },
       media: {
         mimeType: req.file.mimetype,
         body: fs.createReadStream(filePath),
       },
-      fields: 'id, name, mimeType',
+      fields: 'id, name, mimeType,parents',
       supportsAllDrives: true,
     });
 
@@ -75,6 +128,7 @@ export const uploadFile = async (req, res) => {
       id: response.data.id,
       name: response.data.name,
       mimeType: response.data.mimeType,
+      parents: folderId,
     });
   } catch (err) {
     console.error('Upload error:', err.response?.data || err.message);
@@ -86,11 +140,9 @@ export const uploadFile = async (req, res) => {
 export const deleteFile = async (req, res) => {
   try {
     const fileId = req.params.id;
-    const fileInfo = await drive.files.get({
-      fileId,
-      fields: 'name',
-      supportsAllDrives: true,
-    });
+
+    // ✅ Ensure file belongs to MQuest_Contents folder
+    const fileInfo = await ensureFileInFolder(fileId, folder);
 
     const response = await drive.files.delete({
       fileId,
@@ -106,33 +158,26 @@ export const deleteFile = async (req, res) => {
     res.json({ success: true, status: response.status });
   } catch (err) {
     console.error('Delete error:', err.response?.data || err.message);
-    res.status(500).json({ success: false, error: err.response?.data?.error || err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
 export const shareFile = async (req, res) => {
   try {
     const fileId = req.params.id;
-    const fileInfo = await drive.files.get({
-      fileId,
-      fields: 'name, mimeType',
-      supportsAllDrives: true,
-    });
+
+    // ✅ Ensure file belongs to MQuest_Contents folder
+    const fileInfo = await ensureFileInFolder(fileId, folder);
 
     await drive.permissions.create({
       fileId,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-        allowFileDiscovery: true,
-      },
+      requestBody: { role: 'reader', type: 'anyone', allowFileDiscovery: true },
       supportsAllDrives: true,
-      fields: 'id',
     });
 
     const result = await drive.files.get({
       fileId,
-      fields: 'webViewLink, webContentLink',
+      fields: 'webViewLink',
       supportsAllDrives: true,
     });
 
@@ -148,32 +193,24 @@ export const shareFile = async (req, res) => {
       name: fileInfo.data.name,
       mimeType: fileInfo.data.mimeType,
       webViewLink: result.data.webViewLink,
-      webContentLink: result.data.webContentLink,
     });
   } catch (err) {
     console.error('Share error:', err.response?.data || err.message);
-    res.status(500).json({ success: false, error: err.response?.data?.error || err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
 export const generateDownloadLink = async (req, res) => {
   try {
     const fileId = req.params.id;
-    const fileInfo = await drive.files.get({
-      fileId,
-      fields: 'name, mimeType',
-      supportsAllDrives: true,
-    });
+
+    // ✅ Ensure file belongs to MQuest_Contents folder
+    const fileInfo = await ensureFileInFolder(fileId, folder);
 
     await drive.permissions.create({
       fileId,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-        allowFileDiscovery: true,
-      },
+      requestBody: { role: 'reader', type: 'anyone', allowFileDiscovery: true },
       supportsAllDrives: true,
-      fields: 'id',
     });
 
     const result = await drive.files.get({
@@ -197,13 +234,17 @@ export const generateDownloadLink = async (req, res) => {
     });
   } catch (err) {
     console.error('Download link error:', err.response?.data || err.message);
-    res.status(500).json({ success: false, error: err.response?.data?.error || err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
 export const getFileMetadata = async (req, res) => {
   try {
     const fileId = req.params.id;
+
+    // ✅ Ensure file belongs to MQuest_Contents folder
+    const fileInfo = await ensureFileInFolder(fileId, folder);
+
     const response = await drive.files.get({
       fileId,
       fields: 'id, name, mimeType, size, createdTime, modifiedTime',
@@ -227,6 +268,6 @@ export const getFileMetadata = async (req, res) => {
     });
   } catch (err) {
     console.error('Metadata error:', err.response?.data || err.message);
-    res.status(500).json({ success: false, error: err.response?.data?.error || err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
