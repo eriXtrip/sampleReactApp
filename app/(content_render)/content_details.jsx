@@ -1,5 +1,3 @@
-// app/(content_render)/content_details.jsx
-
 import React, { useContext, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,48 +17,9 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { getYouTubeEmbedUrl } from "../../utils/youtube";
 import DangerAlert from '../../components/DangerAlert';
-import  lessonData from '../../data/lessonData';
-
-const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
-
-// Resolve a full local path given the filename
-const resolveLocalPath = (fileName) => `${LESSONS_DIR}${fileName}`;
-
-const ensureLessonsDir = async () => {
-  try {
-    const dirInfo = await FileSystem.getInfoAsync(LESSONS_DIR);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(LESSONS_DIR, { intermediates: true });
-    }
-    return LESSONS_DIR;
-  } catch (e) {
-    console.error('❌ Error creating lessons folder:', e);
-    Alert.alert('Error', 'Failed to create lessons folder. Cannot save files.');
-    return null;
-  }
-};
-
-const openWithChooser = async (uri, title, mimeType) => {
-  try {
-    if (Platform.OS === 'android') {
-      const contentUri = await FileSystem.getContentUriAsync(uri);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        type: mimeType || '*/*',
-        flags: 1,
-      });
-    } else {
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType, dialogTitle: title, UTI: mimeType });
-      } else {
-        Alert.alert('Not supported', 'Opening files is not available on this device.');
-      }
-    }
-  } catch (err) {
-    console.error('Open file error:', err);
-    Alert.alert('Error', 'No app found to open this file. Please install a compatible app.');
-  }
-};
+import { resolveLocalPath } from '../../utils/resolveLocalPath';
+import { handleDownload } from '../../utils/handleDownload';
+import { handleDelete } from '../../utils/handleDelete';
 
 const ContentDetails = () => {
   const { title, type, status, shortDescription, file, MIME, size, content } = useLocalSearchParams();
@@ -102,99 +61,6 @@ const ContentDetails = () => {
     gameIMGtext: 'dice-outline',
   }[type] || 'book-outline';
 
-  const handleDownload = async () => {
-    try {
-      setDownloading(true);
-
-      const targetFolder = await ensureLessonsDir();
-      if (!targetFolder) return null;
-
-      const localPath = resolveLocalPath(file); // ✅ use file param as filename
-      const fileInfo = await FileSystem.getInfoAsync(localPath);
-      if (fileInfo.exists) {
-        setFileExists(true);
-        setDownloading(false);
-        console.log("Already exists ✅:", localPath);
-        return localPath;
-      }
-
-      // Step 1: Download into cache first
-      const tempUri = FileSystem.cacheDirectory + file;
-      const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
-      console.log("Downloaded main file ✅:", file);
-
-      // Step 2: Handle JSON or normal file
-      if (['test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext', 'angleMathHunt'].includes(type)) {
-        const jsonString = await FileSystem.readAsStringAsync(downloadedUri);
-        const parsed = JSON.parse(jsonString);
-
-        // Case 1: JSON with "items"
-        if (Array.isArray(parsed.items)) {
-          for (let item of parsed.items) {
-            if (item.questionType === "image" && item.question?.startsWith("http") && item.file) {
-              const qLocalUri = `${targetFolder}${item.file}`;
-              await FileSystem.downloadAsync(item.question, qLocalUri);
-              console.log("Downloaded question image ✅:", item.file);
-              item.question = qLocalUri;
-            }
-
-            if (Array.isArray(item.choices)) {
-              for (let choice of item.choices) {
-                if (choice.type === "image" && choice.img?.startsWith("http") && choice.file) {
-                  const cLocalUri = `${targetFolder}${choice.file}`;
-                  await FileSystem.downloadAsync(choice.img, cLocalUri);
-                  console.log("Downloaded choice image ✅:", choice.file);
-                  choice.img = cLocalUri;
-                }
-              }
-            }
-          }
-        }
-
-        // Case 2: JSON with "questions"
-        if (Array.isArray(parsed.questions)) {
-          for (let q of parsed.questions) {
-            if (q.type === "image" && q.question?.startsWith("http") && q.file) {
-              const qLocalUri = `${targetFolder}${q.file}`;
-              await FileSystem.downloadAsync(q.question, qLocalUri);
-              console.log("Downloaded question image ✅:", q.file);
-              q.question = qLocalUri;
-            }
-
-            if (Array.isArray(q.choices)) {
-              for (let choice of q.choices) {
-                if (choice.type === "image" && choice.img?.startsWith("http") && choice.file) {
-                  const cLocalUri = `${targetFolder}${choice.file}`;
-                  await FileSystem.downloadAsync(choice.img, cLocalUri);
-                  console.log("Downloaded choice image ✅:", choice.file);
-                  choice.img = cLocalUri;
-                }
-              }
-            }
-          }
-        }
-
-        // Save updated JSON locally
-        await FileSystem.writeAsStringAsync(localPath, JSON.stringify(parsed));
-        console.log("Saved updated JSON ✅:", file);
-      } else {
-        // Non-JSON files (pdf, ppt, etc.)
-        await FileSystem.copyAsync({ from: downloadedUri, to: localPath });
-        console.log("Saved non-JSON file ✅:", file);
-      }
-
-      setFileExists(true);
-      setDownloading(false);
-      console.log("Final path:", localPath);
-      return localPath;
-    } catch (err) {
-      setDownloading(false);
-      console.error("Download error:", err);
-      Alert.alert("Error", err.message);
-      return null;
-    }
-  };
-
   const handleMarkAsDone = () => {
     const newState = !isDone;
     setIsDone(newState);
@@ -205,7 +71,7 @@ const ContentDetails = () => {
     if (fileExists) {
       setShowDeleteAlert(true);
     } else {
-      await handleDownload();
+      await handleDownload(file, content, type, setFileExists, setDownloading);
     }
   };
 
@@ -217,7 +83,7 @@ const ContentDetails = () => {
     if (['pdf', 'ppt', 'pptx'].includes(type)) {
       let fileUri = null;
       if (!fileExists) {
-        fileUri = await handleDownload();
+        fileUri = await handleDownload(file, content, type, setFileExists, setDownloading);
       } else {
         fileUri = localPath;
       }
@@ -236,18 +102,38 @@ const ContentDetails = () => {
     if (jsonRoutes[type]) {
       try {
         const fileInfo = await FileSystem.getInfoAsync(localPath);
+        const actualUri = fileInfo.exists ? localPath : content;
         router.push({
           pathname: jsonRoutes[type],
-          params: {
-            uri: fileInfo.exists ? localPath : content,
-            title,
-          },
+          params: { uri: actualUri, title },
         });
-        console.log(`Loaded ${type} file at ${localPath}`);
+        console.log(`Loaded ${type} file at ${actualUri}`);
       } catch (err) {
         console.error(`${type} load error:`, err);
         Alert.alert("Error", `Unable to open ${type}.`);
       }
+    }
+  };
+
+  const openWithChooser = async (uri, title, mimeType) => {
+    try {
+      if (Platform.OS === 'android') {
+        const contentUri = await FileSystem.getContentUriAsync(uri);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          type: mimeType || '*/*',
+          flags: 1,
+        });
+      } else {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType, dialogTitle: title, UTI: mimeType });
+        } else {
+          Alert.alert('Not supported', 'Opening files is not available on this device.');
+        }
+      }
+    } catch (err) {
+      console.error('Open file error:', err);
+      Alert.alert('Error', 'No app found to open this file. Please install a compatible app.');
     }
   };
 
@@ -264,13 +150,12 @@ const ContentDetails = () => {
       borderBottomLeftRadius: 20,
       borderBottomRightRadius: 20,
       padding: 20,
-      paddingLeft: 20,
       paddingLeft: 30,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 }, // Shadow at the bottom
+      shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 6,
-      elevation: 5, // For Android
+      elevation: 5,
     },
     headerRow: { flexDirection: 'row', alignItems: 'center' },
     title: {
@@ -322,8 +207,8 @@ const ContentDetails = () => {
   });
 
   const embedUrl = getYouTubeEmbedUrl(content);
-
-  const videoUri = fileExists ? file : content;
+  
+  const videoUri = fileExists ? resolveLocalPath(file) : content;
 
   const videoPlayer = useVideoPlayer(videoUri || undefined, (player) => {
     player.loop = false;
@@ -393,7 +278,7 @@ const ContentDetails = () => {
               />
             ) : (
               <View style={{ width: '100%', height: 250, backgroundColor: 'grey' }} />
-            )
+            ) 
           )}
 
           {type === 'link' && embedUrl && (
@@ -418,12 +303,9 @@ const ContentDetails = () => {
         onCancel={() => setShowDeleteAlert(false)}
         onConfirm={async () => {
           setShowDeleteAlert(false);
-          try {
-            const localPath = resolveLocalPath(file);
-            await FileSystem.deleteAsync(localPath, { idempotent: true });
-            setFileExists(false);
-          } catch (err) {
-            console.error("Delete error:", err);
+          const success = await handleDelete(file, type, setFileExists);
+          if (!success) {
+            Alert.alert("Error", "Failed to delete the file or associated images. Please try again.");
           }
         }}
       />
