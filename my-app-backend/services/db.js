@@ -35,8 +35,8 @@ async function testConnection() {
   }
 }
 
-// Test immediately and every 30 minutes
+// Test immediately and every 5 minutes
 testConnection().catch(() => process.exit(1));
-setInterval(testConnection, 1800000); // 30 minute keepalive
+setInterval(testConnection, 300000); // 5 minute keepalive
 
 export default pool;

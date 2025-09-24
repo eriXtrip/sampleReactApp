@@ -4,6 +4,8 @@ import { verifyAndDecodeToken } from '../middleware/authHelpers.js';
 import pool from '../services/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { console } from 'inspector';
+import { logActivity } from "../utils/logActivity.js";
 
 export const startRegistration = async (req, res) => {
   try {
@@ -226,7 +228,7 @@ export const completeRegistration = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert into users table
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO users (
         email, password_hash, role_id, first_name, middle_name, 
         last_name, suffix, gender, birth_date, lrn, teacher_id
@@ -248,6 +250,12 @@ export const completeRegistration = async (req, res) => {
 
     // Cleanup: remove from temp table
     await pool.query(`DELETE FROM users_verification_code WHERE email = ?`, [email]);
+
+    // Get the new user's id
+    const newUserId = result.insertId;
+
+    // ✅ Call the utils to log activity
+    await logActivity(newUserId, "New User");
 
     // Send success response
     res.status(201).json({
@@ -285,8 +293,14 @@ export const login = async (req, res) => {
                 u.email, 
                 u.password_hash, 
                 u.lrn,
-                u.teacher_id
+                u.teacher_id,
+                u.avatar_id,
+                a.avatar AS avatar_path,
+                a.file_name AS avatar_filename,
+                a.url AS avatar_url,
+                a.thumbnail AS avatar_thumbnail
             FROM users u
+            LEFT JOIN avatar a ON u.avatar_id = a.id
             WHERE u.email = ?`,
             [email]
         );
@@ -322,6 +336,12 @@ export const login = async (req, res) => {
             { expiresIn: '1h' } // Added token expiration
         );
 
+        // ✅ Call the utils to log activity
+        if (user.role_id !== 1){
+          await logActivity(user.user_id, "User logged in");
+        }
+        
+
         // Return user data without sensitive information
         res.json({
             success: true,
@@ -337,7 +357,14 @@ export const login = async (req, res) => {
                 birthday: user.birth_date,
                 gender: user.gender,
                 lrn: user.lrn,
-                teacherId: user.teacher_id
+                teacherId: user.teacher_id,
+                avatar: {
+                    id: user.avatar_id,
+                    fileName: user.avatar_filename,
+                    url: user.avatar_url,
+                    avatar: user.avatar_path,
+                    thumbnail: user.avatar_thumbnail
+                }
             }
         });
 
@@ -349,6 +376,47 @@ export const login = async (req, res) => {
         res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 };
+
+export const admin_confirm_login = async (req, res) => {
+  try {
+    const { userId, secret_key } = req.body;
+
+    console.log("received admin login:", userId, secret_key);
+
+    if (!userId || !secret_key) {
+      return res.status(400).json({ error: "User ID and secret key are required" });
+    }
+
+    // ✅ Step 1: Get hashed secret_key from DB
+    const [rows] = await pool.query(
+      `SELECT a.admin_id, a.secret_key 
+       FROM admins a 
+       WHERE a.user_id = ?`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Admin not found" });
+    }
+
+    const user = rows[0];
+
+    // ✅ Step 2: Compare input secret_key with stored hash
+    const passwordValid = await bcrypt.compare(secret_key, user.secret_key);
+    if (!passwordValid) {
+      return res.status(401).json({ error: "Invalid secret key" });
+    }
+
+    // ✅ Step 3: Log activity
+    await logActivity(userId, "Admin logged in");
+
+    return res.json({ success: true, message: "Admin confirmed" });
+  } catch (error) {
+    console.error("Admin confirm error:", error);
+    res.status(500).json({ error: "Server error confirming admin login" });
+  }
+};
+
 
 // Token revocation middleware
 export const checkTokenRevocation = async (req, res, next) => {
@@ -399,24 +467,40 @@ export const verifyToken = async (req, res) => {
 // New logout endpoint
 export const logout = async (req, res) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
-        
+        const { user_id } = req.body; // ✅ receive user_id from request body
+        const token = req.headers.authorization?.split(" ")[1];
+
         if (!token) {
-            return res.status(400).json({ error: 'No token provided' });
+            return res.status(400).json({ error: "No token provided" });
+        }
+
+        if (!user_id) {
+            return res.status(400).json({ error: "No user_id provided" });
+        }
+
+        // Optionally still verify token, but not required if you trust user_id
+        try {
+            jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ error: "Invalid token" });
         }
 
         // Insert the token into revoked_tokens
         await pool.query(
-            'INSERT INTO revoked_tokens (token, revoked_at) VALUES (?, CURRENT_TIMESTAMP)',
+            "INSERT INTO revoked_tokens (token, revoked_at) VALUES (?, CURRENT_TIMESTAMP)",
             [token]
         );
 
+        // ✅ Log the logout activity using provided user_id
+        await logActivity(user_id, "User logged out");
+
         res.json({ success: true });
     } catch (error) {
-        console.error('Logout failed:', error);
-        res.status(500).json({ error: 'Logout failed' });
+        console.error("Logout failed:", error);
+        res.status(500).json({ error: "Logout failed" });
     }
 };
+
 
 export const startPasswordReset = async (req, res) => {
   try {
@@ -504,38 +588,53 @@ export const completePasswordReset = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and new password are required' });
+      return res.status(400).json({ error: "Email and new password are required" });
     }
 
-    // Step 1: Fetch current hashed password from database
-    const [rows] = await pool.query('SELECT password_hash FROM users WHERE email = ?', [email]);
+    // Step 1: Fetch current hashed password + user_id from database
+    const [rows] = await pool.query(
+      "SELECT user_id, password_hash FROM users WHERE email = ?",
+      [email]
+    );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const currentHash = rows[0].password_hash;
+    const { user_id, password_hash: currentHash } = rows[0];
 
     // Step 2: Compare new password with old one
     const isSame = await bcrypt.compare(password, currentHash);
     if (isSame) {
-      return res.status(400).json({ error: 'You are currently using this password.' });
+      return res
+        .status(400)
+        .json({ error: "You are currently using this password." });
     }
 
     // Step 3: Hash and update password
     const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query('UPDATE users SET password_hash = ? WHERE email = ?', [hashedPassword, email]);
+    await pool.query("UPDATE users SET password_hash = ? WHERE email = ?", [
+      hashedPassword,
+      email,
+    ]);
 
     // Step 4: Clean up verification codes (optional)
-    await pool.query('DELETE FROM users_verification_code WHERE email = ?', [email]);
+    await pool.query("DELETE FROM users_verification_code WHERE email = ?", [
+      email,
+    ]);
 
-    return res.status(200).json({ success: true, message: 'Password reset successful' });
+    // ✅ Log the reset activity with correct user_id
+    await logActivity(user_id, "User reset password");
 
+    return res
+      .status(200)
+      .json({ success: true, message: "Password reset successful" });
   } catch (error) {
-    console.error('completePasswordReset error:', error);
-    return res.status(500).json({ error: 'Failed to reset password' });
+    console.error("completePasswordReset error:", error);
+    return res.status(500).json({ error: "Failed to reset password" });
   }
 };
+
 
 
 export const changePassword = async (req, res) => {
@@ -563,6 +662,9 @@ export const changePassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [hashedPassword, server_id]);
+
+    // ✅ Log the reset activity with correct user_id
+    await logActivity(server_id, "User change password");
 
     res.json({ success: true });
   } catch (error) {

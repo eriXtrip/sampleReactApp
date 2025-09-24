@@ -14,12 +14,10 @@ import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { ApiUrlProvider } from '../contexts/ApiUrlContext';
 import { UserProvider } from '../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
+import { SearchProvider } from '../contexts/SearchContext';
 import * as FileSystem from 'expo-file-system';
-import * as Application from 'expo-application';
 import ThemedStatusBar from '../components/ThemedStatusBar';
-import OfflineBanner from '../components/OfflineBanner';
-
-const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
+import { LESSONS_DIR } from '../utils/resolveLocalPath';
 
 // Notification handler
 Notifications.setNotificationHandler({
@@ -155,7 +153,9 @@ const RootLayout = () => {
       <ApiUrlProvider>
         <UserProvider>
           <ProfileProvider>
-            <RootLayoutContent />
+            < SearchProvider >
+              <RootLayoutContent />
+            </SearchProvider>
           </ProfileProvider>
         </UserProvider>
       </ApiUrlProvider>

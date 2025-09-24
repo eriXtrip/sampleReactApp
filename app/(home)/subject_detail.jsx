@@ -33,7 +33,7 @@ const SubjectDetail = () => {
     navigation.setOptions({ headerShown: true });
   }, [navigation]);
 
-  const { type = 'subject', name = '', createdBy = '', schoolYear = '', requiresEnrollmentKey = '', grade = '' } = useLocalSearchParams();
+  const { type = 'subject', name = '', createdBy = '', schoolYear = '', requiresEnrollmentKey = '', grade = '', description = '' } = useLocalSearchParams();
   const accentColor = useMemo(() => typeToAccent[type] || typeToAccent.subject, [type]);
   const iconName = useMemo(() => typeToIcon[type] || 'book', [type]);
 
@@ -76,6 +76,7 @@ const SubjectDetail = () => {
         params: {
           name: String(name),
           createdBy: String(createdBy),
+          description: String(description),
           schoolYear: String(schoolYear),
         },
       });
@@ -135,8 +136,44 @@ const SubjectDetail = () => {
             )}
             </View>
             <Spacer height={8} />
-            <ThemedText style={styles.meta}>School Yr: {String(schoolYear)}</ThemedText>
-            <ThemedText style={styles.meta}>Teacher: {String(createdBy)}</ThemedText>
+            
+            {/* Metadata */}
+            <View style={styles.metaGroup}>
+              {/* School Year / Created at */}
+              <View style={styles.metaItem}>
+                <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+                  {type === 'section' ? 'School Year:' : 'Created at:'}
+                </ThemedText>
+                <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+                  {type === 'section' 
+                    ? String(schoolYear) || '—' 
+                    : (schoolYear ? schoolYear.split('-')[0] : '—')
+                  }
+                </ThemedText>
+              </View>
+
+              {/* Adviser / Created by */}
+              <View style={styles.metaItem}>
+                <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+                  {type === 'section' ? 'Adviser:' : 'Created by:'}
+                </ThemedText>
+                <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+                  {String(createdBy) || '—'}
+                </ThemedText>
+              </View>
+
+              {/* Overview (optional) */}
+              {description ? (
+                <View style={styles.metaItem}>
+                  <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+                    Overview:
+                  </ThemedText>
+                  <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+                    {String(description)}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
           </View>
           <View style={styles.details}>
         <ThemedButton onPress={handlePressEnroll}>
@@ -192,4 +229,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 2,
   },
+  metaGroup: {
+    gap: 12,
+    marginTop: 8,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
+  metaLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    minWidth: 90,
+  },
+  metaValue: {
+    fontSize: 15,
+    flex: 1,
+    flexShrink: 1,
+  },  
 });

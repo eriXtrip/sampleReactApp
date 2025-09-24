@@ -34,7 +34,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     try {
-      const success = await logout();
+      const success = await logout(user.server_id);
       if (success) {
         router.replace('/login');
       } else {

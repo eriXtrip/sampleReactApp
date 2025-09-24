@@ -12,6 +12,7 @@ import {
   verifyCode,
   completeRegistration, 
   login,
+  admin_confirm_login,
   logout,
   startPasswordReset,
   verifyResetCode,
@@ -27,6 +28,10 @@ import {
   generateDownloadLink,
   getFileMetadata,
 } from './controllers/driveController.js';
+import { 
+  getPublicSubjects,
+  getSectionsForSearch,
+} from './controllers/search.js';
 import config from './config.js';
 import os from 'os';
 import dotenv from 'dotenv';
@@ -46,7 +51,7 @@ fsPromises.mkdir(uploadDir, { recursive: true }).catch(err => {
 
 const upload = multer({
   dest: 'Uploads/',
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
 // Middleware
@@ -58,6 +63,7 @@ app.post('/api/auth/start-registration', startRegistration);
 app.post('/api/auth/verify-code', verifyCode);
 app.post('/api/auth/complete-registration', completeRegistration);
 app.post('/api/auth/login', login);
+app.post('/api/auth/admin_confirm_login', admin_confirm_login);
 app.post('/api/auth/logout', logout);
 app.post('/api/auth/start-password-reset', startPasswordReset);
 app.post('/api/auth/verify-reset-code', verifyResetCode);
@@ -65,6 +71,7 @@ app.post('/api/auth/complete-password-reset', completePasswordReset);
 app.post('/api/auth/change-password', changePassword);
 app.post('/api/auth/secure-function', secureFunction);
 app.post('/api/auth/vulnerable-function', vulnerableFunction);
+
 
 // Routes (Google Drive)
 app.post('/api/drive/upload', upload.single('file'), uploadFile);
@@ -77,6 +84,10 @@ app.get('/api/drive/metadata/:id', getFileMetadata);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', db: config.db.database });
 });
+
+// Routes (Search / Public Content)
+app.get('/api/search/subjects', getPublicSubjects);
+app.get('/api/search/sections', getSectionsForSearch);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

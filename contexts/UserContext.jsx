@@ -86,7 +86,7 @@ export function UserProvider({ children }) {
     return await response.json();
   };
 
-  // Login function (updated for new schema)
+  // Login function 
   const login = async (email, password) => {
     try {
         setLoading(true);
@@ -126,7 +126,14 @@ export function UserProvider({ children }) {
             gender: data.user.gender,
             role_id: data.user.role, // Fixed to match server response
             lrn: data.user.lrn || 'N/A',
-            teacher_id: data.user.teacherId || 'N/A'
+            teacher_id: data.user.teacherId || 'N/A',
+            avatar: data.user.avatar ? {
+                id: data.user.avatar.id,
+                fileName: data.user.avatar.fileName,
+                url: data.user.avatar.url,
+                avatar: data.user.avatar.path,
+                thumbnail: data.user.avatar.thumbnail
+            } : null
         };
 
         // Store authentication data and sync to SQLite
@@ -204,7 +211,7 @@ export function UserProvider({ children }) {
     }
   }, [dbInitialized, loadUserSession]);
 
-  const logout = async () => {
+  const logout = async (server_id) => { 
     console.log('🚪 Logging out...');
 
     // 0. Check server reachability first
@@ -212,7 +219,7 @@ export function UserProvider({ children }) {
       const isReachable = await testServerConnection(API_URL);
       if (!isReachable) {
         console.warn('❌ Server not reachable — aborting logout');
-        return false; // <- explicitly return false if server is down
+        return false;
       }
     } catch (err) {
       console.error('❌ Error checking server reachability:', err);
@@ -226,44 +233,61 @@ export function UserProvider({ children }) {
     }
 
     try {
+      // 🔹 Send logout request to server with server_id
+      const token = await SecureStore.getItemAsync("authToken");
+
+      const response = await fetch(`${API_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ user_id: server_id }) // ✅ include server_id here
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Logout failed on server");
+      }
+
       // 2. Clear SecureStore
       await Promise.all([
-        SecureStore.deleteItemAsync('authToken'),
-        SecureStore.deleteItemAsync('userData'),
+        SecureStore.deleteItemAsync("authToken"),
+        SecureStore.deleteItemAsync("userData"),
       ]);
-      console.log('🧹 SecureStore cleared');
+      console.log("🧹 SecureStore cleared");
 
       // 3. Clear local DB if available
       if (dbInitialized && UserService.db) {
         try {
           await UserService.clearUserData();
-          console.log('🧹 Local DB user data cleared');
+          console.log("🧹 Local DB user data cleared");
         } catch (dbError) {
-          console.warn('⚠️ Failed to clear user data:', dbError);
+          console.warn("⚠️ Failed to clear user data:", dbError);
         }
       } else {
-        console.warn('⚠️ DB not ready — skipped clearing user data');
+        console.warn("⚠️ DB not ready — skipped clearing user data");
       }
 
       // 4. Clear React state
       setUser(null);
-      console.log('✅ Logout successful');
+      console.log("✅ Logout successful");
 
       // 5. Close database connection safely
       try {
         if (UserService.db) {
           await UserService.db.closeAsync();
-          console.log('🔒 Database closed after logout');
+          console.log("🔒 Database closed after logout");
           UserService.db = null;
         }
       } catch (closeError) {
-        console.warn('⚠️ Failed to close DB after logout:', closeError);
+        console.warn("⚠️ Failed to close DB after logout:", closeError);
       }
 
-      return true; // <- only return true if everything went fine
+      return true;
 
     } catch (logoutError) {
-      console.error('❌ Logout failed:', logoutError);
+      console.error("❌ Logout failed:", logoutError);
       return false;
     }
   };
