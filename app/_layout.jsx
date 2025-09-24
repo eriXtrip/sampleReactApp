@@ -15,6 +15,7 @@ import { ApiUrlProvider } from '../contexts/ApiUrlContext';
 import { UserProvider } from '../contexts/UserContext';
 import { SQLiteProvider } from 'expo-sqlite';
 import { SearchProvider } from '../contexts/SearchContext';
+import { EnrollmentProvider } from '../contexts/EnrollmentContext';
 import * as FileSystem from 'expo-file-system';
 import ThemedStatusBar from '../components/ThemedStatusBar';
 import { LESSONS_DIR } from '../utils/resolveLocalPath';
@@ -153,8 +154,10 @@ const RootLayout = () => {
       <ApiUrlProvider>
         <UserProvider>
           <ProfileProvider>
-            < SearchProvider >
-              <RootLayoutContent />
+            <SearchProvider>
+              <EnrollmentProvider>
+                <RootLayoutContent/>
+              </EnrollmentProvider>
             </SearchProvider>
           </ProfileProvider>
         </UserProvider>

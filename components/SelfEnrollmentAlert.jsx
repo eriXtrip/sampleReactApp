@@ -1,3 +1,5 @@
+// SAMPLEREACTAPP/components/SelfEnrollmentAlert.jsx
+
 import React, { useContext, useState } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,12 +10,14 @@ import { ProfileContext } from '../contexts/ProfileContext';
 import ThemedText from './ThemedText';
 import ThemedButton from './ThemedButton';
 import ThemedPasswordInput from './ThemedPasswordInput';
+import { EnrollmentContext } from '../contexts/EnrollmentContext';
 
 const SelfEnrollmentAlert = ({ visible, onClose, onEnroll }) => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
+  const { loading } = useContext(EnrollmentContext);
   const [keyValue, setKeyValue] = useState('');
 
   // Use a Modal so KeyboardAvoidingView can move the content when keyboard opens
@@ -42,16 +46,18 @@ const SelfEnrollmentAlert = ({ visible, onClose, onEnroll }) => {
 
             <ThemedText style={[styles.title, { color: theme.title }]}>Self enrolment (Pupil)</ThemedText>
 
-            {/* Increase height/padding so the eye icon aligns vertically.
-                Add extra right padding to make room for the eye icon. */}
             <ThemedPasswordInput
               value={keyValue}
               onChangeText={setKeyValue}
               placeholder="Enrollment key"
             />
 
-            <ThemedButton style={{ marginTop: 50 }} onPress={() => onEnroll?.(keyValue)}>
-              Enroll Now
+            <ThemedButton 
+              style={{ marginTop: 50 }} 
+              onPress={() => onEnroll?.(keyValue)}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Enroll Now'}
             </ThemedButton>
           </View>
         </View>

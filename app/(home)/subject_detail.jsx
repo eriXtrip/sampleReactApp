@@ -1,5 +1,7 @@
+// SAMPLEREACTNATIVE/app/(home)/subject_details.jsx
+
 import React, { useContext, useLayoutEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Alert } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -8,6 +10,8 @@ import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import ThemedButton from '../../components/ThemedButton';
 import SelfEnrollmentAlert from '../../components/SelfEnrollmentAlert';
+import { UserContext } from '../../contexts/UserContext';
+import { useEnrollment } from '../../contexts/EnrollmentContext';
 import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
@@ -26,20 +30,38 @@ const SubjectDetail = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-
+  const { user } = useContext(UserContext);
+  const { 
+    enrollInSubject,
+    checkSectionRequiresKey,
+    enrollInSectionWithKey,
+    enrollInSectionWithoutKey,
+    loading: enrolling 
+  } = useEnrollment();
+  
   const navigation = useNavigation();
   const router = useRouter();
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true });
   }, [navigation]);
 
-  const { type = 'subject', name = '', createdBy = '', schoolYear = '', requiresEnrollmentKey = '', grade = '', description = '' } = useLocalSearchParams();
+  const { 
+    type = 'subject', 
+    name = '', 
+    createdBy = '', 
+    schoolYear = '', 
+    requiresEnrollmentKey = '', 
+    grade = '', 
+    description = '',
+    subjectId,
+    sectionId
+  } = useLocalSearchParams();
+
   const accentColor = useMemo(() => typeToAccent[type] || typeToAccent.subject, [type]);
   const iconName = useMemo(() => typeToIcon[type] || 'book', [type]);
 
   const bannerHeight = Math.round(Dimensions.get('window').height * 0.2);
 
-  // Parse title and grade for navigation
   const parseTitleAndGrade = (rawName, rawGrade) => {
     if (rawGrade) return { title: String(rawName), grade: String(rawGrade) };
     const m = String(rawName).match(/^(.*)\s+(Grade\s*\d+|G\s*\d+)$/i);
@@ -69,51 +91,63 @@ const SubjectDetail = () => {
 
   const [showEnroll, setShowEnroll] = useState(false);
 
-  const handlePressEnroll = () => {
-    if (type === 'section') {
-      router.push({
-        pathname: '/section_page',
-        params: {
-          name: String(name),
-          createdBy: String(createdBy),
-          description: String(description),
-          schoolYear: String(schoolYear),
-        },
-      });
+  // ✅ NEW: Handle enrollment based on type
+  const handlePressEnroll = async () => {
+    if (!user?.server_id) {
+      Alert.alert('Error', 'User not authenticated');
       return;
     }
 
-    if (requiresEnrollmentKey === true || String(requiresEnrollmentKey) === 'true') {
-      setShowEnroll(true);
-    } else {
-      // No key required: go directly to subject_page with attached details
-      navigateToSubjectPage();
+    try {
+      if (type === 'subject') {
+        // Enroll in subject (always public, no key needed)
+        await enrollInSubject(user.server_id, parseInt(subjectId));
+        navigateToSubjectPage();
+      } else if (type === 'section') {
+        // Check if section requires enrollment key
+        const requiresKey = await checkSectionRequiresKey(parseInt(sectionId));
+        
+        if (requiresKey) {
+          // Show enrollment key modal
+          setShowEnroll(true);
+        } else {
+          // Enroll directly (no key needed)
+          await enrollInSectionWithoutKey(user.server_id, parseInt(sectionId));
+          navigateToSubjectPage();
+        }
+      }
+    } catch (error) {
+      Alert.alert('Enrollment Failed', error.message || 'Please try again');
     }
   };
 
-  const handleConfirmEnroll = (keyValue) => {
-    // TODO: validate and submit the key if needed
-    setShowEnroll(false);
-    // After confirming enrollment, navigate to subject_page with details
-    navigateToSubjectPage();
+  const handleConfirmEnroll = async (keyValue) => {
+    if (!user?.server_id) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    try {
+      await enrollInSectionWithKey(user.server_id, parseInt(sectionId), keyValue);
+      setShowEnroll(false);
+      navigateToSubjectPage();
+    } catch (error) {
+      Alert.alert('Enrollment Failed', error.message || 'Invalid key');
+    }
   };
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      
-      {/* Accent banner with centered icon */}
       <View style={[styles.banner, { backgroundColor: accentColor, height: bannerHeight }]}>
         <Ionicons name={iconName} size={56} color="#fff" />
       </View>
 
       <Spacer height={12} />
 
-      {/* Details */}
-        <View
-          style={[
-            styles.details,
-            {
-          // pull up to overlap the accent banner
+      <View
+        style={[
+          styles.details,
+          {
             marginTop: -Math.round(bannerHeight * 0.18),
             borderRadius: 12,
             backgroundColor: theme.background,
@@ -121,63 +155,63 @@ const SubjectDetail = () => {
             paddingBottom: 16,
             shadowRadius: 8,
             overflow: 'hidden',
-            },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ThemedText style={styles.title}>{String(name)}</ThemedText>
-            {(requiresEnrollmentKey === 'true' || requiresEnrollmentKey === true) && (
-              <Ionicons
+          },
+        ]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <ThemedText style={styles.title}>{String(name)}</ThemedText>
+          {(type === 'section' && requiresEnrollmentKey === 'true') && (
+            <Ionicons
               name="key"
               size={18}
               color={theme.notifColor}
               style={{ marginLeft: 8 }}
-              />
-            )}
-            </View>
-            <Spacer height={8} />
-            
-            {/* Metadata */}
-            <View style={styles.metaGroup}>
-              {/* School Year / Created at */}
-              <View style={styles.metaItem}>
-                <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
-                  {type === 'section' ? 'School Year:' : 'Created at:'}
-                </ThemedText>
-                <ThemedText style={[styles.metaValue, { color: theme.text }]}>
-                  {type === 'section' 
-                    ? String(schoolYear) || '—' 
-                    : (schoolYear ? schoolYear.split('-')[0] : '—')
-                  }
-                </ThemedText>
-              </View>
-
-              {/* Adviser / Created by */}
-              <View style={styles.metaItem}>
-                <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
-                  {type === 'section' ? 'Adviser:' : 'Created by:'}
-                </ThemedText>
-                <ThemedText style={[styles.metaValue, { color: theme.text }]}>
-                  {String(createdBy) || '—'}
-                </ThemedText>
-              </View>
-
-              {/* Overview (optional) */}
-              {description ? (
-                <View style={styles.metaItem}>
-                  <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
-                    Overview:
-                  </ThemedText>
-                  <ThemedText style={[styles.metaValue, { color: theme.text }]}>
-                    {String(description)}
-                  </ThemedText>
-                </View>
-              ) : null}
-            </View>
+            />
+          )}
+        </View>
+        <Spacer height={8} />
+        
+        <View style={styles.metaGroup}>
+          <View style={styles.metaItem}>
+            <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+              {type === 'section' ? 'School Year:' : 'Created at:'}
+            </ThemedText>
+            <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+              {type === 'section' 
+                ? String(schoolYear) || '—' 
+                : (schoolYear ? schoolYear.split('-')[0] : '—')
+              }
+            </ThemedText>
           </View>
-          <View style={styles.details}>
-        <ThemedButton onPress={handlePressEnroll}>
-          Enroll Me
+
+          <View style={styles.metaItem}>
+            <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+              {type === 'section' ? 'Adviser:' : 'Created by:'}
+            </ThemedText>
+            <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+              {String(createdBy) || '—'}
+            </ThemedText>
+          </View>
+
+          {description ? (
+            <View style={styles.metaItem}>
+              <ThemedText style={[styles.metaLabel, { color: theme.textSecondary || theme.text }]}>
+                Overview:
+              </ThemedText>
+              <ThemedText style={[styles.metaValue, { color: theme.text }]}>
+                {String(description)}
+              </ThemedText>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      
+      <View style={styles.details}>
+        <ThemedButton 
+          onPress={handlePressEnroll}
+          disabled={enrolling}
+        >
+          {enrolling ? 'Processing...' : 'Enroll Me'}
         </ThemedButton>
       </View>
 
@@ -187,7 +221,6 @@ const SubjectDetail = () => {
         onEnroll={handleConfirmEnroll}
       />
       
-
       <Spacer height={20} />
     </ThemedView>
   );

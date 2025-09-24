@@ -36,7 +36,7 @@ const SearchPage = () => {
 
   useEffect(() => {
     if (user) {
-      fetchPublicSubjects();
+      fetchPublicSubjects(user.server_id);
       fetchAvailableSections(user.server_id); // ✅ pass user ID
     }
   }, [user?.server_id, fetchPublicSubjects, fetchAvailableSections, user]);
@@ -51,19 +51,17 @@ const SearchPage = () => {
     if (activeTab === 'subjects') {
       return subjects.filter(subject => {
         const subjectNameMatch = subject.subject_name.toLowerCase().includes(query);
-        const descriptionMatch = subject.description?.toLowerCase().includes(query) || false;
         const teacherName = `${subject.created_by_first || ''} ${subject.created_by_last || ''}`.toLowerCase();
         const teacherMatch = teacherName.includes(query);
 
-        return subjectNameMatch || descriptionMatch || teacherMatch;
+        return subjectNameMatch || teacherMatch;
       });
     } else {
       return sections.filter(section => {
         const sectionNameMatch = section.section_name.toLowerCase().includes(query);
         const teacherMatch = section.teacher.toLowerCase().includes(query);
-        const schoolYearMatch = section.school_year.toLowerCase().includes(query);
 
-        return sectionNameMatch || teacherMatch || schoolYearMatch;
+        return sectionNameMatch || teacherMatch;
       });
     }
   }, [activeTab, searchQuery, subjects, sections]);
@@ -114,6 +112,7 @@ const SearchPage = () => {
                 name: item.section_name,
                 createdBy: item.teacher,
                 schoolYear: item.school_year,
+                enrollment_key: item.enrollment_key,
               },
             })
           }
@@ -231,7 +230,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 16,
     backgroundColor: '#d5d7d82a',
-    borderRadius: 20,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   tab: {

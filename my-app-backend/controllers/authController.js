@@ -479,11 +479,11 @@ export const logout = async (req, res) => {
         }
 
         // Optionally still verify token, but not required if you trust user_id
-        try {
-            jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
-            return res.status(401).json({ error: "Invalid token" });
-        }
+        // try {
+        //     jwt.verify(token, process.env.JWT_SECRET);
+        // } catch (err) {
+        //     return res.status(401).json({ error: "Invalid token" });
+        // }
 
         // Insert the token into revoked_tokens
         await pool.query(

@@ -217,6 +217,7 @@ export function UserProvider({ children }) {
     // 0. Check server reachability first
     try {
       const isReachable = await testServerConnection(API_URL);
+      console.log("api in logout: ", API_URL);
       if (!isReachable) {
         console.warn('❌ Server not reachable — aborting logout');
         return false;
@@ -242,7 +243,7 @@ export function UserProvider({ children }) {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ user_id: server_id }) // ✅ include server_id here
+        body: JSON.stringify({ user_id: server_id }) // ✅ include server_id
       });
 
       const data = await response.json();

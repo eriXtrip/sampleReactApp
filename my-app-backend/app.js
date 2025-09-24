@@ -32,6 +32,10 @@ import {
   getPublicSubjects,
   getSectionsForSearch,
 } from './controllers/search.js';
+import { 
+  verifyEnrollment,
+  checkSectionRequiresKey
+} from './controllers/enrollment.js';
 import config from './config.js';
 import os from 'os';
 import dotenv from 'dotenv';
@@ -88,6 +92,10 @@ app.get('/api/health', (req, res) => {
 // Routes (Search / Public Content)
 app.get('/api/search/subjects', getPublicSubjects);
 app.get('/api/search/sections', getSectionsForSearch);
+
+// Routes (Enrollment)
+app.post('/api/enrollment/verify', verifyEnrollment);
+app.get('/api/enrollment/section/:sectionId/requires-key', checkSectionRequiresKey);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

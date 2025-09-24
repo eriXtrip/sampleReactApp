@@ -25,19 +25,21 @@ export function SearchProvider({ children }) {
     })();
   }, []);
 
-  const fetchPublicSubjects = useCallback(async () => {
+  const fetchPublicSubjects = useCallback(async (userId) => {
     // Guard: don't fetch if URL isn't ready
-    if (!API_URL) {
-      console.warn('⚠️ API URL not ready yet');
+    if (!API_URL || !userId) {
+      console.warn('⚠️ Missing API_URL or userId in fetchPublicSubjects');
       return;
     }
+
+    console.log("user_id in fetchPublicSubjects: ", userId);
 
     console.log('🔍 Starting fetch to:', `${API_URL}/search/subjects`);
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/search/subjects`, {
+      const response = await fetch(`${API_URL}/search/subjects?user_id=${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -82,6 +84,7 @@ export function SearchProvider({ children }) {
       }
 
       const data = await response.json();
+      console.log('✅ Sections received:', data.sections);
       setSections(data.sections || []);
     } catch (err) {
       console.error('❌ Error fetching sections:', err);
