@@ -115,6 +115,7 @@ export class UserService {
     }
   }
 
+
   static async hasChanges(existingUser, serverUser) {
     const fieldsToCheck = [
       'server_id', 'first_name', 'last_name', 'role_id', 'lrn', 
@@ -125,5 +126,31 @@ export class UserService {
       existingUser[field] !== serverUser[field] &&
       !(existingUser[field] == null && serverUser[field] == null)
     );
+  }
+
+  static async safeClearAndClose() {
+    if (!this.db) {
+      console.warn("⚠️ safeClearAndClose: DB is null, skipping");
+      return;
+    }
+
+    try {
+      // Try clearing user-related tables
+      await this.clearUserData();
+      console.log("🧹 User data cleared");
+    } catch (err) {
+      console.warn("⚠️ Error clearing user data:", err);
+    }
+
+    try {
+      // Now close the DB
+      await this.db.closeAsync();
+      console.log("🔒 Database closed");
+    } catch (err) {
+      console.warn("⚠️ Error closing DB:", err);
+    } finally {
+      // Always reset the handle
+      this.db = null;
+    }
   }
 }

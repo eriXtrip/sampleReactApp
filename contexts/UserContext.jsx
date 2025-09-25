@@ -92,6 +92,16 @@ export function UserProvider({ children }) {
         setLoading(true);
         console.log('Attempting login with:', { email });
 
+        // 🔹 If DB exists, clear previous user data first
+        if (UserService.db) {
+          try {
+            console.log("🧹 Clearing old user data before login...");
+            await UserService.clearUserData();
+          } catch (clearErr) {
+            console.warn("⚠️ Failed to clear old user data:", clearErr);
+          }
+        }
+
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -258,32 +268,16 @@ export function UserProvider({ children }) {
       ]);
       console.log("🧹 SecureStore cleared");
 
-      // 3. Clear local DB if available
+      // 3. Clear + close DB in one safe call
       if (dbInitialized && UserService.db) {
-        try {
-          await UserService.clearUserData();
-          console.log("🧹 Local DB user data cleared");
-        } catch (dbError) {
-          console.warn("⚠️ Failed to clear user data:", dbError);
-        }
+        await UserService.safeClearAndClose(); // Safe clear + close in UserService
       } else {
-        console.warn("⚠️ DB not ready — skipped clearing user data");
+        console.warn("⚠️ DB not ready — skipped clear/close");
       }
 
       // 4. Clear React state
       setUser(null);
       console.log("✅ Logout successful");
-
-      // 5. Close database connection safely
-      try {
-        if (UserService.db) {
-          await UserService.db.closeAsync();
-          console.log("🔒 Database closed after logout");
-          UserService.db = null;
-        }
-      } catch (closeError) {
-        console.warn("⚠️ Failed to close DB after logout:", closeError);
-      }
 
       return true;
 
