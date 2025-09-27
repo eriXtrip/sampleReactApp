@@ -18,7 +18,6 @@ export default function AuthLayout() {
     return (
         <SQLiteProvider 
             databaseName="mquest.db" 
-            onInit={initializeDatabase}
         >
             <UserProvider>
                 {/* Android-specific status bar handling */}

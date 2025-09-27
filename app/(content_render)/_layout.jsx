@@ -36,7 +36,7 @@ export default function ContentRenderLayout() {
   );
 
   return (
-    <SQLiteProvider databaseName="mydatabase.db">
+    <SQLiteProvider databaseName="mquest.db">
       <UserProvider>
         <Stack screenOptions={screenOptions}>
           <Stack.Screen

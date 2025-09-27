@@ -1,24 +1,25 @@
 // app/_layout.jsx
-
+import { useEffect, useContext } from 'react';
 import { useColorScheme, Alert, Platform, Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
-import { ProfileProvider } from '../contexts/ProfileContext';
-import * as Notifications from 'expo-notifications';
-import { useEffect } from 'react';
-import { PermissionsAndroid } from 'react-native';
-import { useContext } from 'react';
-import { ProfileContext } from '../contexts/ProfileContext';
-import { ApiUrlContext } from '../contexts/ApiUrlContext';
-import { ApiUrlProvider } from '../contexts/ApiUrlContext';
+import { ProfileProvider, ProfileContext } from '../contexts/ProfileContext';
+import { ApiUrlProvider, ApiUrlContext } from '../contexts/ApiUrlContext';
 import { UserProvider } from '../contexts/UserContext';
-import { SQLiteProvider } from 'expo-sqlite';
 import { SearchProvider } from '../contexts/SearchContext';
 import { EnrollmentProvider } from '../contexts/EnrollmentContext';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
+import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
-import ThemedStatusBar from '../components/ThemedStatusBar';
+import { PermissionsAndroid } from 'react-native';
+import DatabaseBinder from './DatabaseBinder';
+
 import { LESSONS_DIR } from '../utils/resolveLocalPath';
+import { initializeDatabase } from '../local-database/services/database';
+import UserService from '../local-database/services/userService';
+import ThemedStatusBar from '../components/ThemedStatusBar';
+
 
 // Notification handler
 Notifications.setNotificationHandler({
@@ -104,6 +105,7 @@ const RootLayoutContent = () => {
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
+
   const { isApiLoaded } = useContext(ApiUrlContext);
 
   useEffect(() => {
@@ -121,6 +123,20 @@ const RootLayoutContent = () => {
       }
       await askNotificationPermission();
     })();
+  }, []);
+
+  useEffect(() => {
+    let lastPath = null;
+    const un = setInterval(() => {
+      try {
+        const db = useSQLiteContext(); // only valid inside component; else adapt
+        if (db && db.databasePath !== lastPath) {
+          lastPath = db.databasePath;
+          console.trace('DB path changed ->', db.databasePath); // traces call stack
+        }
+      } catch (e) {}
+    }, 1000);
+    return () => clearInterval(un);
   }, []);
 
   return (
@@ -150,7 +166,8 @@ const RootLayoutContent = () => {
 
 const RootLayout = () => {
   return (
-    <SQLiteProvider databaseName="mydatabase.db">
+    <SQLiteProvider databaseName="mquest.db">
+      <DatabaseBinder />
       <ApiUrlProvider>
         <UserProvider>
           <ProfileProvider>

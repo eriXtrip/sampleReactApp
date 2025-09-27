@@ -5,7 +5,7 @@ import ThemedTabs from '../../components/ThemedTabs';
 
 export default function DashboardLayout() {
   return (
-    <SQLiteProvider databaseName="mydatabase.db">
+    <SQLiteProvider databaseName="mquest.db">
       <ProfileProvider>
         <UserProvider>
           <ThemedTabs />

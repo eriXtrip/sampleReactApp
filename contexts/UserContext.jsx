@@ -1,11 +1,12 @@
 // SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as SecureStore from 'expo-secure-store';
-import { UserService } from '../local-database/services/userService';
+import  UserService  from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
 import { testServerConnection } from '../local-database/services/testServerConnection';
 import { triggerLocalNotification } from '../utils/notificationUtils';
+import { saveSyncDataToSQLite } from '../local-database/services/syncService';
 import { getApiUrl } from '../utils/apiManager.js';
 
 export const UserContext = createContext();
@@ -21,6 +22,10 @@ export function UserProvider({ children }) {
   const db = useSQLiteContext();
 
   useEffect(() => {
+    console.log("🔍 useSQLiteContext db in UserContext:", db);
+  }, [db]);
+
+  useEffect(() => {
     (async () => {
       const url = await getApiUrl();
       setApiUrl(url);
@@ -32,21 +37,30 @@ export function UserProvider({ children }) {
   // Initialize database using database.js
   useEffect(() => {
     const initDb = async () => {
-      if (!db) return;
-      
-      try {
-        await initializeDatabase(db);
-        UserService.setDatabase(db);
+      if (!db) {
+        console.warn("⏳ Database not ready yet in UserContext");
+        return;
+      }
+
+      // Only initialize if UserService doesn't already have a db (set by DatabaseBinder)
+      if (!UserService.db) {
+        try {
+          await initializeDatabase(db);
+          UserService.setDatabase(db);
+          console.log("✅ Database initialized successfully (UserContext)");
+        } catch (error) {
+          console.error("❌ Database initialization error in UserContext:", error);
+        } finally {
+          setDbInitialized(true);
+        }
+      } else {
+        console.log("⚡ UserService already has a DB from DatabaseBinder");
         setDbInitialized(true);
-        console.log('Database initialized successfully');
-      } catch (error) {
-        console.error('Database initialization error:', error);
-        setDbInitialized(true); // Continue anyway (consider revising)
       }
     };
 
     initDb();
-  }, [db]);
+  }, [db]); // ✅ dependency array must be separate
 
   // Registration functions (unchanged)
   const startRegistration = async (data) => {
@@ -86,83 +100,147 @@ export function UserProvider({ children }) {
     return await response.json();
   };
 
-  // Login function 
-  const login = async (email, password) => {
+  // Helper: fetch with timeout
+  const fetchWithTimeout = async (url, options = {}, timeout = 15000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
     try {
-        setLoading(true);
-        console.log('Attempting login with:', { email });
-
-        // 🔹 If DB exists, clear previous user data first
-        if (UserService.db) {
-          try {
-            console.log("🧹 Clearing old user data before login...");
-            await UserService.clearUserData();
-          } catch (clearErr) {
-            console.warn("⚠️ Failed to clear old user data:", clearErr);
-          }
-        }
-
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await response.json();
-        console.log('Initial login response:', {
-            ok: response.ok,
-            status: response.status,
-            userData: data.user,
-            hasToken: !!data.token,
-            error: data.error
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error(data.error);
-            }
-            throw new Error(data.error || 'Login failed. Please try again.');
-        }
-
-        // Transform server data to match new SQLite schema
-        const userDataForSync = {
-            server_id: data.user.id,
-            email: data.user.email,
-            first_name: data.user.firstName,
-            middle_name: data.user.middleName || 'N/A',
-            last_name: data.user.lastName,
-            suffix: data.user.suffix || 'N/A',
-            birth_date: data.user.birthday,
-            gender: data.user.gender,
-            role_id: data.user.role, // Fixed to match server response
-            lrn: data.user.lrn || 'N/A',
-            teacher_id: data.user.teacherId || 'N/A',
-            avatar: data.user.avatar ? {
-                id: data.user.avatar.id,
-                fileName: data.user.avatar.fileName,
-                url: data.user.avatar.url,
-                avatar: data.user.avatar.path,
-                thumbnail: data.user.avatar.thumbnail
-            } : null
-        };
-
-        // Store authentication data and sync to SQLite
-        await Promise.all([
-            SecureStore.setItemAsync('authToken', data.token),
-            SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync)),
-            UserService.syncUser(userDataForSync, data.token)
-        ]);
-
-        await triggerLocalNotification('✅ Login Successful', `Welcome back, ${userDataForSync.first_name}`);
-        setUser(userDataForSync);
-        return { success: true, user: userDataForSync };
-    } catch (error) {
-        await UserService.clearUserData();
-        throw new Error(error.message); // Preserve specific error message
-    } finally {
-        setLoading(false);
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return res;
+    } catch (err) {
+      clearTimeout(id);
+      throw err;
     }
   };
+
+  const login = async (email, password) => {
+    try {
+      setLoading(true);
+      console.log('Attempting login with:', { email, API_URL, dbInitialized, hasUserServiceDb: !!UserService.db });
+
+      // defensive: ensure API_URL & db
+      if (!API_URL) {
+        throw new Error('API_URL not set yet');
+      }
+      if (!db) {
+        console.warn('⚠️ login: local db (useSQLiteContext) is not available. Aborting sync steps.');
+      }
+
+      // clear previous user rows (if DB available)
+      try {
+        if (UserService && UserService.db) {
+          console.log('Clearing existing user data via UserService');
+          await UserService.clearUserData(db); // pass db or fallback inside method
+        }
+      } catch (clearErr) {
+        console.warn('Failed clearing user data (non-fatal):', clearErr);
+      }
+
+      // call login endpoint
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json().catch(() => null);
+      console.log('Initial login response:', {
+        ok: response.ok,
+        status: response.status,
+        hasBody: !!data,
+        error: data?.error
+      });
+
+      if (!response.ok) {
+        const msg = data?.error || `Login HTTP ${response.status}`;
+        throw new Error(msg);
+      }
+
+      const userDataForSync = {
+        server_id: data.user.id,
+        email: data.user.email,
+        first_name: data.user.firstName,
+        middle_name: data.user.middleName || 'N/A',
+        last_name: data.user.lastName,
+        suffix: data.user.suffix || 'N/A',
+        birth_date: data.user.birthday,
+        gender: data.user.gender,
+        role_id: data.user.role,
+        lrn: data.user.lrn || 'N/A',
+        teacher_id: data.user.teacherId || 'N/A',
+        avatar: data.user.avatar ? {
+          id: data.user.avatar.id,
+          fileName: data.user.avatar.fileName,
+          url: data.user.avatar.url,
+          avatar: data.user.avatar.avatar,
+          thumbnail: data.user.avatar.thumbnail
+        } : null
+      };
+
+      // store auth token and userData sequentially so we know exactly what failed
+      try {
+        console.log('Saving token and userData to SecureStore...');
+        await SecureStore.setItemAsync('authToken', data.token);
+        await SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync));
+        console.log('SecureStore write OK');
+      } catch (storeErr) {
+        console.error('Failed to save token/userData to SecureStore:', storeErr);
+        // decide whether to continue; here we continue to local DB sync
+      }
+
+      // Sync user row into local DB using the live db (db from useSQLiteContext())
+      try {
+        console.log('Running UserService.syncUser(...)');
+        await UserService.syncUser(userDataForSync, data.token, db); // pass db explicitly
+        console.log('UserService.syncUser completed');
+      } catch (usrSyncErr) {
+        console.warn('UserService.syncUser failed (non-fatal):', usrSyncErr);
+        // continue to full sync attempt (or decide to abort)
+      }
+
+      await triggerLocalNotification('✅ Login Successful', `Welcome back, ${userDataForSync.first_name}`);
+      setUser(userDataForSync);
+
+      // Fetch full sync data then save to sqlite (guard db)
+      try {
+        if (!db) {
+          console.warn('⚠️ Skipping full sync: db unavailable');
+        } else {
+          console.log('Fetching /user/sync-data from server...');
+          const syncRes = await fetchWithTimeout(`${API_URL}/user/sync-data`, {
+            headers: { Authorization: `Bearer ${data.token}` }
+          }, 15000);
+
+          if (!syncRes.ok) {
+            const text = await syncRes.text().catch(() => '<no body>');
+            throw new Error(`Sync endpoint returned ${syncRes.status}: ${text}`);
+          }
+
+          const syncData = await syncRes.json().catch((e) => {
+            throw new Error('Invalid JSON from sync endpoint: ' + e?.message);
+          });
+
+          console.log('Saving full sync payload into local DB (saveSyncDataToSQLite)...');
+          await saveSyncDataToSQLite(syncData, db); // pass same db
+          console.log('✅ Full sync completed');
+        }
+      } catch (syncErr) {
+        console.warn('Sync failed:', syncErr);
+      }
+
+      return { success: true, user: userDataForSync };
+    } catch (error) {
+      // don't swallow the real error — log then rethrow so caller/UI sees it
+      console.error('Login flow error:', error);
+      // try best-effort cleanup
+      try { await UserService.clearUserData(db); } catch (_) {}
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // Load user session on initial render
   const loadUserSession = useCallback(async () => {
@@ -185,7 +263,7 @@ export function UserProvider({ children }) {
       }
 
       const dbUser = await UserService.getCurrentUser();
-      console.log('User from local DB:', dbUser);
+      await UserService.display_sqliteDatabase();
 
       if (dbUser) {
         setUser(dbUser);
@@ -270,7 +348,7 @@ export function UserProvider({ children }) {
 
       // 3. Clear + close DB in one safe call
       if (dbInitialized && UserService.db) {
-        await UserService.safeClearAndClose(); // Safe clear + close in UserService
+        await UserService.clearAllUserData(); // Safe clear + close in UserService
       } else {
         console.warn("⚠️ DB not ready — skipped clear/close");
       }

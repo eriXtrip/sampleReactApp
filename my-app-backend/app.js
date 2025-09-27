@@ -36,6 +36,12 @@ import {
   verifyEnrollment,
   checkSectionRequiresKey
 } from './controllers/enrollment.js';
+import { 
+  getSyncData
+} from './controllers/userSyncController.js';
+import { 
+  authenticateToken 
+} from './middleware/authenticateToken.js'; // your JWT middleware
 import config from './config.js';
 import os from 'os';
 import dotenv from 'dotenv';
@@ -96,6 +102,9 @@ app.get('/api/search/sections', getSectionsForSearch);
 // Routes (Enrollment)
 app.post('/api/enrollment/verify', verifyEnrollment);
 app.get('/api/enrollment/section/:sectionId/requires-key', checkSectionRequiresKey);
+
+// Sync route (protected)
+app.get('/api/user/sync-data', authenticateToken, getSyncData);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

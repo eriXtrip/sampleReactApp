@@ -1,3 +1,5 @@
+// my-app-backend/middleware/authHelpers.js
+
 import jwt from 'jsonwebtoken';
 import pool from '../services/db.js';
 

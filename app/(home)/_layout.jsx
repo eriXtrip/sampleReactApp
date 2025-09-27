@@ -35,7 +35,7 @@ export default function HomeLayout() {
   );
 
   return (
-    <SQLiteProvider databaseName="mydatabase.db">
+    <SQLiteProvider databaseName="mquest.db">
       <ProfileProvider>
         <UserProvider>
           <Stack screenOptions={screenOptions}>
