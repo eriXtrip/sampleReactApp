@@ -18,9 +18,7 @@ import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ensureLessonFile } from '../../utils/fileHelper';
-import  lessonData from '../../data/lessonData';
-
-const { LESSON_CARDS, LESSON_TYPE_ICON_MAP, SUBJECT_ICON_MAP } = lessonData;
+import { LESSONS, LESSON_TYPE_ICON_MAP, SUBJECT_ICON_MAP } from '../../data/lessonData';
 
 const SubjectPage = () => {
   const colorScheme = useColorScheme();
@@ -114,29 +112,29 @@ const SubjectPage = () => {
 
 
    // check if files exist in documentDirectory
-  useEffect(() => {
-    (async () => {
-      const status = {};
+  // useEffect(() => {
+  //   (async () => {
+  //     const status = {};
 
-      for (let item of LESSON_CARDS) {
-        if (!item.file) {  // use file instead of content
-          status[item.id] = false;
-          continue;
-        }
+  //     for (let item of LESSON_CARDS) {
+  //       if (!item.file) {  // use file instead of content
+  //         status[item.id] = false;
+  //         continue;
+  //       }
 
-        const targetUri = `${LESSONS_DIR}${item.file}`; // use file as filename
+  //       const targetUri = `${LESSONS_DIR}${item.file}`; // use file as filename
 
-        try {
-          const fileInfo = await FileSystem.getInfoAsync(targetUri);
-          status[item.id] = fileInfo.exists;  // true if saved locally
-        } catch {
-          status[item.id] = false;
-        }
-      }
+  //       try {
+  //         const fileInfo = await FileSystem.getInfoAsync(targetUri);
+  //         status[item.id] = fileInfo.exists;  // true if saved locally
+  //       } catch {
+  //         status[item.id] = false;
+  //       }
+  //     }
 
-      setDownloadedFiles(status);
-    })();
-  }, []);
+  //     setDownloadedFiles(status);
+  //   })();
+  // }, []);
 
 
   
@@ -144,87 +142,60 @@ const SubjectPage = () => {
 
   const renderLessonCard = ({ item }) => {
     const isSelected = selectedIds.has(item.id);
-    const iconName = LESSON_TYPE_ICON_MAP[item.type] || 'book-outline';
-
-    // left border green when done === '1'
-    const rawDone = item?.status ?? item?.done ?? false;
-    const isDone = rawDone === true || rawDone === 'true' || rawDone === 1 || rawDone === '1';
+    const isDone = item.status === true; // or check truthy values like 1/"true" if needed
 
     return (
       <TouchableOpacity
-        onPress={async () => {
+        onPress={() => {
           if (selectionMode) {
             toggleSelect(item.id);
           } else {
             router.push({
-              pathname: '/content_details',
+              pathname: '/lesson_page',
               params: {
+                id: item.id,
                 title: item.title,
-                type: item.type,
-                status: item.status,
-                shortDescription: item.shortDescription,
-                file: item.file,
-                MIME: item.MIME,
-                size: item.size,
-                content: item.content,
+                description: item.description,
+                Quarter: item.Quarter,
               },
             });
           }
         }}
         onLongPress={() => {
-          if (!selectionMode) setSelectionMode(true);
-          toggleSelect(item.id);
+          if (!selectionMode) {
+            setSelectionMode(true);
+            toggleSelect(item.id);
+          }
         }}
+        style={[
+          styles.cardBox,
+          isSelected && { backgroundColor: '#d1f7ff', borderColor: '#00b4d8' }, // selection highlight
+          isDone && { borderColor: '#48cae4' }, // ✅ if lesson is done
+        ]}
       >
-        <View
-          style={[
-            styles.cardBox,
-            {
-              borderStyle: 'solid',
-              borderWidth: 2,
-              borderColor: isSelected 
-                ? '#48cae4'        // highlight if selected
-                : isDone 
-                  ? '#787878ff'    // grey if marked done
-                  : theme.cardBorder,
-              borderLeftWidth: 6,
-              paddingLeft: 12,
-            },
-          ]}
-        >
-          <Ionicons name={iconName} size={28} color={theme.text} style={{ marginRight: 12 }} />
-          <View style={styles.textContainer}>
-            <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{item.title}</ThemedText>
-            {!!subjectGrade && (
-              <ThemedText style={[styles.cardSub, { color: theme.text }]}>{subjectGrade}</ThemedText>
-            )}
-          </View>
-          {item.type !== "general" && item.type !== "link" && (
-            selectionMode ? (
-              isSelected ? (
-                <Ionicons name="checkmark-circle" size={35} color="#48cae4" />
-              ) : (
-                <Ionicons
-                  name="ellipse-outline"
-                  size={35}
-                  color={theme.text}
-                  style={{ opacity: 0.6 }}
-                />
-              )
-            ) : downloadedFiles[item.id] ? (
-              <Ionicons name="checkmark-circle" size={35} color="#969696ff" />
-            ) : (
-              <Ionicons
-                name="arrow-down-circle-outline"
-                size={35}
-                color={theme.cardBorder}
-              />
-            )
-          )}
+        {/* Lesson Number in a Box */}
+        <View style={[styles.numberBox, isDone && { backgroundColor: '#48cae4' }]}>
+          <ThemedText style={styles.lessonNumber}>{item.id}</ThemedText>
         </View>
+
+        {/* Lesson Title + Quarter */}
+        <View style={{ flex: 1 }}>
+          <ThemedText style={styles.lessonTitle}>{item.title}</ThemedText>
+          <ThemedText style={styles.quarterText}>Quarter {item.Quarter}</ThemedText>
+        </View>
+
+        {selectionMode && (
+          <Ionicons
+            name={isSelected ? 'checkbox' : 'square-outline'}
+            size={28}
+            color={isSelected ? '#00b4d8' : '#ccc'}
+            style={{ marginLeft: 10 }}
+          />
+        )}
       </TouchableOpacity>
     );
   };
+
 
 
   const animatedOnScroll = Animated.event(
@@ -310,7 +281,7 @@ const SubjectPage = () => {
           <Animated.View style={{ width: screenWidth }}>
             <View style={[styles.tabContent, { paddingBottom: selectionMode ? 90 : 25 }]}>
           <Animated.FlatList
-            data={LESSON_CARDS}
+            data={LESSONS}
             keyExtractor={(item) => item.id}
             renderItem={renderLessonCard}
             contentContainerStyle={{ paddingBottom: 0 }}
@@ -334,7 +305,7 @@ const SubjectPage = () => {
         {/* Map tab */}
         <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:25 }} resizeMode="cover">
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
-            <Map stops={LESSON_CARDS.length} cols={5} progress={progress} accentColor={accentColor} />
+            <Map stops={LESSONS.length} cols={5} progress={progress} accentColor={accentColor} />
           </View>
         </ImageBackground>
 
@@ -450,10 +421,13 @@ const styles = StyleSheet.create({
   cardBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 15,
     marginBottom: 5,
     marginTop: 10,
+    borderWidth: 2,
+    borderColor: '#c8caceff',
+    borderLeftWidth: 6,
   },
   textContainer: {
     flex: 1,
@@ -480,5 +454,33 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  numberBox: {
+    width: 55,
+    height: 55,
+    borderRadius: 15,
+    backgroundColor: '#a9aaadff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginHorizontal: 8,
+  },
+  lessonNumber: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#ffffffff',
+  },
+  lessonTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    flexShrink: 1,
+    color: '#112954',
+    marginLeft: 10,
+  },
+  quarterText: {
+    fontSize: 16,
+    color: '#888a94',
+    marginTop: 1,
+    marginLeft: 10,
   },
 });

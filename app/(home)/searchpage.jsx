@@ -82,7 +82,7 @@ const SearchPage = () => {
           requiresEnrollmentKey={false}
           onPress={() =>
             router.push({
-              pathname: '/subject_detail',
+              pathname: '/self_enroll_page',
               params: {
                 subjectId: item.subject_id,
                 name: item.subject_name,
@@ -105,7 +105,7 @@ const SearchPage = () => {
           requiresEnrollmentKey={false}
           onPress={() =>
             router.push({
-              pathname: '/subject_detail',
+              pathname: '/self_enroll_page',
               params: {
                 type: 'section',
                 sectionId: item.section_id,

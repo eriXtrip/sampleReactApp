@@ -24,6 +24,23 @@ export const getSyncData = async (req, res) => {
     // Get all section_ids for the user
     const sectionIds = sections.map(s => s.section_id);
 
+    // 1b. Fetch subjects_in_section (only for sections where pupil is enrolled)
+    let subjectsInSection = [];
+    if (sectionIds.length > 0) {
+      const [sisRows] = await pool.query(
+        `SELECT 
+          sis.section_belong, 
+          sis.subject_id, 
+          sis.assigned_at
+        FROM subjects_in_section sis
+        JOIN enroll_me em ON em.section_id = sis.section_belong
+        JOIN subjects s ON sis.subject_id = s.subject_id
+        WHERE em.pupil_id = ?`,
+        [userId]
+      );
+      subjectsInSection = sisRows;
+    }
+
     // 2. Fetch subjects in those sections
     let subjects = [];
     if (sectionIds.length > 0) {
@@ -31,6 +48,7 @@ export const getSyncData = async (req, res) => {
         SELECT DISTINCT
           sub.subject_id,
           sub.subject_name,
+          sub.grade_level,
           sub.description,
           sub.is_public
         FROM subjects_in_section sis
@@ -165,11 +183,53 @@ export const getSyncData = async (req, res) => {
       FROM pupil_achievements pa
       WHERE pa.pupil_id = ?
     `, [userId]);
+
+    // 10. Fetch classmates (other pupils in the same sections)
+    let classmates = [];
+    if (sectionIds.length > 0) {
+      const [classmateRows] = await pool.query(`
+        SELECT DISTINCT
+          u.user_id,
+          u.first_name,
+          u.middle_name,
+          u.last_name,
+          u.suffix
+        FROM enroll_me e
+        JOIN users u ON e.pupil_id = u.user_id
+        WHERE e.section_id IN (?) 
+          AND e.pupil_id != ?  -- exclude self
+          AND u.role_id = 3    -- only pupils
+      `, [sectionIds, userId]);
+
+      classmates = classmateRows.map(u => {
+        let name = u.first_name;
+
+        // Add middle initial if exists
+        if (u.middle_name && u.middle_name.trim()) {
+          const initial = u.middle_name.trim().charAt(0).toUpperCase();
+          name += ` ${initial}.`;
+        }
+
+        // Add last name
+        name += ` ${u.last_name}`;
+
+        // Add suffix if exists
+        if (u.suffix && u.suffix.trim()) {
+          name += ` ${u.suffix.trim()}`;
+        }
+
+        return {
+          user_id: u.user_id,
+          full_name: name.trim()
+        };
+      });
+    }
     
 
     // ✅ Send all data in one response
     res.json({
       sections,
+      subjects_in_section: subjectsInSection,
       subjects: allSubjects, // merged subjects (sections + direct enrollments)
       lessons,
       subject_contents: contents,
@@ -177,7 +237,8 @@ export const getSyncData = async (req, res) => {
       game_types: gameTypes,
       notifications,
       pupil_test_scores: testScores,
-      pupil_achievements: achievements
+      pupil_achievements: achievements,
+      classmates
     });
 
   } catch (error) {

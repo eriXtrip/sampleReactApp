@@ -46,7 +46,7 @@ export default function HomeLayout() {
               }}
             />
             <Stack.Screen
-              name="subject_detail"
+              name="self_enroll_page"
               options={{
                 title: '',
               }}
@@ -73,6 +73,12 @@ export default function HomeLayout() {
               name="recent_activity_page"
               options={{
                 title: '📚 Recent Activity',
+              }}
+            />
+            <Stack.Screen
+              name="lesson_page"
+              options={{
+                title: 'Lesson',
               }}
             />
           </Stack>

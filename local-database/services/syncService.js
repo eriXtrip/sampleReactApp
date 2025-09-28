@@ -1,26 +1,29 @@
-// local-database/services/syncService.js
-
 /**
- * Saves full user sync data from server into local SQLite database.
+ * Saves full user sync data from server into local SQLite database (transactional).
  * @param {Object} data - The full sync payload from /user/sync-data
  * @param {Object} db - Expo SQLite database instance
  */
 export async function saveSyncDataToSQLite(data, db) {
   if (!db) {
-    throw new Error('Database instance is required');
+    throw new Error("Database instance is required");
   }
 
   try {
-    // 🔥 Clear previous data — use db.execAsync (not tx)
+    console.log("🚀 Starting sync transaction...");
+    await db.execAsync("BEGIN TRANSACTION");
+
+    // 🔥 Clear previous data
     await db.execAsync(`
       DELETE FROM sections;
       DELETE FROM subjects;
+      DELETE FROM subjects_in_section;
       DELETE FROM lessons;
       DELETE FROM subject_contents;
       DELETE FROM games;
       DELETE FROM notifications;
       DELETE FROM pupil_test_scores;
       DELETE FROM pupil_achievements;
+      DELETE FROM classmates;
     `);
 
     // === 1. Sections ===
@@ -33,26 +36,28 @@ export async function saveSyncDataToSQLite(data, db) {
           [
             s.section_id,
             s.teacher_id,
-            s.teacher_name || 'Unknown Teacher',
-            s.section_name || 'Unnamed Section',
-            s.school_year || ''
+            s.teacher_name || "Unknown Teacher",
+            s.section_name || "Unnamed Section",
+            s.school_year || "",
           ]
         );
       }
     }
 
     // === 2. Subjects ===
+    // === 2. Subjects ===
     if (Array.isArray(data.subjects)) {
       for (const sub of data.subjects) {
         await db.runAsync(
           `INSERT OR IGNORE INTO subjects (
-            server_subject_id, subject_name, description, is_public
-          ) VALUES (?, ?, ?, ?)`,
+            server_subject_id, subject_name, grade_level, description, is_public
+          ) VALUES (?, ?, ?, ?, ?)`,
           [
             sub.subject_id,
-            sub.subject_name || 'Unnamed Subject',
+            sub.subject_name || "Unnamed Subject",
+            sub.grade_level || "4",
             sub.description || null,
-            Boolean(sub.is_public)
+            Boolean(sub.is_public),
           ]
         );
       }
@@ -62,11 +67,11 @@ export async function saveSyncDataToSQLite(data, db) {
     if (Array.isArray(data.lessons)) {
       for (const l of data.lessons) {
         const localSubject = await db.getFirstAsync(
-          'SELECT subject_id FROM subjects WHERE server_subject_id = ?',
+          "SELECT subject_id FROM subjects WHERE server_subject_id = ?",
           [l.subject_belong]
         );
         if (!localSubject) {
-          console.warn('Skipping lesson (subject not found):', l.lesson_id);
+          console.warn("Skipping lesson (subject not found):", l.lesson_id);
           continue;
         }
 
@@ -76,10 +81,10 @@ export async function saveSyncDataToSQLite(data, db) {
           ) VALUES (?, ?, ?, ?, ?)`,
           [
             l.lesson_id,
-            l.lesson_title || 'Untitled Lesson',
+            l.lesson_title || "Untitled Lesson",
             l.description || null,
             localSubject.subject_id,
-            l.quarter || 1
+            l.quarter || 1,
           ]
         );
       }
@@ -89,11 +94,11 @@ export async function saveSyncDataToSQLite(data, db) {
     if (Array.isArray(data.subject_contents)) {
       for (const c of data.subject_contents) {
         const localLesson = await db.getFirstAsync(
-          'SELECT lesson_id FROM lessons WHERE server_lesson_id = ?',
+          "SELECT lesson_id FROM lessons WHERE server_lesson_id = ?",
           [c.lesson_belong]
         );
         if (!localLesson) {
-          console.warn('Skipping content (lesson not found):', c.content_id);
+          console.warn("Skipping content (lesson not found):", c.content_id);
           continue;
         }
 
@@ -104,11 +109,11 @@ export async function saveSyncDataToSQLite(data, db) {
           [
             c.content_id,
             localLesson.lesson_id,
-            c.content_type || 'other',
+            c.content_type || "other",
             c.url || null,
-            c.title || 'Untitled Content',
+            c.title || "Untitled Content",
             c.description || null,
-            c.file_name || null
+            c.file_name || null,
           ]
         );
       }
@@ -120,7 +125,7 @@ export async function saveSyncDataToSQLite(data, db) {
         let localSubjectId = null;
         if (g.subject_id) {
           const subj = await db.getFirstAsync(
-            'SELECT subject_id FROM subjects WHERE server_subject_id = ?',
+            "SELECT subject_id FROM subjects WHERE server_subject_id = ?",
             [g.subject_id]
           );
           localSubjectId = subj?.subject_id || null;
@@ -129,7 +134,7 @@ export async function saveSyncDataToSQLite(data, db) {
         let localContentId = null;
         if (g.content_id) {
           const cont = await db.getFirstAsync(
-            'SELECT content_id FROM subject_contents WHERE server_content_id = ?',
+            "SELECT content_id FROM subject_contents WHERE server_content_id = ?",
             [g.content_id]
           );
           localContentId = cont?.content_id || null;
@@ -144,8 +149,8 @@ export async function saveSyncDataToSQLite(data, db) {
             localSubjectId,
             localContentId,
             g.game_type_id || 1,
-            g.title || 'Untitled Game',
-            g.description || null
+            g.title || "Untitled Game",
+            g.description || null,
           ]
         );
       }
@@ -160,12 +165,12 @@ export async function saveSyncDataToSQLite(data, db) {
           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
             n.notification_id,
-            n.title || 'Notification',
-            n.message || '',
-            n.type || 'info',
+            n.title || "Notification",
+            n.message || "",
+            n.type || "info",
             Boolean(n.is_read),
             n.created_at || new Date().toISOString(),
-            n.read_at || null
+            n.read_at || null,
           ]
         );
       }
@@ -173,7 +178,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 7. Pupil Test Scores ===
     if (Array.isArray(data.pupil_test_scores)) {
-      const localUser = await db.getFirstAsync('SELECT user_id FROM users LIMIT 1');
+      const localUser = await db.getFirstAsync("SELECT user_id FROM users LIMIT 1");
       if (localUser) {
         for (const score of data.pupil_test_scores) {
           await db.runAsync(
@@ -187,7 +192,7 @@ export async function saveSyncDataToSQLite(data, db) {
               score.score || 0,
               score.max_score || 0,
               score.attempt_number || 1,
-              score.taken_at || new Date().toISOString()
+              score.taken_at || new Date().toISOString(),
             ]
           );
         }
@@ -196,7 +201,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 8. Pupil Achievements ===
     if (Array.isArray(data.pupil_achievements)) {
-      const localUser = await db.getFirstAsync('SELECT user_id FROM users LIMIT 1');
+      const localUser = await db.getFirstAsync("SELECT user_id FROM users LIMIT 1");
       if (localUser) {
         for (const ach of data.pupil_achievements) {
           await db.runAsync(
@@ -206,16 +211,49 @@ export async function saveSyncDataToSQLite(data, db) {
             [
               ach.achievement_id,
               localUser.user_id,
-              ach.earned_at || new Date().toISOString()
+              ach.earned_at || new Date().toISOString(),
             ]
           );
         }
       }
     }
 
-    console.log('✅ Sync data saved to SQLite');
+    // === 9. Classmates ===
+    if (Array.isArray(data.classmates)) {
+      for (const c of data.classmates) {
+        const section = await db.getFirstAsync(
+          "SELECT section_id FROM sections LIMIT 1"
+        );
+        const sectionId = section?.section_id || null;
+
+        await db.runAsync(
+          `INSERT INTO classmates (user_id, classmate_name, section_id) VALUES (?, ?, ?)`,
+          [c.user_id, c.full_name, sectionId]
+        );
+      }
+    }
+
+    // === 10. Subjects in Section (AFTER sections + subjects are inserted) ===
+    if (Array.isArray(data.subjects_in_section)) {
+      for (const sis of data.subjects_in_section) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO subjects_in_section 
+            (section_belong, subject_id, assigned_at)
+          VALUES (
+            (SELECT section_id FROM sections WHERE server_section_id = ?),
+            (SELECT subject_id FROM subjects WHERE server_subject_id = ?),
+            ?
+          )`,
+          [sis.section_belong, sis.subject_id, sis.assigned_at || null]
+        );
+      }
+    }
+
+    await db.execAsync("COMMIT");
+    console.log("✅ Sync data saved to SQLite (transaction committed)");
   } catch (error) {
-    console.error('❌ Sync failed:', error);
+    console.error("❌ Sync failed, rolling back:", error);
+    await db.execAsync("ROLLBACK");
     throw error;
   }
 }

@@ -1,93 +1,61 @@
 import { StyleSheet, FlatList } from 'react-native';
 import { useColorScheme } from 'react-native';
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
 import CardNotif from '../../components/card_notif';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
-
-const notifications = [
-  {
-    id: '1',
-    title: 'Welcome Aboard!',
-    message: 'Thanks for joining MQuest!',
-    icon: 'hand-left',
-    color: '#06d6a0',
-  },
-  {
-    id: '2',
-    title: 'Early Bird',
-    message: 'You logged in before 7AM!',
-    icon: 'alarm',
-    color: '#90be6d', // Green
-  },
-  {
-    id: '3',
-    title: 'Finished Activity',
-    message: 'You completed the Reading Quiz.',
-    icon: 'checkmark-done-circle',
-    color: '#adb5bd', // Gray
-  },
-  {
-    id: '4',
-    title: 'Top Performer',
-    message: 'You ranked #1 in Math!',
-    icon: 'trophy',
-    color: '#f9c74f', // Yellow
-  },
-  {
-    id: '5',
-    title: 'Passed Test',
-    message: 'You passed your English test!',
-    icon: 'flask',
-    color: '#9d4edd', // Purple
-  },
-  {
-    id: '6',
-    title: 'Profile Updated',
-    message: 'Your profile was successfully updated.',
-    icon: 'person-circle-outline',
-    color: '#4cc9f0',
-  },
-  {
-    id: '7',
-    title: 'New Badge Earned',
-    message: 'You unlocked the “Fast Learner” badge!',
-    icon: 'ribbon',
-    color: '#ffb703',
-  },
-  {
-    id: '8',
-    title: 'Level Up!',
-    message: 'You reached Level 5. Great job!',
-    icon: 'rocket',
-    color: '#3a86ff',
-  },
-  {
-    id: '9',
-    title: 'Homework Reminder',
-    message: 'Don’t forget your assignment due tomorrow.',
-    icon: 'calendar',
-    color: '#ef476f',
-  },
-  {
-    id: '10',
-    title: 'Enrolled to Subject',
-    message: 'You enrolled in Science Grade 4.',
-    icon: 'book',
-    color: '#48cae4', // Blue
-  },
-];
+import { NOTIF_MAP } from '../../data/notif_map';
 
 const Notification = () => {
+  const db = useSQLiteContext(); // ✅ access to db
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
-  const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const theme =
+    Colors[
+      themeColors === 'system'
+        ? colorScheme === 'dark'
+          ? 'dark'
+          : 'light'
+        : themeColors
+    ];
 
-  const renderItem = ({ item }) => (
-  <CardNotif color={item.color} icon={item.icon} title={item.title} message={item.message} theme={theme} />
-  );
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const result = await db.getAllAsync(
+          `SELECT * FROM notifications ORDER BY created_at DESC`
+        );
+        //console.log("📩 Notifications from DB:", result);
+        setNotifications(result);
+      } catch (error) {
+        console.error("❌ Error fetching notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, [db]);
+
+  const renderItem = ({ item }) => {
+    const map = NOTIF_MAP[item.type] || {
+      icon: 'notifications-outline',
+      color: '#6c757d',
+    };
+
+    return (
+      <CardNotif
+        color={map.color}
+        icon={map.icon}
+        title={item.title}
+        message={item.message}
+        theme={theme}
+      />
+    );
+  };
 
   return (
     <ThemedView style={styles.container} safe={true}>
@@ -95,13 +63,12 @@ const Notification = () => {
       <FlatList
         data={notifications}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.notification_id)}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
       <Spacer height={100} />
     </ThemedView>
-    
   );
 };
 
@@ -114,30 +81,5 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingVertical: 10,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 18,
-    elevation: 10,
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
-  icon: {
-    marginRight: 16,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  cardMessage: {
-    fontSize: 14,
-    marginTop: 4,
   },
 });

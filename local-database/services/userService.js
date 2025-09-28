@@ -206,13 +206,15 @@ export default class UserService {
       'users',
       'sections',
       'subjects',
+      'subjects_in_section',
       'lessons',
       'subject_contents',
       'games',
       'game_types',
       'notifications',
       'pupil_test_scores',
-      'pupil_achievements'
+      'pupil_achievements',
+      'classmates'
     ];
 
     for (const table of tables) {

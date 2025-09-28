@@ -56,6 +56,7 @@ export async function initializeDatabase(db) {
       subject_id INTEGER PRIMARY KEY,
       server_subject_id INTEGER UNIQUE,  -- maps to MySQL subjects.subject_id
       subject_name TEXT NOT NULL,
+      grade_level INTEGER NOT NULL,
       description TEXT,
       is_public BOOLEAN
     );
@@ -78,6 +79,10 @@ export async function initializeDatabase(db) {
       description TEXT,
       subject_belong INTEGER NOT NULL,   -- local subject_id
       quarter INTEGER NOT NULL CHECK (quarter IN (1,2,3,4)),
+      status BOOLEAN DEFAULT FALSE,
+      progress REAL DEFAULT 0,          -- 0 to 100
+      last_accessed TEXT,               -- ISO timestamp
+      completed_at TEXT,                -- ISO timestamp when marked complete
       FOREIGN KEY (subject_belong) REFERENCES subjects(subject_id)
     );
 
@@ -92,6 +97,9 @@ export async function initializeDatabase(db) {
       description TEXT,
       file_name TEXT,
       downloaded_at TEXT,                -- ISO timestamp when downloaded locally
+      done BOOLEAN DEFAULT FALSE,          -- whether user marked as done
+      last_accessed TEXT,               -- ISO timestamp
+      completed_at TEXT,                -- ISO timestamp when marked complete
       FOREIGN KEY (lesson_belong) REFERENCES lessons(lesson_id)
     );
 
@@ -159,6 +167,16 @@ export async function initializeDatabase(db) {
         is_read BOOLEAN DEFAULT FALSE,
         created_at TEXT NOT NULL,
         read_at TEXT
+    );
+
+    -- Classmates (users in the same sections)
+    CREATE TABLE IF NOT EXISTS classmates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,         -- local user_id
+      classmate_name TEXT NOT NULL,          -- full name
+      section_id INTEGER NOT NULL,       -- local section_id
+      FOREIGN KEY (section_id) REFERENCES sections(section_id) ON DELETE CASCADE,
+      UNIQUE (user_id, section_id)
     );
 
     -- Pre-populate roles (must match MySQL)

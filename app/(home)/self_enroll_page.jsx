@@ -26,7 +26,7 @@ const typeToIcon = {
   section: 'layers',
 };
 
-const SubjectDetail = () => {
+const SelfEnrollPage = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -89,6 +89,18 @@ const SubjectDetail = () => {
     });
   };
 
+  const navigateToSectionPage = () => {
+    router.push({
+      pathname: '/section_page', // or '/classroom', '/section_home', etc.
+      params: {
+        sectionId: sectionId,
+        sectionName: name,
+        schoolYear: schoolYear,
+        createdBy: createdBy,
+      },
+    });
+  };
+
   const [showEnroll, setShowEnroll] = useState(false);
 
   // ✅ NEW: Handle enrollment based on type
@@ -130,7 +142,7 @@ const SubjectDetail = () => {
     try {
       await enrollInSectionWithKey(user.server_id, parseInt(sectionId), keyValue);
       setShowEnroll(false);
-      navigateToSubjectPage();
+       navigateToSectionPage();
     } catch (error) {
       Alert.alert('Enrollment Failed', error.message || 'Invalid key');
     }
@@ -226,7 +238,7 @@ const SubjectDetail = () => {
   );
 };
 
-export default SubjectDetail;
+export default SelfEnrollPage;
 
 const styles = StyleSheet.create({
   container: {

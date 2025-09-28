@@ -1,70 +1,92 @@
-import React, { useContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-
+import { useSQLiteContext } from 'expo-sqlite';
+import { ASSETS_ICONS } from '../../data/assets_icon';
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 
-const SUBJECTS = [
-  { id: '1', icon: require('../../assets/icons/math_.png'), title: 'Mathematics', grade: 'Grade 4' },
-  { id: '2', icon: require('../../assets/icons/saturn_.png'), title: 'Science', grade: 'Grade 4' },
-  { id: '3', icon: require('../../assets/icons/english_.png'), title: 'English', grade: 'Grade 4' },
-  { id: '4', icon: require('../../assets/icons/filipino_.png'), title: 'Filipino', grade: 'Grade 4' },
-];
-
-const CLASSMATES = [
-  { id: '1', name: 'Alice Santos' },
-  { id: '2', name: 'Ben Cruz' },
-  { id: '3', name: 'Carlos Dela Cruz' },
-  { id: '4', name: 'Diana Lim' },
-  { id: '5', name: 'Evan Reyes' },
-  { id: '6', name: 'Fiona Garcia' },
-  { id: '7', name: 'Gio Tan' },
-  { id: '8', name: 'Hana Lee' },
-];
-
 const SectionPage = () => {
+  const db = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   const navigation = useNavigation();
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: true, title: 'Section' });
-  }, [navigation]);
+  const { section_id = '', name = '', createdBy = '', schoolYear = '' } = useLocalSearchParams();
 
-  const { name = '', createdBy = '', schoolYear = '' } = useLocalSearchParams();
-
-  const accentColor = '#9d4edd'; // same accent used for sections in subject_detail
-  const iconName = 'layers';
+  const iconName = ASSETS_ICONS.Section?.icon ? 'section' : 'layers';
+  const accentColor = ASSETS_ICONS.Section?.color || '#9d4edd';
 
   const bannerHeight = Math.round(Dimensions.get('window').height * 0.2);
-
-  const [activeTab, setActiveTab] = useState(0); // 0 = Subjects, 1 = Classmates
+  const [activeTab, setActiveTab] = useState(0);
   const scrollRef = useRef(null);
   const screenWidth = Dimensions.get('window').width;
 
-  // Animated scroll value used to lift the details view up as the list scrolls
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // initial overlap (already applied as negative margin in the original layout)
   const initialOverlap = Math.round(bannerHeight * 0.18);
-  // how much of the banner should remain visible when collapsed (peek)
   const bannerPeek = 32;
-  // the maximum additional upward shift we allow (beyond initialOverlap)
   const maxShift = Math.max(0, bannerHeight - bannerPeek - initialOverlap);
 
-  // translateY for the details view (clamped)
   const detailsTranslateY = scrollY.interpolate({
     inputRange: [0, maxShift],
     outputRange: [0, -maxShift],
     extrapolate: 'clamp',
   });
+
+  const [subjects, setSubjects] = useState([]);
+  const [classmates, setClassmates] = useState([]);
+
+  // Fetch subjects and classmates from SQLite
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Query subjects
+        const subjectsResult = await db.getAllAsync(`
+          SELECT s.subject_id, s.subject_name, s.grade_level
+          FROM subjects_in_section sis
+          JOIN subjects s ON sis.subject_id = s.subject_id
+          WHERE sis.section_belong = ?
+        `, [section_id]);
+
+        // Map subjects with icons and grade
+        const mappedSubjects = subjectsResult.map(subject => ({
+          id: subject.subject_id.toString(),
+          icon: ASSETS_ICONS[subject.subject_name]?.icon || require('../../assets/icons/default_.png'),
+          title: subject.subject_name,
+          grade: subject.grade_level ? `Grade ${subject.grade_level}` : 'Grade 4',
+        }));
+        setSubjects(mappedSubjects);
+
+        console.log("recieved section_id:", section_id);
+
+        // Query classmates
+        const classmatesResult = await db.getAllAsync(`
+          SELECT id, classmate_name
+          FROM classmates
+          WHERE section_id = ?
+        `, [section_id]);
+
+        // Map classmates
+        const mappedClassmates = classmatesResult.map(classmate => ({
+          id: classmate.id.toString(),
+          name: classmate.classmate_name,
+        }));
+        setClassmates(mappedClassmates);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    if (section_id) {
+      fetchData();
+    }
+  }, [section_id, db]);
 
   const onTabPress = (index) => {
     setActiveTab(index);
@@ -78,6 +100,18 @@ const SectionPage = () => {
     const index = Math.round(x / screenWidth);
     if (index !== activeTab) setActiveTab(index);
   };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      title: '',
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.navigate('subjectlist')}>
+          <Ionicons name="chevron-back" size={30} color="black" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const renderSubjectItem = ({ item }) => (
     <TouchableOpacity
@@ -107,7 +141,6 @@ const SectionPage = () => {
     </View>
   );
 
-  // shared onScroll handler for both lists so details move when either list scrolls
   const animatedOnScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: true }
@@ -115,14 +148,16 @@ const SectionPage = () => {
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      {/* Accent banner with centered icon */}
       <View style={[styles.banner, { backgroundColor: accentColor, height: bannerHeight, zIndex: 0 }]}>
-        <Ionicons name={iconName} size={56} color="#fff" />
+        {iconName === 'section' ? (
+          <Image source={ASSETS_ICONS.Section.icon} style={styles.bannerIcon} />
+        ) : (
+          <Ionicons name={iconName} size={56} color="#fff" />
+        )}
       </View>
 
       <Spacer height={12} />
 
-      {/* Details (Animated) - will translate up over the banner as the list scrolls */}
       <Animated.View
         style={[
           styles.details,
@@ -147,7 +182,6 @@ const SectionPage = () => {
         <ThemedText style={styles.meta}>Adviser: {String(createdBy)}</ThemedText>
       </Animated.View>
 
-      {/* Bottom nav with underline indicator */}
       <Animated.View
         style={[
           styles.navBar,
@@ -167,8 +201,7 @@ const SectionPage = () => {
           <View style={[styles.navIndicator, { backgroundColor: activeTab === 1 ? accentColor : 'transparent' }]} />
         </TouchableOpacity>
       </Animated.View>
-      
-      
+
       <Animated.ScrollView
         style={{ transform: [{ translateY: detailsTranslateY }] }}
         ref={scrollRef}
@@ -178,16 +211,14 @@ const SectionPage = () => {
         onMomentumScrollEnd={onMomentumEnd}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        {/* Subjects tab */}
-        <Animated.View style={ {width: screenWidth}}>
+        <Animated.View style={{ width: screenWidth }}>
           <View style={styles.tabContent}>
             <Animated.FlatList
-              data={SUBJECTS}
+              data={subjects}
               keyExtractor={(item) => item.id}
               renderItem={renderSubjectItem}
               contentContainerStyle={{ paddingBottom: 24 }}
               showsVerticalScrollIndicator={false}
-              // attach animated scroll so details move
               onScroll={animatedOnScroll}
               scrollEventThrottle={16}
               nestedScrollEnabled
@@ -195,11 +226,10 @@ const SectionPage = () => {
           </View>
         </Animated.View>
 
-        {/* Classmates tab */}
         <View style={{ width: screenWidth }}>
           <View style={styles.tabContent}>
             <Animated.FlatList
-              data={CLASSMATES}
+              data={classmates}
               keyExtractor={(item) => item.id}
               renderItem={renderClassmateItem}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
@@ -218,8 +248,6 @@ const SectionPage = () => {
   );
 };
 
-export default SectionPage;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -229,6 +257,11 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bannerIcon: {
+    width: 56,
+    height: 56,
+    resizeMode: 'contain',
   },
   details: {
     width: '100%',
@@ -264,13 +297,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 3,
     borderRadius: 2,
-    marginBottom: -1, // visually connect to bottom border
+    marginBottom: -1,
   },
   tabContent: {
     paddingHorizontal: 16,
     paddingBottom: 20,
   },
-  // Subject card styles copied to match dashboard/subjectlist.jsx
   subjectBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -297,7 +329,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.6,
   },
-  // Classmates list styles
   classmateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -307,3 +338,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 });
+
+export default SectionPage;

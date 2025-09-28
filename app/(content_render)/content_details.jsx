@@ -34,6 +34,19 @@ const ContentDetails = () => {
   const [downloading, setDownloading] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
+  const [embedFailed, setEmbedFailed] = useState(false);
+
+  // Fallback timer
+  // useEffect(() => {
+  //   if (!embedFailed && type === 'link' && embedUrl) {
+  //     const timeout = setTimeout(() => {
+  //       console.log('Embed failed, switching to content URL');
+  //       setEmbedFailed(true);
+  //     }, 3000); // 3 seconds
+  //     return () => clearTimeout(timeout);
+  //   }
+  // }, [embedFailed, embedUrl]);
+
   // Check if local file exists
   useEffect(() => {
     (async () => {
@@ -207,6 +220,8 @@ const ContentDetails = () => {
   });
 
   const embedUrl = getYouTubeEmbedUrl(content);
+  console.log('Embed URL:', embedUrl);
+  
   
   const videoUri = fileExists ? resolveLocalPath(file) : content;
 
@@ -281,11 +296,26 @@ const ContentDetails = () => {
             ) 
           )}
 
-          {type === 'link' && embedUrl && (
-            <View style={{ flex: 1, height: 300 }}>
-              <WebView source={{ uri: embedUrl }} javaScriptEnabled domStorageEnabled allowsFullscreenVideo startInLoadingState />
-            </View>
+          {type === 'link' && !embedFailed && embedUrl && (
+            <WebView
+              source={{ uri: embedUrl }}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsFullscreenVideo
+              startInLoadingState
+            />
           )}
+
+          {type === 'link' && embedFailed && (
+            <WebView
+              source={{ uri: content }}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsFullscreenVideo
+              startInLoadingState
+            />
+          )}
+
         </ScrollView>
 
         {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext'].includes(type) && (

@@ -1,39 +1,41 @@
 // SAMPLEREACTAPP/contexts/SearchContext.jsx
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'; // ✅ added useEffect
-import { getApiUrl } from '../utils/apiManager';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { getApiUrl, getCachedApiUrl } from '../utils/apiManager'; // ✅ import sync getter
 
 export const SearchContext = createContext();
 
 export function SearchProvider({ children }) {
+  // ✅ Initialize from in-memory cache if available
+  const initialUrl = getCachedApiUrl();
+  const [API_URL, setApiUrl] = useState(initialUrl);
   const [subjects, setSubjects] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [API_URL, setApiUrl] = useState(null); // Will hold the resolved URL
 
-  // Fetch API URL on mount
+  // Only fetch from AsyncStorage if not already cached
   useEffect(() => {
-    (async () => {
-      try {
-        const url = await getApiUrl(); // Assuming getApiUrl() is async
-        setApiUrl(url);
-        console.log('✅ API URL resolved:', url);
-      } catch (err) {
-        console.error('❌ Failed to get API URL:', err);
-        setError('Configuration error');
-      }
-    })();
-  }, []);
+    if (!initialUrl) {
+      (async () => {
+        try {
+          const url = await getApiUrl(); // This will also populate inMemoryApiUrl
+          setApiUrl(url);
+          console.log('✅ API URL resolved:', url);
+        } catch (err) {
+          console.error('❌ Failed to get API URL:', err);
+          setError('Configuration error');
+        }
+      })();
+    }
+  }, [initialUrl]); // Run only if initialUrl was null
 
   const fetchPublicSubjects = useCallback(async (userId) => {
-    // Guard: don't fetch if URL isn't ready
     if (!API_URL || !userId) {
       console.warn('⚠️ Missing API_URL or userId in fetchPublicSubjects');
       return;
     }
 
     console.log("user_id in fetchPublicSubjects: ", userId);
-
     console.log('🔍 Starting fetch to:', `${API_URL}/search/subjects`);
     setLoading(true);
     setError(null);
@@ -41,9 +43,7 @@ export function SearchProvider({ children }) {
     try {
       const response = await fetch(`${API_URL}/search/subjects?user_id=${userId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -61,7 +61,7 @@ export function SearchProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [API_URL]); // ✅ Depend on API_URL, not "url"
+  }, [API_URL]);
 
   const fetchAvailableSections = useCallback(async (userId) => {
     if (!API_URL || !userId) {
@@ -104,14 +104,13 @@ export function SearchProvider({ children }) {
         error,
         fetchPublicSubjects,
         fetchAvailableSections,
-        API_URL, // optional: expose for debugging
+        API_URL,
       }}
     >
       {children}
     </SearchContext.Provider>
   );
 }
-
 
 export const useSearch = () => {
   const context = useContext(SearchContext);

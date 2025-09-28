@@ -22,6 +22,19 @@ export const verifyEnrollment = async (req, res) => {
   try {
     // Handle SUBJECT enrollment
     if (subject_id) {
+      // ✅ Check if already enrolled
+      const [existingSubjectEnroll] = await pool.query(
+        'SELECT 1 FROM enroll_me WHERE pupil_id = ? AND subject_id = ? AND status = TRUE',
+        [pupil_id, subject_id]
+      );
+
+      if (existingSubjectEnroll.length > 0) {
+        return res.json({ 
+          success: true, 
+          message: 'Already enrolled in this subject' 
+        });
+      }
+
       // Check if subject is public
       const [subjectRows] = await pool.query(
         'SELECT is_public FROM subjects WHERE subject_id = ?',
@@ -91,6 +104,19 @@ export const verifyEnrollment = async (req, res) => {
         return res.status(401).json({ 
           success: false, 
           error: 'Invalid enrollment key' 
+        });
+      }
+
+      // ✅ Check if already enrolled
+      const [existingSectionEnroll] = await pool.query(
+        'SELECT 1 FROM enroll_me WHERE pupil_id = ? AND section_id = ? AND status = TRUE',
+        [pupil_id, section_id]
+      );
+
+      if (existingSectionEnroll.length > 0) {
+        return res.json({ 
+          success: true, 
+          message: 'Already enrolled in this section' 
         });
       }
 
