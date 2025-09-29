@@ -206,12 +206,13 @@ export async function saveSyncDataToSQLite(data, db) {
         for (const ach of data.pupil_achievements) {
           await db.runAsync(
             `INSERT INTO pupil_achievements (
-              server_achievement_id, pupil_id, earned_at
-            ) VALUES (?, ?, ?)`,
+              server_achievement_id, pupil_id, earned_at, subject_content_id
+            ) VALUES (?, ?, ?, ?)`,
             [
               ach.achievement_id,
               localUser.user_id,
               ach.earned_at || new Date().toISOString(),
+              ach.content_id || null,
             ]
           );
         }

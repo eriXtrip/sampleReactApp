@@ -91,7 +91,7 @@ export async function initializeDatabase(db) {
       content_id INTEGER PRIMARY KEY,
       server_content_id INTEGER UNIQUE,  -- maps to MySQL subject_contents.content_id
       lesson_belong INTEGER NOT NULL,    -- local lesson_id
-      content_type TEXT NOT NULL,        -- 'video', 'pdf', 'game', etc.
+      content_type TEXT NOT NULL,        -- 'ppt', 'pdf', 'game', 'url', 'other', 'game_match', 'game_flash', 'quiz', 'game_speak', 'game_comp', 'game_img', 'general'
       url TEXT,                          -- remote URL to fetch content
       title TEXT NOT NULL,
       description TEXT,
@@ -153,7 +153,9 @@ export async function initializeDatabase(db) {
       server_achievement_id INTEGER NOT NULL, -- maps to MySQL achievements.achievement_id
       pupil_id INTEGER NOT NULL,
       earned_at TEXT,
+      subject_content_id INTEGER,                -- local content_id (if tied to content)
       FOREIGN KEY (pupil_id) REFERENCES users(user_id),
+      FOREIGN KEY (subject_content_id) REFERENCES subject_contents(content_id),
       UNIQUE (pupil_id, server_achievement_id)
     );
 

@@ -30,13 +30,13 @@ export const LESSON_TYPE_ICON_MAP = {
   ppt: 'easel-outline',
   pdf: 'document-attach-outline',
   video: 'videocam-outline',
-  link: 'link-outline',
-  test: 'document-text-outline',
-  match: 'game-controller-outline',
-  flash: 'copy-outline',
-  speach: 'mic-outline',
-  sentence: 'extension-puzzle-outline',
-  gameIMGtext: 'dice-outline',
+  url: 'link-outline',
+  quiz: 'document-text-outline',
+  game_match: 'game-controller-outline',
+  game_flash: 'copy-outline',
+  game_speak: 'mic-outline',
+  game_comp: 'extension-puzzle-outline',
+  game_img: 'dice-outline',
 };
 
 export const SUBJECT_ICON_MAP = {

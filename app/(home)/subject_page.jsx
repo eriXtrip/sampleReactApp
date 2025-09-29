@@ -8,6 +8,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import * as Application from 'expo-application';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -18,9 +19,10 @@ import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ensureLessonFile } from '../../utils/fileHelper';
-import { LESSONS, LESSON_TYPE_ICON_MAP, SUBJECT_ICON_MAP } from '../../data/lessonData';
+import { LESSONS, SUBJECT_ICON_MAP } from '../../data/lessonData';
 
 const SubjectPage = () => {
+  const db = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -228,7 +230,7 @@ const SubjectPage = () => {
           <View style={{ flex: 1 }}>
             <ThemedText style={styles.title}>{subjectName}</ThemedText>
             {!!subjectGrade && (
-              <ThemedText style={[styles.meta, styles.gradeText]}>Grade: {subjectGrade}</ThemedText>
+              <ThemedText style={[styles.meta, styles.gradeText]}>{subjectGrade}</ThemedText>
             )}
           </View>
         </View>

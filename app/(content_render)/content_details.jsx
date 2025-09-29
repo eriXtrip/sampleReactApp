@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platfor
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -20,9 +21,11 @@ import DangerAlert from '../../components/DangerAlert';
 import { resolveLocalPath } from '../../utils/resolveLocalPath';
 import { handleDownload } from '../../utils/handleDownload';
 import { handleDelete } from '../../utils/handleDelete';
+import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
 
 const ContentDetails = () => {
-  const { title, type, status, shortDescription, file, MIME, size, content } = useLocalSearchParams();
+  const { id, title, type, shortdescription, content, file, status} = useLocalSearchParams();
+  console.log('Content Details Params:', { id, title, type, shortdescription, content, file, status });
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
@@ -36,9 +39,61 @@ const ContentDetails = () => {
 
   const [embedFailed, setEmbedFailed] = useState(false);
 
+  const db = useSQLiteContext();
+
+  const [contents, setContents] = useState([]);
+
+  // --- MIME detection ---
+  const getMimeType = (filename) => {
+    if (!filename) return '*/*';
+    const ext = filename.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'pdf': return 'application/pdf';
+      case 'ppt': return 'application/vnd.ms-powerpoint';
+      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'mp4': return 'video/mp4';
+      case 'json': return 'application/json';
+      case 'txt': return 'text/plain';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default: return '*/*';
+    }
+  };
+
+  useEffect(() => {
+      if (!id) return;
+
+      const fetchContents = async () => {
+        try {
+          const result = await db.getAllAsync(
+            `SELECT * FROM subject_contents WHERE content_id = ?`,
+            [id]
+          );
+          console.log("Fetched contents ✅:", result);
+          
+          if (result.length > 0) {
+            const item = result[0];
+            setContents(result);
+            setIsDone(item.done === 1);
+            setFileExists(await FileSystem.getInfoAsync(resolveLocalPath(item.file_name)).then(f => f.exists));
+          }
+
+        } catch (err) {
+          console.error("❌ Error fetching contents:", err);
+        }
+      };
+
+      fetchContents();
+    }, [id]);
+
+    console.log("Current contents state:", contents);
+
+
+  
+
   // Fallback timer
   // useEffect(() => {
-  //   if (!embedFailed && type === 'link' && embedUrl) {
+  //   if (!embedFailed && type === 'url' && embedUrl) {
   //     const timeout = setTimeout(() => {
   //       console.log('Embed failed, switching to content URL');
   //       setEmbedFailed(true);
@@ -60,70 +115,117 @@ const ContentDetails = () => {
     })();
   }, [file]);
 
-  const iconName = {
-    general: 'information-circle-outline',
-    ppt: 'easel-outline',
-    pdf: 'document-attach-outline',
-    video: 'videocam-outline',
-    link: 'link-outline',
-    test: 'document-text-outline',
-    match: 'game-controller-outline',
-    flash: 'copy-outline',
-    speach: 'mic-outline',
-    sentence: 'extension-puzzle-outline',
-    gameIMGtext: 'dice-outline',
-  }[type] || 'book-outline';
+  const handleMarkAsDone = async () => {
+    if (!contents.length) return;
 
-  const handleMarkAsDone = () => {
+    const { content_id } = contents[0];
     const newState = !isDone;
     setIsDone(newState);
+
+    try {
+      const now = newState ? new Date().toISOString() : null;
+      await db.runAsync(
+        `UPDATE subject_contents 
+        SET done = ?, completed_at = ? 
+        WHERE content_id = ?`,
+        [newState ? 1 : 0, now, content_id]
+      );
+      console.log(`✅ Updated done=${newState}, completed_at=${now} for content_id ${content_id}`);
+    } catch (err) {
+      console.error("❌ Error updating done/completed_at:", err);
+    }
+
     router.setParams({ status: newState ? "true" : "false" });
   };
 
   const handleMarkAsDownloaded = async () => {
+    if (!contents.length) return;
+
+    const item = contents[0];
+
     if (fileExists) {
       setShowDeleteAlert(true);
     } else {
-      await handleDownload(file, content, type, setFileExists, setDownloading);
+      try {
+        const fileUri = await handleDownload(
+          item.file_name,
+          item.url,
+          item.content_type,
+          setFileExists,
+          setDownloading
+        );
+
+        if (fileUri) {
+          const now = new Date().toISOString();
+          await db.runAsync(
+            `UPDATE subject_contents 
+            SET downloaded_at = ? 
+            WHERE content_id = ?`,
+            [now, item.content_id]
+          );
+          console.log(`✅ Updated downloaded_at for content_id ${item.content_id}: ${now}`);
+        }
+      } catch (err) {
+        console.error("❌ Error marking as downloaded:", err);
+      }
     }
   };
 
   const handleOpen = async () => {
-    if (!file && !content) return;
+    if (!contents.length) return;
 
-    const localPath = resolveLocalPath(file);
+    const { content_id, file_name, url, content_type, title } = contents[0];
+    const localPath = resolveLocalPath(file_name);
+    const mimeType = getMimeType(file_name);
 
-    if (['pdf', 'ppt', 'pptx'].includes(type)) {
+    try {
+    // --- update last_accessed column in subject_contents ---
+    const now = new Date().toISOString();
+      await db.runAsync(
+        `UPDATE subject_contents 
+        SET last_accessed = ? 
+        WHERE content_id = ?`,
+        [now, content_id]
+      );
+      console.log(`✅ Updated last_accessed for content_id ${content_id}: ${now}`);
+    } catch (err) {
+      console.error("❌ Error updating last_accessed:", err);
+    }
+
+    // --- For documents (pdf, ppt, pptx) ---
+    if (['pdf', 'ppt', 'pptx'].includes(content_type)) {
       let fileUri = null;
       if (!fileExists) {
-        fileUri = await handleDownload(file, content, type, setFileExists, setDownloading);
+        fileUri = await handleDownload(file_name, url, content_type, setFileExists, setDownloading);
       } else {
         fileUri = localPath;
       }
-      if (fileUri) await openWithChooser(fileUri, title, MIME);
+      if (fileUri) await openWithChooser(fileUri, title, mimeType);
+      return;
     }
 
+    // --- For interactive/game JSON routes ---
     const jsonRoutes = {
-      test: '/quiz',
-      match: '/matching',
-      flash: '/flashcard',
-      speach: '/SpeakGameScreen',
-      sentence: '/CompleteSentenceGameScreen',
-      gameIMGtext: '/AngleHuntScreen',
+      quiz: '/quiz',
+      game_match: '/matching',
+      game_flash: '/flashcard',
+      game_speak: '/SpeakGameScreen',
+      game_comp: '/CompleteSentenceGameScreen',
+      game_img: '/AngleHuntScreen',
     };
 
-    if (jsonRoutes[type]) {
+    if (jsonRoutes[content_type]) {
       try {
         const fileInfo = await FileSystem.getInfoAsync(localPath);
-        const actualUri = fileInfo.exists ? localPath : content;
+        const actualUri = fileInfo.exists ? localPath : url;
         router.push({
-          pathname: jsonRoutes[type],
+          pathname: jsonRoutes[content_type],
           params: { uri: actualUri, title },
         });
-        console.log(`Loaded ${type} file at ${actualUri}`);
+        console.log(`Loaded ${content_type} at ${actualUri}`);
       } catch (err) {
-        console.error(`${type} load error:`, err);
-        Alert.alert("Error", `Unable to open ${type}.`);
+        console.error(`${content_type} load error:`, err);
+        Alert.alert("Error", `Unable to open ${content_type}.`);
       }
     }
   };
@@ -219,7 +321,7 @@ const ContentDetails = () => {
     startText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
   });
 
-  const embedUrl = getYouTubeEmbedUrl(content);
+  const embedUrl = getYouTubeEmbedUrl(contents[0]?.url);
   console.log('Embed URL:', embedUrl);
   
   
@@ -234,7 +336,7 @@ const ContentDetails = () => {
     <ThemedView style={styles.container}>
       <View style={styles.topCard}>
         <View style={styles.headerRow}>
-          <Ionicons name={iconName} size={50} color={theme.text} />
+          <Ionicons name={LESSON_TYPE_ICON_MAP[type] || 'book-outline'} size={50} color={theme.text} />
           <ThemedText style={styles.title}>{title}</ThemedText>
         </View>
       </View>
@@ -250,32 +352,32 @@ const ContentDetails = () => {
           </ThemedText>
         </TouchableOpacity>
 
-        {type !== "link" && type !== "general" && (
-          <TouchableOpacity
-            style={[styles.downloadButton, !fileExists && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder }]}
-            onPress={handleMarkAsDownloaded}
-            disabled={downloading}
-          >
-            {downloading ? (
-              <>
-                <Ionicons name="cloud-download" size={20} color="#1486DE" />
-                <ThemedText style={styles.downloadText}>Downloading…</ThemedText>
-              </>
-            ) : (
-              <>
-                {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
-                <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
-                  {fileExists ? 'Available' : 'Download for offline use'}
-                </ThemedText>
-              </>
-            )}
-          </TouchableOpacity>
+        {contents[0]?.content_type !== "url" && contents[0]?.content_type !== "general" && (
+           <TouchableOpacity
+              style={[styles.downloadButton, !fileExists && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder }]}
+              onPress={handleMarkAsDownloaded}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <>
+                  <Ionicons name="cloud-download" size={20} color="#1486DE" />
+                  <ThemedText style={styles.downloadText}>Downloading…</ThemedText>
+                </>
+              ) : (
+                <>
+                  {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
+                  <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
+                    {fileExists ? 'Available' : 'Download for offline use'}
+                  </ThemedText>
+                </>
+              )}
+            </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.bottomCard}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <ThemedText style={styles.detailText}>Short Description: {shortDescription}</ThemedText>
+          <ThemedText style={styles.detailText}>Short Description: {shortdescription}</ThemedText>
 
           {type === 'video' && (
             videoUri ? (
@@ -296,7 +398,7 @@ const ContentDetails = () => {
             ) 
           )}
 
-          {type === 'link' && !embedFailed && embedUrl && (
+          {type === 'url' && !embedFailed && embedUrl && (
             <WebView
               source={{ uri: embedUrl }}
               javaScriptEnabled
@@ -306,7 +408,7 @@ const ContentDetails = () => {
             />
           )}
 
-          {type === 'link' && embedFailed && (
+          {type === 'url' && embedFailed && (
             <WebView
               source={{ uri: content }}
               javaScriptEnabled
@@ -318,9 +420,12 @@ const ContentDetails = () => {
 
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext'].includes(type) && (
+        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext']
+          .includes(contents[0]?.content_type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
-            <ThemedText style={styles.startText}>{downloading ? 'Downloading…' : 'Open'}</ThemedText>
+            <ThemedText style={styles.startText}>
+              {downloading ? 'Downloading…' : 'Open'}
+            </ThemedText>
           </ThemedButton>
         )}
 
@@ -333,7 +438,7 @@ const ContentDetails = () => {
         onCancel={() => setShowDeleteAlert(false)}
         onConfirm={async () => {
           setShowDeleteAlert(false);
-          const success = await handleDelete(file, type, setFileExists);
+          const success = await handleDelete(contents[0]?.file_name, contents[0]?.content_type, setFileExists);
           if (!success) {
             Alert.alert("Error", "Failed to delete the file or associated images. Please try again.");
           }

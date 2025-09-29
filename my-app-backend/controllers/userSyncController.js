@@ -179,9 +179,11 @@ export const getSyncData = async (req, res) => {
     const [achievements] = await pool.query(`
       SELECT 
         pa.achievement_id,
-        pa.earned_at
+        pa.earned_at,
+        a.content_id
       FROM pupil_achievements pa
-      WHERE pa.pupil_id = ?
+      JOIN achievements a ON pa.achievement_id = a.achievement_id
+      WHERE pa.pupil_id = ?;
     `, [userId]);
 
     // 10. Fetch classmates (other pupils in the same sections)

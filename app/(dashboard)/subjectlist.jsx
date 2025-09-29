@@ -90,34 +90,36 @@ const SubjectList = () => {
     fetchData();
   }, [db]);
 
-  const renderSubject = (item) => (
-    <TouchableOpacity
-      onPress={() =>
-        router.push({
-          pathname: '/subject_page',
-          params: { 
-            subject_id: item.subject_id,   // ✅ pass subject_id
-            name: item.title, 
-            grade: item.grade
-          },
-        })
-      }
-    >
-      <View style={[styles.subjectBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-        <Image source={item.icon} style={styles.icon} />
-        <View style={styles.textContainer}>
-          <ThemedText style={[styles.subjectTitle, { color: theme.text }]}>{item.title}</ThemedText>
-          <ThemedText style={[styles.subjectGrade, { color: theme.text }]}>{item.grade}</ThemedText>
-        </View>
-        <Ionicons
-          name={item.downloaded ? 'checkmark-circle-outline' : 'arrow-down-circle-outline'}
-          size={40}
-          color={item.downloaded ? 'green' : theme.text}
-        />
-      </View>
-    </TouchableOpacity>
-  );
-
+  const renderSubject = (item) =>{ 
+    //console.log("Rendering subject:", item);
+      return(
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: '/subject_page',
+              params: { 
+                subject_id: item.id,   // ✅ pass subject_id
+                name: item.title, 
+                grade: item.grade
+              },
+            })
+          }
+        >
+          <View style={[styles.subjectBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
+            <Image source={item.icon} style={styles.icon} />
+            <View style={styles.textContainer}>
+              <ThemedText style={[styles.subjectTitle, { color: theme.text }]}>{item.title}</ThemedText>
+              <ThemedText style={[styles.subjectGrade, { color: theme.text }]}>{item.grade}</ThemedText>
+            </View>
+            <Ionicons
+              name={item.downloaded ? 'checkmark-circle-outline' : 'arrow-down-circle-outline'}
+              size={40}
+              color={item.downloaded ? 'green' : theme.text}
+            />
+          </View>
+        </TouchableOpacity>
+      );
+  };
   const renderSection = (item) => {
     //console.log("Rendering section:", item);
     return (

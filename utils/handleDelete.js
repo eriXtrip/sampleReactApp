@@ -1,3 +1,5 @@
+// utils/handleDelete.js
+
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath } from './resolveLocalPath';
 

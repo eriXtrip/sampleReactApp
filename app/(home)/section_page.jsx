@@ -117,9 +117,9 @@ const SectionPage = () => {
     <TouchableOpacity
       onPress={() =>
         navigation.navigate('subject_page', {
-          name: item.title,
-          grade: item.grade,
-          progress: 78,
+          subject_id: item.id,   // ✅ pass subject_id
+          name: item.title, 
+          grade: item.grade
         })
       }
     >
