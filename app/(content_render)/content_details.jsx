@@ -175,6 +175,7 @@ const ContentDetails = () => {
     if (!contents.length) return;
 
     const { content_id, file_name, url, content_type, title } = contents[0];
+    console.log("Opening content:", { content_id, file_name, url, content_type, title });
     const localPath = resolveLocalPath(file_name);
     const mimeType = getMimeType(file_name);
 
@@ -220,7 +221,7 @@ const ContentDetails = () => {
         const actualUri = fileInfo.exists ? localPath : url;
         router.push({
           pathname: jsonRoutes[content_type],
-          params: { uri: actualUri, title },
+          params: { uri: actualUri, title, content_id},
         });
         console.log(`Loaded ${content_type} at ${actualUri}`);
       } catch (err) {
@@ -325,7 +326,7 @@ const ContentDetails = () => {
   console.log('Embed URL:', embedUrl);
   
   
-  const videoUri = fileExists ? resolveLocalPath(file) : content;
+  const videoUri = fileExists ? resolveLocalPath(contents[0]?.file_name) : contents[0]?.url;
 
   const videoPlayer = useVideoPlayer(videoUri || undefined, (player) => {
     player.loop = false;
@@ -420,7 +421,7 @@ const ContentDetails = () => {
 
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext']
+        {['pdf', 'ppt', 'pptx', 'quiz', 'game_match', 'game_flash', 'game_speak', 'game_comp', 'game_img']
           .includes(contents[0]?.content_type) && (
           <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
             <ThemedText style={styles.startText}>

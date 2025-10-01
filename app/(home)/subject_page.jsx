@@ -19,7 +19,8 @@ import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ensureLessonFile } from '../../utils/fileHelper';
-import { LESSONS, SUBJECT_ICON_MAP } from '../../data/lessonData';
+import { SUBJECT_ICON_MAP } from '../../data/lessonData';
+import { lightenColor } from '../../utils/colorUtils';
 
 const SubjectPage = () => {
   const db = useSQLiteContext();
@@ -32,10 +33,11 @@ const SubjectPage = () => {
     navigation.setOptions({ headerShown: true, title: 'Subject' });
   }, [navigation]);
 
-  const { name = '', grade = '', progress: progressParam } = useLocalSearchParams();
+  const { subject_id, name = '', grade = '', progress: progressParam} = useLocalSearchParams();
+  console.log('SubjectPage params:', { subject_id, name, grade });
   const subjectName = String(name);
   const subjectGrade = String(grade);
-  const progress = Math.max(0, Math.min(100, Number(progressParam ?? 45)));
+  //const progress = Math.max(0, Math.min(100, Number(progressParam ?? 45)));
 
   const accentColor = '#48cae4';
   const iconName = 'book';
@@ -54,6 +56,60 @@ const SubjectPage = () => {
 
   // File system directory for lesson contents
   const LESSONS_DIR = `${FileSystem.documentDirectory}Android/media/${Application.applicationId}/lesson_contents/`;
+
+  const [lessons, setLessons] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const [achievements, setAchievements] = useState([]);
+
+  // Fetch lessons & achievements from local DB
+  useEffect(() => {
+    const fetchLessonsAndAchievements = async () => {
+      try {
+        // 1️⃣ Fetch lessons for this subject
+        const lessonsData = await db.getAllAsync(
+          `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description
+            FROM lessons
+            WHERE subject_belong = ?`,
+          [subject_id]
+        );
+
+        // 2️⃣ Collect all lesson_ids
+        const lessonIds = lessonsData.map(l => l.lesson_id);
+
+        // 3️⃣ Fetch all content_ids related to these lessons
+        const contentsData = await db.getAllAsync(
+          `SELECT content_id, lesson_belong 
+            FROM subject_contents
+            WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
+          lessonIds
+        );
+
+        const contentIds = contentsData.map(c => c.content_id);
+
+        // 4️⃣ Fetch pupil achievements for these contents
+        const achievementsData = await db.getAllAsync(
+          `SELECT * 
+            FROM pupil_achievements
+            WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
+          [ ...contentIds] // all content IDs
+        );
+
+        // 5️⃣ Calculate total progress
+        const totalLessons = lessonsData.length;
+        const completedLessons = lessonsData.filter(l => l.status === 1 || l.status === true).length;
+        const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+        setLessons(lessonsData);
+        setAchievements(achievementsData);
+        setProgress(progressPercent);
+
+      } catch (err) {
+        console.error("❌ Error fetching lessons/achievements:", err);
+      }
+    };
+
+    fetchLessonsAndAchievements();
+  }, [db, subject_id]);
 
   // no banner overlap in SubjectPage
   const initialOverlap = 0;
@@ -146,6 +202,8 @@ const SubjectPage = () => {
     const isSelected = selectedIds.has(item.id);
     const isDone = item.status === true; // or check truthy values like 1/"true" if needed
 
+    console.log('Rendering lesson item:', item, 'isSelected:', isSelected, 'isDone:', isDone);
+
     return (
       <TouchableOpacity
         onPress={() => {
@@ -155,7 +213,7 @@ const SubjectPage = () => {
             router.push({
               pathname: '/lesson_page',
               params: {
-                id: item.id,
+                id: item.lesson_id,
                 title: item.title,
                 description: item.description,
                 Quarter: item.Quarter,
@@ -177,7 +235,7 @@ const SubjectPage = () => {
       >
         {/* Lesson Number in a Box */}
         <View style={[styles.numberBox, isDone && { backgroundColor: '#48cae4' }]}>
-          <ThemedText style={styles.lessonNumber}>{item.id}</ThemedText>
+          <ThemedText style={styles.lessonNumber}>{item.lesson_id}</ThemedText>
         </View>
 
         {/* Lesson Title + Quarter */}
@@ -283,8 +341,8 @@ const SubjectPage = () => {
           <Animated.View style={{ width: screenWidth }}>
             <View style={[styles.tabContent, { paddingBottom: selectionMode ? 90 : 25 }]}>
           <Animated.FlatList
-            data={LESSONS}
-            keyExtractor={(item) => item.id}
+            data={lessons}
+            keyExtractor={(item) => String(item.lesson_id)}
             renderItem={renderLessonCard}
             contentContainerStyle={{ paddingBottom: 0 }}
             showsVerticalScrollIndicator={false}
@@ -307,36 +365,44 @@ const SubjectPage = () => {
         {/* Map tab */}
         <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:25 }} resizeMode="cover">
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
-            <Map stops={LESSONS.length} cols={5} progress={progress} accentColor={accentColor} />
+            <Map stops={lessons.length} cols={5} progress={progress} accentColor={accentColor} />
           </View>
         </ImageBackground>
 
         {/* Achievement tab */}
         <View style={{ width: screenWidth }}>
-          <View style={[styles.tabContent, { alignItems: 'center' }]}>
-             <Spacer height={10} />
-            <ThemedAchievement
-              iconLibrary="Ionicons"
-              iconName="trophy"
-              iconColor="#f59e0b"
-              title={`Bronze Star`}
-              subtext="Completed your first lesson"
-              cardStyle={{ width: '100%', backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }}
-              badgeStyle={{ backgroundColor: 'rgba(253, 186, 116, 0.25)' }}
-            />
-            <Spacer height={16} />
-            <ThemedAchievement
-              iconLibrary="Ionicons"
-              iconName="ribbon"
-              iconColor="#10b981"
-              title={`Quiz Whiz`}
-              subtext="Scored 90%+ on Post Test"
-              cardStyle={{ width: '100%', backgroundColor: '#ECFDF5', borderColor: '#6EE7B7' }}
-              badgeStyle={{ backgroundColor: 'rgba(110, 231, 183, 0.25)' }}
-              showConfetti={false}
-            />
+            <Animated.ScrollView 
+              contentContainerStyle={[styles.tabContent, { alignItems: 'center', paddingBottom: 20 }]} 
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              <Spacer height={10} />
+              {achievements.length === 0 ? (
+                <ThemedText>No achievements yet</ThemedText>
+              ) : (
+                achievements.map((ach) => (
+                  <ThemedAchievement
+                    key={ach.id}
+                    iconLibrary="Ionicons"
+                    iconName={`${ach.icon ?? 'trophy'}`}
+                    iconColor={`${ach.color ?? '#FFD700'}`}
+                    title={`${ach.title}`}
+                    subtext={`${ach.description ?? 'N/A'}`}
+                    cardStyle={{
+                      width: '100%',
+                      backgroundColor: lightenColor(ach.color ?? '#FFD700', 0.4),
+                      borderColor: ach.color ?? '#FFD700',
+                      marginBottom: 15
+                    }}
+                    badgeStyle={{
+                      backgroundColor: '#fff',
+                      borderColor: ach.color ?? '#FFD700'
+                    }}
+                  />
+                ))
+              )}
+            </Animated.ScrollView>
           </View>
-        </View>
       </Animated.ScrollView>
 
       <Spacer height={23} />

@@ -126,7 +126,7 @@ export async function initializeDatabase(db) {
 
     -- Pupil Test Scores (for progress tracking)
     CREATE TABLE IF NOT EXISTS pupil_test_scores (
-      score_id INTEGER PRIMARY KEY,
+      score_id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_score_id INTEGER UNIQUE,    -- maps to MySQL pupil_test_scores.score_id
       pupil_id INTEGER NOT NULL,         -- local user_id
       test_id INTEGER NOT NULL,          -- server test_id (no local test table)
@@ -139,7 +139,7 @@ export async function initializeDatabase(db) {
 
     -- Pupil Answers (only choice selection)
     CREATE TABLE IF NOT EXISTS pupil_answers (
-      answer_id INTEGER PRIMARY KEY,
+      answer_id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_answer_id INTEGER UNIQUE,   -- maps to MySQL pupil_answers.answer_id
       pupil_id INTEGER NOT NULL,
       question_id INTEGER NOT NULL,      -- server question_id
@@ -149,9 +149,13 @@ export async function initializeDatabase(db) {
 
     -- Achievements (only earned ones)
     CREATE TABLE IF NOT EXISTS pupil_achievements (
-      id INTEGER PRIMARY KEY,
-      server_achievement_id INTEGER NOT NULL, -- maps to MySQL achievements.achievement_id
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_achievement_id INTEGER, -- maps to MySQL achievements.achievement_id
       pupil_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      icon TEXT,
+      color TEXT,
       earned_at TEXT,
       subject_content_id INTEGER,                -- local content_id (if tied to content)
       FOREIGN KEY (pupil_id) REFERENCES users(user_id),

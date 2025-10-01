@@ -17,6 +17,9 @@ import BadgeReward from "../../components/BadgeReward";
 import TryAgainModal from "../../components/TryAgainModal";
 import ThemedView from "../../components/ThemedView";
 import LoadingAnimation from "../../components/loadingAnimation";
+import { useSQLiteContext } from 'expo-sqlite';
+import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+
 
 
 const { width, height } = Dimensions.get("window");
@@ -24,9 +27,12 @@ const cardWidth = width - 60;
 const cardHeight = height / 2;
 
 export default function CompleteSentenceScreen() {
-  const { uri } = useLocalSearchParams() || {};
+  const { uri, content_id } = useLocalSearchParams();
+  console.log("Complete Sentence Params:", { uri, content_id });
   const router = useRouter();
   const navigation = useNavigation();
+
+  const db = useSQLiteContext();
 
   const [gameData, setGameData] = useState([]);
   const [gameBadge, setGameBadge] = useState(null);
@@ -259,8 +265,10 @@ export default function CompleteSentenceScreen() {
       <BadgeReward
         visible={showBadge}
         badge={badge}   // ✅ comes directly from JSON
-        onClose={() => {
-            setShowBadge(false);
+        onClose={async () => {
+            console.log("Param to be sent:", { badge, content_id });
+            await saveAchievementAndUpdateContent(db, badge, content_id);
+            setShowBadge(false)
             router.back();
         }}
       />

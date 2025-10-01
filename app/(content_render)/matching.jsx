@@ -9,11 +9,17 @@ import { Ionicons } from "@expo/vector-icons";
 import BadgeReward from "../../components/BadgeReward";
 import LoginLogo from "../../assets/img/Login_Logo.png";
 import LoadingAnimation from "../../components/loadingAnimation";
+import { useSQLiteContext } from 'expo-sqlite';
+import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+
 
 export default function MatchingScreen() {
-  const { uri } = useLocalSearchParams();
+  const { uri, content_id } = useLocalSearchParams();
+  console.log("Matching Params:", { uri, content_id });
   const router = useRouter();
   const navigation = useNavigation();
+
+  const db = useSQLiteContext();
 
   const [matchingData, setMatchingData] = useState(null);
   const [cards, setCards] = useState([]);
@@ -243,7 +249,8 @@ export default function MatchingScreen() {
       <BadgeReward
         visible={showBadge}
         badge={gameBadge}
-        onClose={() => {
+        onClose={async () => {
+          await saveAchievementAndUpdateContent(db, gameBadge, content_id);
           setShowBadge(false);
           router.back();
         }}

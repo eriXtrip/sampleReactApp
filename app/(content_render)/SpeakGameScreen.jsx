@@ -7,11 +7,16 @@ import * as Speech from "expo-speech";
 import MicWaveButton from "../../components/MicWaveButton";
 import BadgeReward from "../../components/BadgeReward"; 
 import LoadingAnimation from "../../components/loadingAnimation";
+import { useSQLiteContext } from 'expo-sqlite';
+import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 
 export default function SpeakGameScreen() {
-  const { uri } = useLocalSearchParams();
+  const { uri, content_id } = useLocalSearchParams();
+  console.log("Speak Params:", { uri, content_id });
   const router = useRouter();
   const navigation = useNavigation();
+
+  const db = useSQLiteContext();
 
   const [gameData, setGameData] = useState(null);
   const [currentSentence, setCurrentSentence] = useState(0);
@@ -19,6 +24,7 @@ export default function SpeakGameScreen() {
   const [voiceIdentifier, setVoiceIdentifier] = useState(null);
 
   // 👇 state for showing badge reward
+  const [gameBadge, setGameBadge] = useState(null);
   const [showBadge, setShowBadge] = useState(false);
 
   const theme = {
@@ -47,6 +53,11 @@ export default function SpeakGameScreen() {
         }
         setGameData(parsed);
 
+        // set badge if exists
+        if (parsed.badge) {
+          setGameBadge(parsed.badge);
+        }
+
         const voices = await Speech.getAvailableVoicesAsync();
         const selectedVoice = voices.find(v => v.language === "en-US")?.identifier || null;
         setVoiceIdentifier(selectedVoice);
@@ -62,6 +73,8 @@ export default function SpeakGameScreen() {
     return <LoadingAnimation />
   }
 
+
+
   const sentence = gameData.items[currentSentence].sentence;
 
   const handleNext = () => {
@@ -69,7 +82,7 @@ export default function SpeakGameScreen() {
       setCurrentSentence(currentSentence + 1);
     } else {
       // 👇 instead of Alert, show badge
-      if (gameData.badge) {
+      if (gameBadge) {
         setShowBadge(true);
       } else {
         Alert.alert("Finished", "You have completed all sentences.", [
@@ -171,8 +184,10 @@ export default function SpeakGameScreen() {
       {/* ✅ Badge Reward Modal with Confetti */}
       <BadgeReward
         visible={showBadge}
-        badge={gameData.badge}
-        onClose={() => {
+        badge={gameBadge}
+        onClose={async () => {
+          console.log("Param to be sent:", { gameBadge, content_id });
+          await saveAchievementAndUpdateContent(db, gameBadge, content_id);
           setShowBadge(false);
           router.back();
         }}

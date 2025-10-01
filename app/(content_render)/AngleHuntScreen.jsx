@@ -16,10 +16,13 @@ import ThemedView from "../../components/ThemedView";
 import ThemedText from "../../components/ThemedText";
 import LoadingAnimation from "../../components/loadingAnimation";
 import { resolveLocalPath } from "../../utils/resolveLocalPath";
+import { useSQLiteContext } from 'expo-sqlite';
+import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
-  const { uri } = useLocalSearchParams();
+  const { uri, content_id } = useLocalSearchParams();
+  console.log("Game with img:", { uri, content_id });
   const [gameData, setGameData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedChoice, setSelectedChoice] = useState(null);
@@ -27,6 +30,8 @@ export default function AngleHuntScreen() {
   const [showAlert, setShowAlert] = useState(false);
   const [questionSource, setQuestionSource] = useState(null);
   const [choiceSources, setChoiceSources] = useState({});
+  
+  const db = useSQLiteContext();
 
   // Load JSON data
   useEffect(() => {
@@ -217,7 +222,12 @@ export default function AngleHuntScreen() {
       <BadgeReward
         visible={showBadge}
         badge={gameData.badge}
-        onClose={() => router.back()}
+        onClose={async () => {
+            console.log("Param to be sent:", { gameBadge: gameData.badge, content_id });
+            await saveAchievementAndUpdateContent(db, gameData.badge, content_id);
+            setShowBadge(false)
+            router.back();
+        }}
       />
 
       {/* Question */}

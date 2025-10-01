@@ -45,7 +45,6 @@ export async function saveSyncDataToSQLite(data, db) {
     }
 
     // === 2. Subjects ===
-    // === 2. Subjects ===
     if (Array.isArray(data.subjects)) {
       for (const sub of data.subjects) {
         await db.runAsync(
@@ -206,11 +205,15 @@ export async function saveSyncDataToSQLite(data, db) {
         for (const ach of data.pupil_achievements) {
           await db.runAsync(
             `INSERT INTO pupil_achievements (
-              server_achievement_id, pupil_id, earned_at, subject_content_id
+              server_achievement_id, pupil_id, title, description, icon, color, earned_at, subject_content_id
             ) VALUES (?, ?, ?, ?)`,
             [
               ach.achievement_id,
               localUser.user_id,
+              ach.title || "Achievement",
+              ach.description || null,
+              ach.icon || null,
+              ach.color || null,
               ach.earned_at || new Date().toISOString(),
               ach.content_id || null,
             ]

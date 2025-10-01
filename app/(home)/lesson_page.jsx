@@ -18,7 +18,7 @@ const LessonPage = () => {
   const router = useRouter();
 
   const { id = '', title = '', Quarter = '', description = '' } = useLocalSearchParams();
-  //console.log('Lesson Params:', { id, title, Quarter, description });
+  console.log('Lesson Params:', { id, title, Quarter, description });
 
   const db = useSQLiteContext();
 
@@ -49,9 +49,10 @@ const LessonPage = () => {
 
   const toggleExpand = () => setExpanded(prev => !prev);
 
-  const renderLessonContent = ({ item }) => {
+  const renderLessonContent = ({ item, index }) => {
     const iconName = LESSON_TYPE_ICON_MAP[item.content_type] || 'book-outline';
     const isDone = item.done === 1 || item.done === true || item.done === 'true';
+    const isLast = index === lessonContents.length - 1;
 
     //console.log('Rendering content item:', item);
 
@@ -59,7 +60,7 @@ const LessonPage = () => {
       <TouchableOpacity
         onPress={() => router.push({ pathname: '/content_details', params: { id: item.content_id, title: item.title, shortdescription: item.description, type: item.content_type, status: isDone} })}
       >
-        <View style={[styles.cardBox, { borderColor: isDone ? '#48cae4' : theme.cardBorder }]}>
+        <View style={[styles.cardBox, { borderColor: isDone ? '#48cae4' : theme.cardBorder }, isLast && styles.lastCardBox]}>
           <Ionicons name={iconName} size={28} color={theme.text} style={{ marginRight: 12 }} />
           <View style={styles.textContainer}>
             <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{item.title}</ThemedText>
@@ -74,6 +75,7 @@ const LessonPage = () => {
       <FlatList
         data={lessonContents}
         keyExtractor={(item) => String(item.content_id)}
+        style={styles.listContainer}
         renderItem={renderLessonContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -113,9 +115,9 @@ export default LessonPage;
 const { height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 20, paddingBottom: 5, paddingHorizontal: 16 },
-  listContainer: { paddingBottom: 20, paddingTop: 20 },
-  cardContainer: { height: height * 0.20, padding: 15, borderRadius: 15, backgroundColor: '#48cae4', justifyContent: 'center', marginBottom: 15, shadowColor: '#48cae4', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 15, elevation: 15 },
+  container: { flex: 1, paddingBottom: 0, paddingHorizontal: 16,  },
+  listContainer: { paddingBottom: 50, paddingTop: 0 },
+  cardContainer: { height: height * 0.20, padding: 15, borderRadius: 15, backgroundColor: '#48cae4', justifyContent: 'center', marginTop: 20, marginBottom: 15, shadowColor: '#48cae4', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 15, elevation: 15 },
   cardContent: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   numberBox: { width: 70, height: 70, borderRadius: 15, backgroundColor: '#0d669eff', justifyContent: 'center', alignItems: 'center', marginRight: 12, marginHorizontal: 10 },
   lessonNumber: { fontSize: 40, fontWeight: 'bold', color: '#ffffffff' },
@@ -136,6 +138,9 @@ const styles = StyleSheet.create({
     borderLeftWidth: 6,
     borderRadius: 10,
    },
+  lastCardBox: {
+    marginBottom: 50, // extra spacing at the end
+  },
   textContainer: { flex: 1 },
   cardTitle: { fontSize: 18, fontWeight: '600' },
 });

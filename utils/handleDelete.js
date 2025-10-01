@@ -12,7 +12,7 @@ export const handleDelete = async (file, type, setFileExists) => {
     const localPath = resolveLocalPath(file);
 
     // Process associated image files if type is "gameIMGtext"
-    if (type === "gameIMGtext") {
+    if (type === "game_img") {
       try {
         const jsonString = await FileSystem.readAsStringAsync(localPath);
         const jsonData = JSON.parse(jsonString);

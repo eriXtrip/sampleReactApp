@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     padding: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#00000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     right: 10,
     width: 40,
     height: 40,
-    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+    backgroundColor: 'rgba(255, 217, 0, 0)',
     borderRadius: 20,
   },
 });

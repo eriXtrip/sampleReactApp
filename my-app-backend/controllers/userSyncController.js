@@ -179,6 +179,10 @@ export const getSyncData = async (req, res) => {
     const [achievements] = await pool.query(`
       SELECT 
         pa.achievement_id,
+        a.title,
+        a.description,
+        a.icon,
+        a.color,
         pa.earned_at,
         a.content_id
       FROM pupil_achievements pa

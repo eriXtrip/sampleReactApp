@@ -169,7 +169,7 @@ const SubjectList = () => {
       <FlatList
         data={combinedData}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
+        keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />

@@ -7,11 +7,16 @@ import Spacer from "../../components/Spacer";
 import { Ionicons } from "@expo/vector-icons";
 import BadgeReward from "../../components/BadgeReward";
 import LoadingAnimation from "../../components/loadingAnimation";
+import { useSQLiteContext } from 'expo-sqlite';
+import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 
 export default function FlashCardScreen() {
-  const { uri } = useLocalSearchParams() || {};
+  const { uri, content_id } = useLocalSearchParams();
+  console.log("Flashcard Params:", { uri, content_id });
   const router = useRouter();
   const navigation = useNavigation();
+
+  const db = useSQLiteContext();
 
   const [flashData, setFlashData] = useState([]);
   const [knowCount, setKnowCount] = useState(0);
@@ -184,7 +189,8 @@ export default function FlashCardScreen() {
       <BadgeReward
         visible={showBadge}
         badge={gameBadge}
-        onClose={() => {
+        onClose={async () => {
+          await saveAchievementAndUpdateContent(db, gameBadge, content_id);
           setShowBadge(false);
           router.back();
         }}

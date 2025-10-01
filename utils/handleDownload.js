@@ -26,7 +26,7 @@ export const handleDownload = async (file, content, type, setFileExists, setDown
     console.log("Downloaded main file ✅:", file);
 
     // Step 2: Handle JSON or normal file
-    if (['test', 'match', 'flash', 'speach', 'sentence', 'gameIMGtext', 'angleMathHunt'].includes(type)) {
+    if (['quiz', 'game_match', 'game_flash', 'game_speak', 'game_comp', 'game_img'].includes(type)) {
       const jsonString = await FileSystem.readAsStringAsync(downloadedUri);
       const parsed = JSON.parse(jsonString);
 
