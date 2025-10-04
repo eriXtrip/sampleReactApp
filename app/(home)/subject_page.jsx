@@ -167,40 +167,12 @@ const SubjectPage = () => {
       return null;
     }
   };
-
-
-   // check if files exist in documentDirectory
-  // useEffect(() => {
-  //   (async () => {
-  //     const status = {};
-
-  //     for (let item of LESSON_CARDS) {
-  //       if (!item.file) {  // use file instead of content
-  //         status[item.id] = false;
-  //         continue;
-  //       }
-
-  //       const targetUri = `${LESSONS_DIR}${item.file}`; // use file as filename
-
-  //       try {
-  //         const fileInfo = await FileSystem.getInfoAsync(targetUri);
-  //         status[item.id] = fileInfo.exists;  // true if saved locally
-  //       } catch {
-  //         status[item.id] = false;
-  //       }
-  //     }
-
-  //     setDownloadedFiles(status);
-  //   })();
-  // }, []);
-
-
   
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
   const renderLessonCard = ({ item }) => {
     const isSelected = selectedIds.has(item.id);
-    const isDone = item.status === true; // or check truthy values like 1/"true" if needed
+    const isDone = item.status === 1; // or check truthy values like 1/"true" if needed
 
     console.log('Rendering lesson item:', item, 'isSelected:', isSelected, 'isDone:', isDone);
 

@@ -99,7 +99,9 @@ export async function initializeDatabase(db) {
       downloaded_at TEXT,                -- ISO timestamp when downloaded locally
       done BOOLEAN DEFAULT FALSE,          -- whether user marked as done
       last_accessed TEXT,               -- ISO timestamp
+      started_at TEXT,                -- ISO timestamp when first accessed
       completed_at TEXT,                -- ISO timestamp when marked complete
+      duration INTEGER,                  -- in minutes (if applicable)
       FOREIGN KEY (lesson_belong) REFERENCES lessons(lesson_id)
     );
 
@@ -132,6 +134,7 @@ export async function initializeDatabase(db) {
       test_id INTEGER NOT NULL,          -- server test_id (no local test table)
       score INTEGER NOT NULL,
       max_score INTEGER NOT NULL,
+      grade INTEGER NOT NULL,
       attempt_number INTEGER DEFAULT 1,
       taken_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id)

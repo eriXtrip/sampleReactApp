@@ -118,25 +118,52 @@ const ContentDetails = () => {
   const handleMarkAsDone = async () => {
     if (!contents.length) return;
 
-    const { content_id } = contents[0];
+    const { content_id, lesson_belong } = contents[0];
     const newState = !isDone;
     setIsDone(newState);
 
     try {
-      const now = newState ? new Date().toISOString() : null;
+      const now = new Date().toISOString();
+
+      // Step 1: Update subject_contents done & completed_at
       await db.runAsync(
         `UPDATE subject_contents 
-        SET done = ?, completed_at = ? 
+        SET done = ?, completed_at = ?, last_accessed = ?
         WHERE content_id = ?`,
-        [newState ? 1 : 0, now, content_id]
+        [newState ? 1 : 0, newState ? now : null, now, content_id]
       );
-      console.log(`✅ Updated done=${newState}, completed_at=${now} for content_id ${content_id}`);
+      console.log(`✅ Updated content_id=${content_id} with done=${newState}`);
+
+      // Step 2: Fetch all contents for this lesson
+      const rows = await db.getAllAsync(
+        `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
+        [lesson_belong]
+      );
+
+      const total = rows.length;
+      const doneCount = rows.filter(r => r.done).length;
+      const progress = total > 0 ? (doneCount / total) * 100 : 0;
+
+      // Step 3: Determine status and completed_at for lesson
+      const lessonStatus = progress === 100;
+      const lessonCompletedAt = lessonStatus ? now : null;
+
+      // Step 4: Update lesson
+      await db.runAsync(
+        `UPDATE lessons
+        SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
+        WHERE lesson_id = ?`,
+        [lessonStatus ? 1 : 0, progress, now, lessonCompletedAt, lesson_belong]
+      );
+
+      console.log(`📘 Lesson ${lesson_belong} updated: progress=${progress}, status=${lessonStatus}`);
     } catch (err) {
-      console.error("❌ Error updating done/completed_at:", err);
+      console.error("❌ Error in handleMarkAsDone:", err);
     }
 
     router.setParams({ status: newState ? "true" : "false" });
   };
+
 
   const handleMarkAsDownloaded = async () => {
     if (!contents.length) return;

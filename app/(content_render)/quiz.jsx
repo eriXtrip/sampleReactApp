@@ -19,6 +19,7 @@ import QuestionGridModal from "../../components/QuestionGridModal";
 import ResultsScreen from "../../components/ResultsScreen";
 import PasswordModal from "../../components/PasswordModal";
 import lessonData from "../../data/lessonData";
+import { useSQLiteContext } from "expo-sqlite";
 
 
 
@@ -36,6 +37,7 @@ export default function QuizScreen() {
   const [feedback, setFeedback] = useState(null);
   const { feedbackMessages } = lessonData;
   const [lockedAnswers, setLockedAnswers] = useState({});
+  const [startedAt, setStartedAt] = useState(null);
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [enteredPassword, setEnteredPassword] = useState("");
@@ -44,6 +46,71 @@ export default function QuizScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
+
+  const db = useSQLiteContext();
+
+  const getCurrentUserId = async () => {
+    try {
+      const result = await db.getFirstAsync(`SELECT user_id FROM users LIMIT 1`);
+      console.log("Current user ID:", result?.user_id);
+      return result?.user_id || null;
+    } catch (err) {
+      console.error("❌ Error fetching current user:", err);
+      return null;
+    }
+  };
+
+  const saveScore = async (finalScore, maxScore) => {
+    const now = new Date().toISOString();
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    try {
+      await db.runAsync(
+        `INSERT INTO pupil_test_scores (pupil_id, test_id, score, max_score, taken_at) 
+        VALUES (?, ?, ?, ?, ?)`,
+        [userId, quizData.quizId, finalScore, maxScore, now]
+      );
+      console.log("✅ Quiz score saved:", finalScore, "/", maxScore);
+    } catch (err) {
+      console.error("❌ Error saving score:", err);
+    }
+  };
+
+  const saveAnswers = async () => {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+
+    try {
+      for (const q of quizData.questions) {
+        const userAns = answers[q.id];
+
+        if (q.type === "multichoice" || q.type === "truefalse") {
+          await db.runAsync(
+            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
+            [userId, q.id, userAns]
+          );
+        } else if (q.type === "enumeration") {
+          await db.runAsync(
+            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
+            [userId, q.id, JSON.stringify(userAns)]
+          );
+        } else if (q.type === "multiselect") {
+          for (const choice of userAns || []) {
+            await db.runAsync(
+              `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
+              [userId, q.id, choice]
+            );
+          }
+        }
+      }
+      console.log("✅ Answers saved");
+    } catch (err) {
+      console.error("❌ Error saving answers:", err);
+    }
+  };
+
+
 
 
   const theme = {
@@ -72,6 +139,7 @@ export default function QuizScreen() {
   // Load JSON file
   useEffect(() => {
     const loadQuiz = async () => {
+
       try {
         let parsed;
         if (uri.startsWith("http")) {
@@ -101,6 +169,7 @@ export default function QuizScreen() {
         }
 
         setQuizData(parsed);
+        setStartedAt(new Date().toISOString());
 
         if (parsed.settings.mode === "close") {
           setPasswordModalVisible(true);
@@ -157,7 +226,9 @@ export default function QuizScreen() {
     // True/False
     if (question.type === "truefalse") {
       const isSelected = userAnswer === choice;
-      const correctAnswer = question.answer ? "True" : "False";
+      const correctAnswer = Array.isArray(question.answer) 
+        ? question.answer[0] 
+        : question.answer;
 
       if (isSelected && !isLocked) {
         borderColor = "#48cae4";
@@ -269,7 +340,7 @@ export default function QuizScreen() {
     setAnswers({ ...answers, [question.id]: text });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const q = question; // current question
 
     if (quizData.settings.instantFeedback && !lockedAnswers[q.id]) {
@@ -324,48 +395,54 @@ export default function QuizScreen() {
       }
     }
 
-    // 🟢 if already locked or instantFeedback = false → move forward
+     // 🟢 if already locked or instantFeedback = false → move forward
     if (currentQuestion + 1 < quizData.questions.length) {
       setCurrentQuestion(currentQuestion + 1);
       setFeedback(null); // 🧹 clear feedback when moving forward
     } else {
       // ✅ Calculate score at the end
       let total = 0;
+
       quizData.questions.forEach((q) => {
+        let questionPoints = 0; // points for this question only
+
         if (q.type === "multichoice") {
           const userAns = answers[q.id];
           const correct = q.choices.find((c) => c.text === userAns && c.points > 0);
-          if (correct) total += correct.points;
+          if (correct) questionPoints = correct.points;
+
         } else if (q.type === "enumeration") {
           const userAnsArray = (answers[q.id] || "")
             .split(",")
-            .map((a) => a.trim().toLowerCase())
-            .filter((a) => a !== "");
+            .map(a => a.trim().toLowerCase())
+            .filter(a => a !== "");
+          const correctAnswers = q.answer.map(a => a.toLowerCase());
+          questionPoints = userAnsArray.filter(ans => correctAnswers.includes(ans)).length;
 
-          const correctAnswers = q.answer.map((a) => a.toLowerCase());
-          let correctCount = 0;
-          userAnsArray.forEach((ans) => {
-            if (correctAnswers.includes(ans)) correctCount++;
-          });
-
-          if (correctCount > 0) {
-            total += (q.points / correctAnswers.length) * correctCount;
-          }
         } else if (q.type === "truefalse") {
-          if (answers[q.id] === q.answer) total += q.points;
+          if (answers[q.id] === q.answer[0]) questionPoints = q.points;
+
         } else if (q.type === "multiselect") {
           const userAns = answers[q.id] || [];
-          q.choices.forEach((c) => {
-            if (userAns.includes(c.text)) total += c.points;
+          q.choices.forEach(c => {
+            if (userAns.includes(c.text)) questionPoints += c.points;
           });
         }
+
+        console.log(`Question: ${q.question}`);
+        console.log(`User answer: ${answers[q.id]}`);
+        console.log(`Points awarded: ${questionPoints}`);
+
+        total += questionPoints; // ✅ add points for this question to total
       });
+
       setScore(total);
       setShowResults(true);
+      await saveScore(total, maxScore);
+      await saveAnswers();
+
     }
   };
-
-
 
   const handlePrev = () => {
     if (currentQuestion > 0) {
@@ -385,6 +462,7 @@ export default function QuizScreen() {
         score={score}
         quizData={quizData}
         answers={answers}
+        startedAt={startedAt}
         onClose={() => router.back()}
       />
     );
