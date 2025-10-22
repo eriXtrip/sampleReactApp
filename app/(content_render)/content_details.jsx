@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
+import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -43,6 +44,8 @@ const ContentDetails = () => {
 
   const [contents, setContents] = useState([]);
 
+  const isFocused = useIsFocused();
+
   // --- MIME detection ---
   const getMimeType = (filename) => {
     if (!filename) return '*/*';
@@ -83,8 +86,10 @@ const ContentDetails = () => {
         }
       };
 
-      fetchContents();
-    }, [id]);
+      if (isFocused) {
+        fetchContents();
+      }
+    }, [isFocused, id]);
 
     console.log("Current contents state:", contents);
 

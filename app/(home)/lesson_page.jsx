@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
@@ -25,6 +26,8 @@ const LessonPage = () => {
   const [expanded, setExpanded] = useState(false);
   const [lessonContents, setLessonContents] = useState([]);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
     const fetchLessonContents = async () => {
       try {
@@ -44,8 +47,10 @@ const LessonPage = () => {
       }
     };
 
-    fetchLessonContents();
-  }, [db, id]);
+    if (isFocused) {
+      fetchLessonContents();
+    }
+  }, [isFocused, db, id]);
 
   const toggleExpand = () => setExpanded(prev => !prev);
 

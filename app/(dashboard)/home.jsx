@@ -6,6 +6,7 @@ import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import ThemedView from '../../components/ThemedView';
 import Spacer from '../../components/Spacer';
@@ -13,6 +14,7 @@ import ThemedText from '../../components/ThemedText';
 import ThemedSearch from '../../components/ThemedSearch';
 import ThemedAchievement from '../../components/ThemedAchievement';
 import ThemedActivity from '../../components/ThemedActivity';
+import { lightenColor } from '../../utils/colorUtils';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { useContext } from 'react';
 
@@ -26,6 +28,24 @@ const Home = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current; // starts fully visible
+
+  const [achievements, setAchievements] = useState([]);
+  const db = useSQLiteContext();
+
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        const result = await db.getAllAsync(
+          `SELECT * FROM pupil_achievements`,
+        );
+        setAchievements(result);
+      } catch (error) {
+        console.error('Error fetching achievements:', error);
+      }
+    };
+
+    fetchAchievements();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,53 +84,53 @@ const Home = () => {
     { name: 'Math', progress: 80 },
   ];
 
-  const achievements = [
-    {
-      id: '1',
-      iconName: 'trophy',
-      iconColor: '#FFD700',
-      title: 'Top Performer',
-      subtext: "You're in the top 5%!",
-      bgColor: '#FFF9E6',
-      borderColor: '#FFD700',
-    },
-    {
-      id: '2',
-      iconName: 'alarm',
-      iconColor: '#90be6d',
-      title: 'Early Bird',
-      subtext: 'Logged in before 7AM!',
-      bgColor: '#ECFDF5',
-      borderColor: '#90be6d',
-    },
-    {
-      id: '3',
-      iconName: 'ribbon',
-      iconColor: '#ffb703',
-      title: 'Badge Unlocked',
-      subtext: 'Fast Learner unlocked!',
-      bgColor: '#FFF6E5',
-      borderColor: '#ffb703',
-    },
-    {
-      id: '4',
-      iconName: 'school',
-      iconColor: '#7cb9e8',
-      title: 'Subject Enrolled',
-      subtext: 'You joined Science G4',
-      bgColor: '#E6F4FF',
-      borderColor: '#7cb9e8',
-    },
-    {
-      id: '5',
-      iconName: 'checkmark-done-circle',
-      iconColor: '#9d4edd',
-      title: 'Task Completed',
-      subtext: 'Assignment turned in!',
-      bgColor: '#F3E8FF',
-      borderColor: '#9d4edd',
-    },
-  ];
+  // const achievements = [
+  //   {
+  //     id: '1',
+  //     iconName: 'trophy',
+  //     iconColor: '#FFD700',
+  //     title: 'Top Performer',
+  //     subtext: "You're in the top 5%!",
+  //     bgColor: '#FFF9E6',
+  //     borderColor: '#FFD700',
+  //   },
+  //   {
+  //     id: '2',
+  //     iconName: 'alarm',
+  //     iconColor: '#90be6d',
+  //     title: 'Early Bird',
+  //     subtext: 'Logged in before 7AM!',
+  //     bgColor: '#ECFDF5',
+  //     borderColor: '#90be6d',
+  //   },
+  //   {
+  //     id: '3',
+  //     iconName: 'ribbon',
+  //     iconColor: '#ffb703',
+  //     title: 'Badge Unlocked',
+  //     subtext: 'Fast Learner unlocked!',
+  //     bgColor: '#FFF6E5',
+  //     borderColor: '#ffb703',
+  //   },
+  //   {
+  //     id: '4',
+  //     iconName: 'school',
+  //     iconColor: '#7cb9e8',
+  //     title: 'Subject Enrolled',
+  //     subtext: 'You joined Science G4',
+  //     bgColor: '#E6F4FF',
+  //     borderColor: '#7cb9e8',
+  //   },
+  //   {
+  //     id: '5',
+  //     iconName: 'checkmark-done-circle',
+  //     iconColor: '#9d4edd',
+  //     title: 'Task Completed',
+  //     subtext: 'Assignment turned in!',
+  //     bgColor: '#F3E8FF',
+  //     borderColor: '#9d4edd',
+  //   },
+  // ];
 
 
   return (
@@ -164,32 +184,38 @@ const Home = () => {
           style={{
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: achievements[currentIndex].bgColor, // match current card
+            backgroundColor: lightenColor(achievements[currentIndex]?.color ?? '#FFD700', 0.4), // match current card
             borderRadius: 18,
           }}
         >
-          <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
-            <ThemedAchievement
-              iconLibrary="Ionicons"
-              iconName={achievements[currentIndex].iconName}
-              iconColor={achievements[currentIndex].iconColor}
-              title={achievements[currentIndex].title}
-              subtext={achievements[currentIndex].subtext}
-              showConfetti={achievements[currentIndex].title === 'Top Performer'}
-              cardStyle={{
-                backgroundColor: achievements[currentIndex].bgColor,
-                borderColor: achievements[currentIndex].borderColor,
-                width: '100%',
-              }}
-              badgeStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-              }}
-            />
-          </Animated.View>
+          {achievements.length > 0 ? (
+            <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
+              <ThemedAchievement
+                iconLibrary="Ionicons"
+                iconName={achievements[currentIndex]?.icon ?? 'trophy'}
+                iconColor={achievements[currentIndex]?.color ?? '#FFD700'}
+                title={achievements[currentIndex]?.title ?? 'No title'}
+                subtext={achievements[currentIndex]?.description ?? 'N/A'}
+                showConfetti={
+                  achievements[currentIndex]?.title === 'Top Performer'
+                }
+                cardStyle={{
+                  backgroundColor: lightenColor(
+                    achievements[currentIndex]?.color ?? '#FFD700',
+                    0.4
+                  ),
+                  borderColor: achievements[currentIndex]?.color ?? '#FFD700',
+                  width: '100%',
+                }}
+                badgeStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                }}
+              />
+            </Animated.View>
+          ) : (
+            <ThemedText>No achievements yet.</ThemedText>
+          )}
         </View>
-        
-        
-
 
         <Spacer height={30} />
 

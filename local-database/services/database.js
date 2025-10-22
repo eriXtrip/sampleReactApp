@@ -75,6 +75,7 @@ export async function initializeDatabase(db) {
     CREATE TABLE IF NOT EXISTS lessons (
       lesson_id INTEGER PRIMARY KEY,
       server_lesson_id INTEGER UNIQUE,   -- maps to MySQL lessons.lesson_id
+      lesson_number INTEGER NOT NULL,  -- order within subject
       lesson_title TEXT NOT NULL,
       description TEXT,
       subject_belong INTEGER NOT NULL,   -- local subject_id

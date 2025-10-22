@@ -1,6 +1,7 @@
 // samplereactapp/app/(home)/subject_page.jsx
 
 import React, { useContext, useLayoutEffect, useMemo, useRef, useState, useEffect } from 'react';
+import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageBackground, Platform } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,17 +62,21 @@ const SubjectPage = () => {
   const [progress, setProgress] = useState(0);
   const [achievements, setAchievements] = useState([]);
 
+  const isFocused = useIsFocused();
+
   // Fetch lessons & achievements from local DB
   useEffect(() => {
     const fetchLessonsAndAchievements = async () => {
       try {
         // 1️⃣ Fetch lessons for this subject
         const lessonsData = await db.getAllAsync(
-          `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description
-            FROM lessons
-            WHERE subject_belong = ?`,
+          `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number
+          FROM lessons
+          WHERE subject_belong = ?
+          ORDER BY lesson_number ASC`, // or DESC for descending order
           [subject_id]
         );
+
 
         // 2️⃣ Collect all lesson_ids
         const lessonIds = lessonsData.map(l => l.lesson_id);
@@ -108,8 +113,10 @@ const SubjectPage = () => {
       }
     };
 
-    fetchLessonsAndAchievements();
-  }, [db, subject_id]);
+    if (isFocused) {
+      fetchLessonsAndAchievements();
+    }
+  }, [isFocused, db, subject_id]);
 
   // no banner overlap in SubjectPage
   const initialOverlap = 0;
@@ -128,14 +135,18 @@ const SubjectPage = () => {
     if (index !== activeTab) setActiveTab(index);
   };
 
-  const toggleSelect = (id) => {
+  const toggleSelect = (lesson_number) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      const newSet = new Set(prev);
+      if (newSet.has(lesson_number)) {
+        newSet.delete(lesson_number);
+      } else {
+        newSet.add(lesson_number);
+      }
+      return newSet;
     });
   };
+
   const clearSelection = () => {
     setSelectedIds(new Set());
     setSelectionMode(false);
@@ -170,18 +181,20 @@ const SubjectPage = () => {
   
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
-  const renderLessonCard = ({ item }) => {
-    const isSelected = selectedIds.has(item.id);
-    const isDone = item.status === 1; // or check truthy values like 1/"true" if needed
+  const renderLessonCard = ({ item, index }) => {
+    const isSelected = selectedIds.has(item.lesson_number);
+    const isDone = item.status === 1 || item.status === true;
 
-    console.log('Rendering lesson item:', item, 'isSelected:', isSelected, 'isDone:', isDone);
+    // Lock if previous lesson is not done (except first lesson)
+    const isLocked = index > 0 && !(lessons[index - 1].status === 1 || lessons[index - 1].status === true);
 
     return (
       <TouchableOpacity
+        disabled={!selectionMode && isLocked} // ✅ In normal mode, locked is blocked
         onPress={() => {
           if (selectionMode) {
-            toggleSelect(item.id);
-          } else {
+            toggleSelect(item.lesson_number); // ✅ only toggle this item
+          } else if (!isLocked) {
             router.push({
               pathname: '/lesson_page',
               params: {
@@ -196,23 +209,33 @@ const SubjectPage = () => {
         onLongPress={() => {
           if (!selectionMode) {
             setSelectionMode(true);
-            toggleSelect(item.id);
+            toggleSelect(item.lesson_number); // ✅ start selecting only this one
           }
         }}
         style={[
           styles.cardBox,
-          isSelected && { backgroundColor: '#d1f7ff', borderColor: '#00b4d8' }, // selection highlight
-          isDone && { borderColor: '#48cae4' }, // ✅ if lesson is done
+          isSelected && { backgroundColor: '#d1f7ff', borderColor: '#00b4d8' },
+          isDone && { borderColor: '#48cae4' },
+          isLocked && !selectionMode,
         ]}
       >
-        {/* Lesson Number in a Box */}
+        {/* Lesson Number */}
         <View style={[styles.numberBox, isDone && { backgroundColor: '#48cae4' }]}>
-          <ThemedText style={styles.lessonNumber}>{item.lesson_id}</ThemedText>
+          <ThemedText style={styles.lessonNumber}>{item.lesson_number}</ThemedText>
+          {isLocked && !selectionMode && (
+            <Ionicons
+              name="lock-closed"
+              size={30}
+              style={styles.lockIcon}
+            />
+          )}
         </View>
 
         {/* Lesson Title + Quarter */}
         <View style={{ flex: 1 }}>
-          <ThemedText style={styles.lessonTitle}>{item.title}</ThemedText>
+          <ThemedText style={styles.lessonTitle}>
+            {item.title} {isLocked && !selectionMode}
+          </ThemedText>
           <ThemedText style={styles.quarterText}>Quarter {item.Quarter}</ThemedText>
         </View>
 
@@ -227,8 +250,6 @@ const SubjectPage = () => {
       </TouchableOpacity>
     );
   };
-
-
 
   const animatedOnScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -315,7 +336,7 @@ const SubjectPage = () => {
           <Animated.FlatList
             data={lessons}
             keyExtractor={(item) => String(item.lesson_id)}
-            renderItem={renderLessonCard}
+            renderItem={({ item, index }) => renderLessonCard({ item, index })}
             contentContainerStyle={{ paddingBottom: 0 }}
             showsVerticalScrollIndicator={false}
             onScroll={animatedOnScroll}
@@ -502,6 +523,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#a9aaadff',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
     marginRight: 12,
     marginHorizontal: 8,
   },
@@ -509,6 +531,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: 'bold',
     color: '#ffffffff',
+  },
+  lockIcon: {
+    position: "absolute",
+    color: '#112954',
+    bottom: -10,   // push slightly outside if you want
+    right: -10,    // move to the corner
   },
   lessonTitle: {
     fontSize: 20,

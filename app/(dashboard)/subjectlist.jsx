@@ -153,7 +153,11 @@ const SubjectList = () => {
 
         {expandedSections[item.id] && (
           <View style={{ marginLeft: 20, marginTop: 10 }}>
-            {item.subjects.map(sub => renderSubject(sub))}
+            {item.subjects.map(sub => (
+              <View key={`sub-${sub.id}`}>
+                {renderSubject(sub)}
+              </View>
+            ))}
           </View>
         )}
       </View>

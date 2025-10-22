@@ -76,14 +76,15 @@ export async function saveSyncDataToSQLite(data, db) {
 
         await db.runAsync(
           `INSERT INTO lessons (
-            server_lesson_id, lesson_title, description, subject_belong, quarter
-          ) VALUES (?, ?, ?, ?, ?)`,
+            server_lesson_id, lesson_title, description, subject_belong, quarter, lesson_number
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
           [
             l.lesson_id,
             l.lesson_title || "Untitled Lesson",
             l.description || null,
             localSubject.subject_id,
             l.quarter || 1,
+            l.lesson_number,
           ]
         );
       }

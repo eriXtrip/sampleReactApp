@@ -92,7 +92,8 @@ export const getSyncData = async (req, res) => {
           lesson_title,
           description,
           subject_belong,
-          quarter
+          quarter,
+          lesson_number
         FROM lessons
         WHERE subject_belong IN (?)
       `, [subjectIds]);

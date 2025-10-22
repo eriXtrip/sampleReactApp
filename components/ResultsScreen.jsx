@@ -16,6 +16,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
   const durationMs = new Date(completedAt) - new Date(startedAt);
   const durationMins = Math.floor(durationMs / 60000);
   const durationSecs = Math.floor((durationMs % 60000) / 1000);
+  const duration = `${durationMins}m ${durationSecs}s`
 
   let correctItems = 0;
 
@@ -32,11 +33,81 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
     const now = completedAt.toISOString();
     try {
       // ✅ Save score
-      await db.runAsync(
-        `INSERT INTO pupil_test_scores (pupil_id, test_id, score, max_score, taken_at) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [userId, quizData.quizId, score, quizData.settings.maxScore, now]
+      // Step 1: Check for existing attempts
+      const existing = await db.getAllAsync(
+        `SELECT MAX(attempt_number) AS max_attempt
+        FROM pupil_test_scores
+        WHERE pupil_id = ? AND test_id = ?`,
+        [userId, quizData.quizId]
       );
+
+      // Step 2: Determine next attempt number
+      const nextAttempt = existing?.max_attempt ? existing.max_attempt + 1 : 1;
+
+      // Step 3: Insert new score with incremented attempt
+      await db.runAsync(
+        `INSERT INTO pupil_test_scores 
+        (pupil_id, test_id, score, max_score, taken_at, grade, attempt_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          quizData.quizId,
+          score,
+          quizData.settings.maxScore,
+          now,
+          Math.round((score / quizData.settings.maxScore) * 100),
+          nextAttempt
+        ]
+      );
+
+      // ✅ Save content status 
+      if (passed) {
+        await db.runAsync(
+          `UPDATE subject_contents 
+          SET done = 1, completed_at = ?, started_at = ?, duration = ?
+          WHERE server_content_id = ? `,
+          [now, startedAt, duration, quizData.quizId]
+        );
+
+        // 🔎 Step 2: Fetch the lesson_belong for this content
+        const contentRow = await db.getAllAsync(
+          `SELECT lesson_belong 
+          FROM subject_contents 
+          WHERE server_content_id = ?`,
+          [quizData.quizId]
+        );
+
+        if (contentRow && contentRow.length > 0) {
+          const lesson_belong = contentRow[0].lesson_belong;
+
+          // 📊 Step 2.5: Fetch all contents under this lesson
+          const rows = await db.getAllAsync(
+            `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
+            [lesson_belong]
+          );
+
+          const total = rows.length;
+          const doneCount = rows.filter(r => r.done).length;
+          const progress = total > 0 ? (doneCount / total) * 100 : 0;
+
+          // ✅ Step 3: Determine status and completed_at for lesson
+          const lessonStatus = progress === 100;
+          const lessonCompletedAt = lessonStatus ? now : null;
+
+          // ✅ Step 4: Update lessons table
+          await db.runAsync(
+            `UPDATE lessons
+            SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
+            WHERE lesson_id = ?`,
+            [lessonStatus ? 1 : 0, progress, now, lessonCompletedAt, lesson_belong]
+          );
+
+          console.log(`📘 Lesson ${lesson_belong} updated: progress=${progress}, status=${lessonStatus}`);
+        }
+      } else {
+        console.log(`Content ${quizData.quizId} not marked done — quiz not passed.`);
+      }
+
 
       // ✅ Save answers
       for (const q of quizData.questions) {
@@ -129,9 +200,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
         <Text>Status: {passed ? "Passed" : "Failed"}</Text>
         <Text>Started: {new Date(startedAt).toLocaleString()}</Text>
         <Text>Completed: {new Date(completedAt).toLocaleString()}</Text>
-        <Text>
-          Duration: {durationMins}m {durationSecs}s
-        </Text>
+        <Text>Duration: {duration} </Text>
         <Text>Points: {score} / {quizData.settings.maxScore}</Text>
         <Text>
           Grade: {score} out of {quizData.settings.maxScore} (
