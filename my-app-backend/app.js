@@ -41,7 +41,8 @@ import {
 } from './controllers/userSyncController.js';
 import { 
   authenticateToken 
-} from './middleware/authenticateToken.js'; // your JWT middleware
+} from './middleware/authenticateToken.js';
+import adminRoutes from './routes/admin.js'; 
 import config from './config.js';
 import os from 'os';
 import dotenv from 'dotenv';
@@ -105,6 +106,9 @@ app.get('/api/enrollment/section/:sectionId/requires-key', checkSectionRequiresK
 
 // Sync route (protected)
 app.get('/api/user/sync-data', authenticateToken, getSyncData);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

@@ -65,6 +65,7 @@ export function SearchProvider({ children }) {
 
   const fetchAvailableSections = useCallback(async (userId) => {
     if (!API_URL || !userId) {
+      consolle.log('userId and API_URL: ', userId , API_URL);
       console.warn('⚠️ Missing API_URL or userId');
       return;
     }
