@@ -49,11 +49,28 @@ export const getTotalLessonsCount = async (req, res) => {
 
     const genderStats = genderRows[0] || { male: 0, female: 0, prefer_not_to_say: 0 };
 
+    // 🧠 User activity stats
+    const [activityRows] = await pool.query(`
+      SELECT 
+        COUNT(*) AS total_users,
+        SUM(active_status = TRUE) AS active_users
+      FROM users
+    `);
+
+    const totalUsers = activityRows[0]?.total_users || 0;
+    const activeUsers = activityRows[0]?.active_users || 0;
+
+    // Compute activity rate (%)
+    const activeRate = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(2) : 0;
+
     console.log('✅ Admin stats:', {
       totalLessons,
       totalPupils,
       totalTeachers,
-      genderStats
+      genderStats,
+      totalUsers,
+      activeUsers,
+      activeRate
     });
 
     res.json({
@@ -61,6 +78,9 @@ export const getTotalLessonsCount = async (req, res) => {
       total_lessons: totalLessons,
       total_pupils: totalPupils,
       total_teachers: totalTeachers,
+      total_users: totalUsers,
+      active_users: activeUsers,
+      active_rate_percent: activeRate,
       gender: {
         male: Number(genderStats.male) || 0,
         female: Number(genderStats.female) || 0,
@@ -132,14 +152,7 @@ export const getSubjectUsers = async (req, res) => {
 
     console.log('👥 Fetching data from v_subject_users...');
     const [rows] = await pool.query(`
-      SELECT 
-        subject_id,
-        user_id,
-        first_name,
-        last_name,
-        email,
-        avatar_thumbnail
-      FROM v_subject_users
+      SELECT * FROM v_subject_users
       ORDER BY subject_id, last_name, first_name
     `);
 
