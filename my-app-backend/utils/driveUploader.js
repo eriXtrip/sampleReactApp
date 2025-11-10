@@ -32,6 +32,8 @@ const ensureDriveFolder = async (folderName) => {
 
 export const uploadToDrive = async (file) => {
   try {
+    console.log('[DRIVE] Starting upload:', file?.originalname || file?.path);
+
     if (!file) return null;
 
     const folderId = await ensureDriveFolder(folder);
@@ -50,6 +52,8 @@ export const uploadToDrive = async (file) => {
       fields: 'id, name, mimeType',
     });
 
+    console.log('[DRIVE] File uploaded to Drive, ID:', uploadRes.data.id);
+
     const fileId = uploadRes.data.id;
 
     // Make public
@@ -65,7 +69,12 @@ export const uploadToDrive = async (file) => {
     });
 
     // Delete local temp file
-    await fsPromises.unlink(file.path);
+    try {
+      await fsPromises.unlink(file.path);
+      console.log('[DRIVE] Local file deleted:', file.path);
+    } catch (unlinkErr) {
+      console.warn('[DRIVE] Failed to delete local file:', unlinkErr.message);
+    }
 
     // ✅ Return full metadata object
     return {
@@ -79,7 +88,11 @@ export const uploadToDrive = async (file) => {
       webContentLink: metaRes.data.webContentLink,
     };
   } catch (err) {
-    console.error('❌ Drive upload error:', err.message);
-    return null;
+    console.error('DRIVE UPLOAD FAILED:');
+    console.error('Message:', err.message);
+    if (err.response?.data) {
+      console.error('API Response:', JSON.stringify(err.response.data, null, 2));
+    }
+    throw err; // ← RE-THROW SO CALLER KNOWS
   }
 };

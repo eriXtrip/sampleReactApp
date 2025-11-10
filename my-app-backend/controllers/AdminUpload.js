@@ -1,6 +1,8 @@
 // my-app-backend/controllers/AdminUpload.js
 import pool from '../services/db.js';
 import { uploadToDrive } from '../utils/driveUploader.js';
+import { createAndUploadGameJson } from '../utils/createGameJson.js';
+import { createAndUploadTestJson } from '../utils/createTestJson.js';
 
 export const uploadLesson = async (req, res) => {
   const connection = await pool.getConnection();
@@ -67,6 +69,7 @@ export const uploadLesson = async (req, res) => {
       pretest_questions = [],
       posttest_questions = [],
       games = {},
+      badges: badgesRaw,
       status,
       videoUrl,
       videoUrlTitle,
@@ -81,6 +84,7 @@ export const uploadLesson = async (req, res) => {
     const pretestQuestions = typeof pretest_questions === 'string' ? JSON.parse(pretest_questions) : pretest_questions;
     const posttestQuestions = typeof posttest_questions === 'string' ? JSON.parse(posttest_questions) : posttest_questions;
     const gamesContents = typeof games === 'string' ? JSON.parse(games) : games; // final games object from frontend
+    const badges = badgesRaw ? JSON.parse(badgesRaw) : {};
 
     // 🔹 Normalize subject + quarter
     const subjectName = selected_subject === 'Math' ? 'Mathematics' : selected_subject;
@@ -98,6 +102,7 @@ export const uploadLesson = async (req, res) => {
       lesson_title,
       lesson_description,
       games: gamesContents,
+      badges,
       quarter,
       subjectId,
       fileTitle,
@@ -235,34 +240,17 @@ export const uploadLesson = async (req, res) => {
       }
     }
 
-    // 🔹 Upload imagequiz choice images to Drive
-    // for (const [itemIndex, item] of (gamesContents.imagequiz || []).entries()) {
-    //   if (!item.choices?.length) continue;
-
-    //   for (let choiceIndex = 0; choiceIndex < item.choices.length; choiceIndex++) {
-    //     const choice = item.choices[choiceIndex];
-
-    //     // Only upload if it's a File (from frontend)
-    //     if (choice instanceof Object && choice.file instanceof Object) {
-    //       const driveMeta = await uploadToDrive(choice.file);
-
-    //       // Replace the file reference in the choices array with the Drive link
-    //       item.choices[choiceIndex].img = driveMeta.webContentLink;
-    //       item.choices[choiceIndex].file = driveMeta.name; // optional: original file name
-    //       console.log(`🖼️ Uploaded choice image for item ${itemIndex}, choice ${choiceIndex}:`, driveMeta.name);
-    //     }
-    //   }
-    // }
-
+    // COLLECT GAMES TO PROCESS LATER
+    const gamesToProcess = []; // { gameId, gameType, contentId }
+    let gameId;
 
     // 🔹 Insert Games and Game Items
     for (const [gameType, items] of Object.entries(gamesContents || {})) {
       if (!Array.isArray(items) || items.length <= 1) {
-        console.log(`⚠️ Skipping ${gameType} (less than 2 items)`);
+        console.log(`Skipping ${gameType} (less than 2 items)`);
         continue;
       }
 
-      // Normalize name mapping
       const normalizedGameType =
         gameType === 'spelling'
           ? 'sentence'
@@ -270,15 +258,17 @@ export const uploadLesson = async (req, res) => {
           ? 'angleMathHunt'
           : gameType;
 
-      // get game_type_id
-      const [typeRow] = await connection.query(`SELECT game_type_id FROM game_types WHERE name = ? LIMIT 1`, [normalizedGameType]);
+      const [typeRow] = await connection.query(
+        `SELECT game_type_id FROM game_types WHERE name = ? LIMIT 1`,
+        [normalizedGameType]
+      );
       if (!typeRow.length) {
-        console.warn(`⚠️ Skipping game "${gameType}" - game_type_id not found`);
+        console.warn(`Skipping game "${gameType}" - game_type_id not found`);
         continue;
       }
       const gameTypeId = typeRow[0].game_type_id;
 
-      // create subject_contents record for the game (stores game payload)
+      // Insert subject_contents (temp, will update url later)
       const [gameContentResult] = await connection.query(
         `INSERT INTO subject_contents (lesson_belong, content_type, title, description)
          VALUES (?, 'game', ?, ?)`,
@@ -286,7 +276,7 @@ export const uploadLesson = async (req, res) => {
       );
       const contentId = gameContentResult.insertId;
 
-      // create games record
+      // Insert games record
       const [gameResult] = await connection.query(
         `INSERT INTO games (subject_id, content_id, game_type_id, title, description, created_by)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -301,13 +291,22 @@ export const uploadLesson = async (req, res) => {
       );
       const gameId = gameResult.insertId;
 
-      // process each item (single loop; do NOT re-loop items inside)
+      // Insert badge
+      const badge = badges[gameType];
+      if (badge) {
+        const { title, subtitle: subtext, icon, bg: color } = badge;
+        await connection.query(
+          `INSERT INTO game_badges (game_id, title, color, icon, subtext)
+           VALUES (?, ?, ?, ?, ?)`,
+          [gameId, title, color, icon, subtext]
+        );
+      }
+
+      // Insert game items + choices
       for (const item of items) {
-        // default values
         let term = null, definition = null, sentence1 = null, sentence2 = null, answer = null, sentence = null;
         let question = null, question_img = null, questionType = 'text';
 
-        // map fields per game type
         if (gameType === 'matching') {
           term = item.term || null;
           definition = item.definition || null;
@@ -318,103 +317,92 @@ export const uploadLesson = async (req, res) => {
           sentence1 = item.first || null;
           sentence2 = item.last || null;
           answer = item.answer || null;
+          definition = item.definition || null;
         } else if (gameType === 'speak') {
           sentence = item.prompt || null;
         } else if (gameType === 'imagequiz') {
-            question = item.question || null;
-
-            // Use the pre-uploaded Drive link (already assigned)
-            question_img = item.question_img || null;
-            item.file = item.file || null;
-
-            if (question && question_img) questionType = 'both';
-            else if (question_img && !question) questionType = 'image';
-            else questionType = 'text';
+          question = item.question || null;
+          question_img = item.question_img || null;
+          item.file = item.file || null;
+          questionType = question && question_img ? 'both' : question_img ? 'image' : 'text';
         }
 
-        // Insert game item (use explicit nulls to avoid SQL syntax problems)
         const [gameItemResult] = await connection.query(
           `INSERT INTO game_items (game_id, term, definition, sentence1, sentence2, answer, sentence, question, question_img, questionType, file)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            gameId,
-            term,
-            definition,
-            sentence1,
-            sentence2,
-            answer,
-            sentence,
-            question || null,
-            question_img || null,
-            questionType || 'text',
-            item.file || null
+            gameId, term, definition, sentence1, sentence2, answer, sentence,
+            question || null, question_img || null, questionType, item.file || null
           ]
         );
         const itemId = gameItemResult.insertId;
 
-        // Insert choices if any
+        // Insert choices
         if (item.choices?.length) {
-          // Determine correct index if provided as letter
-          let correctIndex = null;
-          if (item.correct) {
-            const letter = (item.correct || '').trim().toLowerCase();
-            const indexMap = { a: 0, b: 1, c: 2, d: 3 };
-            if (indexMap.hasOwnProperty(letter)) correctIndex = indexMap[letter];
-          }
+          const letterToIndex = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 5 };
+          const correctIndex = letterToIndex[(item.correct || '').trim().toLowerCase()] ?? null;
 
-          // Insert choices if any
-          if (item.choices?.length) {
-            // Map A=0, B=1, C=2, D=3, E=4, F=5
-            const letterToIndex = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 5 };
-            const correctLetter = (item.correct || '').trim().toLowerCase();
-            const correctIndex = letterToIndex[correctLetter] ?? null;
+          for (let i = 0; i < item.choices.length; i++) {
+            const choice = item.choices[i];
+            let label = null, file = null, img = null, type = 'text', is_correct = false;
 
-            for (let i = 0; i < item.choices.length; i++) {
-              const choice = item.choices[i];
+            is_correct = (i === correctIndex);
 
-              let label = null, file = null, img = null, type = 'text', is_correct = false;
-
-              // Determine if this choice is the correct one
-              is_correct = (i === correctIndex);
-
-              if (typeof choice === 'string') {
-                if (!choice.trim()) continue;
-
-                if (choice.startsWith('imagequiz_images[')) {
-                  // This is a placeholder → we replaced it with object earlier
-                  // But in case it slipped through:
-                  type = 'image';
-                  file = choice; // optional: keep placeholder
-                } else if (choice.startsWith('C:\\fakepath\\')) {
-                  file = choice;
-                  type = 'image';
-                } else {
-                  label = choice;
-                  type = 'text';
-                }
-              } else if (typeof choice === 'object' && choice !== null) {
-                label = choice.label || null;
-                file = choice.file || null;
-                img = choice.img || null;
-                type = choice.type || 'text';
+            if (typeof choice === 'string') {
+              if (!choice.trim()) continue;
+              if (choice.startsWith('imagequiz_images[') || choice.startsWith('C:\\fakepath\\')) {
+                type = 'image'; file = choice;
+              } else {
+                label = choice; type = 'text';
               }
-
-              await connection.query(
-                `INSERT INTO game_choices (item_id, type, label, file, img, is_correct)
-                VALUES (?, ?, ?, ?, ?, ?)`,
-                [itemId, type, label, file, img, is_correct ? 1 : 0]
-              );
+            } else if (typeof choice === 'object') {
+              label = choice.label || null;
+              file = choice.file || null;
+              img = choice.img || null;
+              type = choice.type || 'text';
             }
+
+            await connection.query(
+              `INSERT INTO game_choices (item_id, type, label, file, img, is_correct)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [itemId, type, label, file, img, is_correct ? 1 : 0]
+            );
           }
         }
-      } // end for each item
-    } // end for each gameType
+      }
+
+      // COLLECT FOR LATER
+      gamesToProcess.push({ gameId, gameType, contentId });
+    }
+
+    // AFTER ALL GAMES ARE INSERTED → GENERATE JSONS
+    for (const { gameId, gameType, contentId } of gamesToProcess) {
+      try {
+        const { url: jsonUrl, file_name: jsonFileName } = await createAndUploadGameJson(
+          connection,
+          gameId,
+          gameType
+        );
+
+        await connection.query(
+          `UPDATE subject_contents SET url = ?, file_name = ? WHERE content_id = ?`,
+          [jsonUrl, jsonFileName, contentId]
+        );
+
+        console.log(`Game JSON uploaded: ${jsonFileName} → ${jsonUrl}`);
+      } catch (jsonErr) {
+        console.error(`Failed to generate JSON for game ${gameId}:`, jsonErr);
+        // Don't fail lesson
+      }
+    }
 
     // 🔹 Insert Quizzes (unchanged)
     const insertQuiz = async (questions, label) => {
       if (!Array.isArray(questions) || questions.length === 0) return;
 
       const title = `Lesson ${lesson_title} ${label}`;
+
+      // 1. subject_contents row (type = quiz)
       const [contentResult] = await connection.query(
         `INSERT INTO subject_contents (lesson_belong, content_type, title, description)
          VALUES (?, 'quiz', ?, ?)`,
@@ -422,6 +410,7 @@ export const uploadLesson = async (req, res) => {
       );
       const contentId = contentResult.insertId;
 
+      // 2. tests row
       const totalItems = questions.length;
       const passingScore = Math.ceil(totalItems * 0.5);
       const [testResult] = await connection.query(
@@ -431,6 +420,7 @@ export const uploadLesson = async (req, res) => {
       );
       const testId = testResult.insertId;
 
+      // 3. test_questions + choices
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const questionText = q.questionText || q.question_text || null;
@@ -446,6 +436,7 @@ export const uploadLesson = async (req, res) => {
         );
         const questionId = qRes.insertId;
 
+        // ----- true/false ----------------------------------------------------
         if (questionType === 'truefalse') {
           for (const opt of ['True', 'False']) {
             const isCorrect = q.correctAnswer?.toLowerCase() === opt.toLowerCase();
@@ -455,6 +446,7 @@ export const uploadLesson = async (req, res) => {
               [questionId, opt, isCorrect]
             );
           }
+        // ----- multiple choice -----------------------------------------------
         } else if (questionType === 'multichoice') {
           const correctIndex = q.correctAnswer?.toUpperCase()?.charCodeAt(0) - 65;
           for (let j = 0; j < q.options.length; j++) {
@@ -465,6 +457,7 @@ export const uploadLesson = async (req, res) => {
               [questionId, q.options[j], isCorrect]
             );
           }
+        // ----- enumeration ---------------------------------------------------
         } else if (questionType === 'enumeration') {
           if (q.correctAnswer) {
             await connection.query(
@@ -475,6 +468,27 @@ export const uploadLesson = async (req, res) => {
           }
         }
       }
+
+      // --------------------------------------------------------------
+      // 4. **Generate & upload the quiz JSON** (side-by-side with games)
+      // --------------------------------------------------------------
+      try {
+        const { url: quizUrl, file_name: quizFile } = await createAndUploadTestJson(
+          connection,
+          testId
+        );
+
+        await connection.query(
+          `UPDATE subject_contents SET url = ?, file_name = ? WHERE content_id = ?`,
+          [quizUrl, quizFile, contentId]
+        );
+
+        console.log(`Quiz JSON uploaded: ${quizFile} → ${quizUrl}`);
+      } catch (jsonErr) {
+        console.error(`Failed to generate quiz JSON for test_id=${testId}:`, jsonErr);
+        // **Do NOT rollback** – the quiz works in the DB, JSON is just a cache
+      }
+
     };
 
     await insertQuiz(pretestQuestions, 'Pretest');
