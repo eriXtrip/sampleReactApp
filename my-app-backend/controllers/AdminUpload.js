@@ -134,12 +134,20 @@ export const uploadLesson = async (req, res) => {
     }
 
 
+    // Step 1: Get the next lesson_number for this subject
+    const [maxResult] = await connection.query(
+      `SELECT COALESCE(MAX(lesson_number), 0) AS max_number 
+       FROM lessons 
+       WHERE subject_belong = ?`,
+      [subjectId]
+    );
+    const nextLessonNumber = maxResult[0].max_number + 1;
 
-    // 🔹 Insert Lesson record
+    // Step 2: Insert Lesson record
     const [lessonResult] = await connection.query(
-      `INSERT INTO lessons (lesson_title, description, subject_belong, quarter, status)
-       VALUES (?, ?, ?, ?, ?)`,
-      [lesson_title, lesson_description, subjectId, quarter, lessonStatus]
+      `INSERT INTO lessons (lesson_title, description, subject_belong, quarter, lesson_number, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [lesson_title, lesson_description, subjectId, quarter, nextLessonNumber, lessonStatus]
     );
     const lessonId = lessonResult.insertId;
 
@@ -190,11 +198,34 @@ export const uploadLesson = async (req, res) => {
 
     // 🔹 Game mappings
     const gameTypeMap = {
-      matching: 'Matching Game',
-      flashcard: 'Flashcard Game',
-      speak: 'Speaking Game',
-      spelling: 'Spelling Game',
-      imagequiz: 'Image Quiz Game'
+      matching: 'game_match',
+      flashcard: 'game_flash',
+      speak: 'game_speak',
+      spelling: 'game_comp',
+      imagequiz: 'game_img'
+    };
+
+    const gameMetaMap = {
+      matching: {
+        title: 'Match It Up!',
+        description: 'Pair related items to test your memory and sharpen your connections.'
+      },
+      flashcard: {
+        title: 'Flash Recall!',
+        description: 'Flip through fast-paced flashcards to boost your brainpower and recall speed.'
+      },
+      speak: {
+        title: 'Speak Out Loud!',
+        description: 'Practice pronunciation and express yourself with confidence in this speaking challenge.'
+      },
+      spelling: {
+        title: 'Spell in the blank!',
+        description: 'Complete the missing word by spelling it correctly to finish the sentence.'
+      },
+      imagequiz: {
+        title: 'Picture Quiz!',
+        description: 'Look closely and choose the right answer based on visual clues and fun images.'
+      }
     };
 
     // 🔹 Upload imagequiz images to Google Drive
@@ -206,11 +237,21 @@ export const uploadLesson = async (req, res) => {
         // 1. Question Image
         if (item.image && typeof item.image === 'string' && item.image.startsWith('imagequiz_images[')) {
           const uploadedFile = imageQuizFiles[imageFileIndex++];
+          
           if (uploadedFile) {
+            const localPath = uploadedFile.path;
+
             const driveMeta = await uploadToDrive(uploadedFile);
             item.question_img = driveMeta.webContentLink;
             item.file = driveMeta.name;
+
             console.log(`Uploaded question image for item ${itemIndex}:`, driveMeta.name);
+
+            // 🗑️ INLINE DELETE
+            fs.unlink(localPath, (err) => {
+              if (err) console.error("❌ Failed to delete local file:", localPath, err);
+              else console.log("🗑️ Deleted local file:", localPath);
+            });
           }
         }
 
@@ -228,6 +269,12 @@ export const uploadLesson = async (req, res) => {
                 type: 'image'
               };
               console.log(`Uploaded choice ${c} for item ${itemIndex}:`, driveMeta.name);
+
+              // 🗑️ INLINE DELETE
+              fs.unlink(localPath, (err) => {
+                if (err) console.error("❌ Failed to delete local file:", localPath, err);
+                else console.log("🗑️ Deleted local file:", localPath);
+              });
             }
           } else if (typeof choice === 'string' && choice.trim()) {
             // Keep plain text choices
@@ -251,28 +298,32 @@ export const uploadLesson = async (req, res) => {
         continue;
       }
 
-      const normalizedGameType =
-        gameType === 'spelling'
-          ? 'sentence'
-          : gameType === 'imagequiz'
-          ? 'angleMathHunt'
-          : gameType;
+      const normalizedGameType = gameTypeMap[gameType];
+
+      if (!normalizedGameType) {
+        console.warn(`Unknown game type from frontend: ${gameType}`);
+        continue;
+      }
+
 
       const [typeRow] = await connection.query(
         `SELECT game_type_id FROM game_types WHERE name = ? LIMIT 1`,
         [normalizedGameType]
       );
+
       if (!typeRow.length) {
         console.warn(`Skipping game "${gameType}" - game_type_id not found`);
         continue;
       }
       const gameTypeId = typeRow[0].game_type_id;
 
+      const { title, description } = gameMetaMap[gameType];
+
       // Insert subject_contents (temp, will update url later)
       const [gameContentResult] = await connection.query(
         `INSERT INTO subject_contents (lesson_belong, content_type, title, description)
-         VALUES (?, 'game', ?, ?)`,
-        [lessonId, `Game: ${gameType}`, JSON.stringify(items)]
+         VALUES (?, ?, ?, ?)`,
+        [lessonId, gameTypeMap[gameType], title, description]
       );
       const contentId = gameContentResult.insertId;
 
@@ -284,7 +335,7 @@ export const uploadLesson = async (req, res) => {
           subjectId,
           contentId,
           gameTypeId,
-          gameTypeMap[gameType] || `Game: ${gameType}`,
+          gameTypeMap[gameType],
           `Auto-created game for ${gameType}`,
           userId
         ]

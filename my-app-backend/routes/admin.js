@@ -1,6 +1,14 @@
+// my-app-backend/routes/admin.js
+
 import express from 'express';
 import { authenticateToken } from '../middleware/authenticateToken.js';
-import { getTotalLessonsCount, getSubjectSummary, getSubjectUsers } from '../controllers/adminDashboard.js';
+import { 
+  getTotalLessonsCount, 
+  getSubjectSummary, 
+  getSubjectUsers, 
+  getSubjectLessonsAndContents,
+  getTeachersWithSections
+ } from '../controllers/adminDashboard.js';
 import { uploadLesson } from '../controllers/AdminUpload.js';
 import { upload } from '../middleware/upload.js'; // ✅ Import Multer instance
 
@@ -10,6 +18,9 @@ const router = express.Router();
 router.get('/lessons/count', authenticateToken, getTotalLessonsCount);
 router.get('/subjects/summary', authenticateToken, getSubjectSummary);
 router.get('/subjects/users', authenticateToken, getSubjectUsers);
+router.get('/subjects/lessons', authenticateToken, getSubjectLessonsAndContents);
+router.get('/teachers/sections', authenticateToken, getTeachersWithSections);
+
 
 // Lesson upload route
 router.post(

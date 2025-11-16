@@ -170,3 +170,135 @@ export const getSubjectUsers = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/admin/subjects/lessons
+ * Returns ALL lessons and their contents (pretest first, posttest last)
+ */
+export const getSubjectLessonsAndContents = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+
+    const admin = await isUserAdmin(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: 'Access denied. Admins only.' });
+    }
+
+    // 1. Fetch ACTIVE Lessons only
+    const [lessonsRows] = await pool.query(
+      `SELECT
+        l.lesson_id,
+        l.lesson_title,
+        l.lesson_number,
+        l.description,
+        l.subject_belong,
+        s.subject_name,
+        l.quarter
+      FROM lessons l
+      JOIN subjects s ON l.subject_belong = s.subject_id
+      WHERE l.status = TRUE
+      ORDER BY l.quarter ASC, l.lesson_number ASC`
+    );
+
+    // 2. Fetch Contents — only for ACTIVE lessons
+    const [contentsRows] = await pool.query(
+      `SELECT
+          content_id,
+          lesson_belong,
+          content_type,
+          title
+       FROM subject_contents
+       WHERE lesson_belong IN (
+         SELECT lesson_id
+         FROM lessons
+         WHERE status = TRUE
+       )
+       ORDER BY
+         lesson_belong ASC,
+         CASE 
+           WHEN title LIKE '%pretest%' OR title LIKE '%Pre-Test%' OR title LIKE '%Pre Test%' THEN 1
+           WHEN title LIKE '%posttest%' OR title LIKE '%Post-Test%' OR title LIKE '%Post Test%' THEN 3
+           ELSE 2
+         END ASC,
+         content_id ASC`
+    );
+
+    // LOG RAW ROWS BEFORE SEND
+    console.log('lessonsRows (raw DB result):', lessonsRows);
+    console.log('contentsRows (raw DB result):', contentsRows);
+
+    console.log(`Found ${lessonsRows.length} lessons and ${contentsRows.length} contents`);
+
+    res.json({
+      success: true,
+      lessons: lessonsRows,
+      contents: contentsRows
+    });
+
+  } catch (error) {
+    console.error('Error in getSubjectLessonsAndContents:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch lessons and contents',
+    });
+  }
+};
+
+/**
+ * GET /api/admin/teachers/sections
+ * Returns all teachers with their sections and assigned subjects
+ */
+export const getTeachersWithSections = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+
+    const admin = await isUserAdmin(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: 'Access denied. Admins only.' });
+    }
+
+    console.log('👩‍🏫 Fetching teachers with their sections and subjects...');
+
+    const [rows] = await pool.query(`
+     SELECT 
+        u.user_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS teacher_name,
+        u.email,
+        s.section_id,
+        s.section_name,
+        subj.subject_id,
+        subj.subject_name,
+        a.thumbnail AS thumbnail
+      FROM users u
+      LEFT JOIN sections s 
+        ON s.teacher_id = u.user_id
+      LEFT JOIN subjects_in_section sis 
+        ON sis.section_belong = s.section_id
+      LEFT JOIN subjects subj 
+        ON subj.subject_id = sis.subject_id
+      LEFT JOIN avatar a 
+        ON u.avatar_id = a.id
+      WHERE u.role_id = 2
+      ORDER BY u.user_id, s.section_id
+    `);
+
+    res.json({
+      success: true,
+      total: rows.length,
+      data: rows,
+    });
+
+  } catch (error) {
+    console.error('💥 Error in getTeachersWithSections:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch teachers with sections and subjects',
+    });
+  }
+};
