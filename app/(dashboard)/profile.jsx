@@ -2,17 +2,19 @@
 
 import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
-import { useContext } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { UserContext } from '../../contexts/UserContext';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import * as FileSystem from 'expo-file-system';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { getLocalAvatarPath } from '../../utils/avatarHelper';
 
 const Profile = () => {
   const router = useRouter();
@@ -22,6 +24,8 @@ const Profile = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+
+  const [avatarUri, setAvatarUri] = useState(null);
 
   // Safely access user data with fallbacks
   const displayName = user 
@@ -54,6 +58,33 @@ const Profile = () => {
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      if (!user) {
+        setAvatarUri(null);
+        return;
+      }
+
+      // If we have file name → check if local file exists
+      if (user.avatar_file_name) {
+        const localPath = getLocalAvatarPath(user.avatar_file_name);
+        try {
+          const info = await FileSystem.getInfoAsync(localPath);
+          if (info.exists) {
+            setAvatarUri(localPath);
+            console.log('Local avatar found:', localPath);
+            return;
+          }
+        } catch (e) {
+          console.log('Avatar file check failed');
+        }
+      }
+
+      // Fallback to thumbnail
+      setAvatarUri(user.avatar_thumbnail || null);
+    })();
+  }, [user]);
+
   return (
     <ThemedView style={styles.container} safe={true}>
       <ScrollView contentContainerStyle={styles.scrollContainer}
@@ -62,7 +93,8 @@ const Profile = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Image 
-            source={{ uri: 'https://api.dicebear.com/9.x/bottts-neutral/png?seed=Aidan' }}
+            key={avatarUri || 'no-avatar'}   // ← Forces remount when URI changes
+            source={{ uri: avatarUri || undefined }}
             style={styles.avatar}
           />
           <Spacer height={15} />

@@ -1,4 +1,6 @@
 // local-database/services/database.js
+import { markDbInitialized } from './syncUp.js';
+
 export async function initializeDatabase(db) {
   await db.execAsync(`
     -- roles (static, matches MySQL)
@@ -48,6 +50,7 @@ export async function initializeDatabase(db) {
       teacher_id INTEGER,
       teacher_name TEXT NOT NULL,       -- derived from teacher's full name on server (first + last)
       section_name TEXT NOT NULL,
+      school_name TEXT,
       school_year TEXT NOT NULL
     );
 
@@ -84,6 +87,8 @@ export async function initializeDatabase(db) {
       progress REAL DEFAULT 0,          -- 0 to 100
       last_accessed TEXT,               -- ISO timestamp
       completed_at TEXT,                -- ISO timestamp when marked complete
+      is_synced BOOLEAN DEFAULT FALSE,
+      synced_at TEXT,
       FOREIGN KEY (subject_belong) REFERENCES subjects(subject_id)
     );
 
@@ -103,6 +108,8 @@ export async function initializeDatabase(db) {
       started_at TEXT,                -- ISO timestamp when first accessed
       completed_at TEXT,                -- ISO timestamp when marked complete
       duration INTEGER,                  -- in minutes (if applicable)
+      is_synced BOOLEAN DEFAULT FALSE,
+      synced_at TEXT,
       FOREIGN KEY (lesson_belong) REFERENCES lessons(lesson_id)
     );
 
@@ -138,6 +145,8 @@ export async function initializeDatabase(db) {
       grade INTEGER NOT NULL,
       attempt_number INTEGER DEFAULT 1,
       taken_at TEXT,
+      is_synced BOOLEAN DEFAULT FALSE,
+      synced_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id)
     );
 
@@ -147,7 +156,9 @@ export async function initializeDatabase(db) {
       server_answer_id INTEGER UNIQUE,   -- maps to MySQL pupil_answers.answer_id
       pupil_id INTEGER NOT NULL,
       question_id INTEGER NOT NULL,      -- server question_id
-      choice_id INTEGER NOT NULL,        -- server choice_id
+      choice_id INTEGER,        -- server choice_id
+      is_synced BOOLEAN DEFAULT FALSE,
+      synced_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id)
     );
 
@@ -155,6 +166,7 @@ export async function initializeDatabase(db) {
     CREATE TABLE IF NOT EXISTS pupil_achievements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_achievement_id INTEGER, -- maps to MySQL achievements.achievement_id
+      server_badge_id INTEGER,       -- maps to MySQL achievements.badge_id
       pupil_id INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
@@ -162,6 +174,8 @@ export async function initializeDatabase(db) {
       color TEXT,
       earned_at TEXT,
       subject_content_id INTEGER,                -- local content_id (if tied to content)
+      is_synced BOOLEAN DEFAULT FALSE,
+      synced_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id),
       FOREIGN KEY (subject_content_id) REFERENCES subject_contents(content_id),
       UNIQUE (pupil_id, server_achievement_id)
@@ -196,4 +210,5 @@ export async function initializeDatabase(db) {
       (3, 'pupil', 'Student');
 
   `);
+  markDbInitialized();
 }

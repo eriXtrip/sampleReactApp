@@ -1,3 +1,4 @@
+import { triggerSyncIfOnline } from "../local-database/services/syncUp"
 export async function saveAchievementAndUpdateContent(db, gameBadge, content_id) {
     console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
   try {
@@ -12,15 +13,15 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
     // Insert earned achievement
     await db.runAsync(
       `INSERT OR IGNORE INTO pupil_achievements 
-        (server_achievement_id, pupil_id, title, description, icon, color, earned_at, subject_content_id)
+        (server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
       [
-        gameBadge?.id || null,
+        gameBadge?.id,
         pupilId,
-        gameBadge?.title || "Badge",
-        gameBadge?.subtext || null,
-        gameBadge?.icon || "trophy",
-        gameBadge?.color || "#FFD700",
+        gameBadge?.title,
+        gameBadge?.subtext,
+        gameBadge?.icon,
+        gameBadge?.color,
         content_id
       ]
     );
@@ -36,6 +37,8 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
     );
 
     console.log("✅ Achievement saved and subject_contents updated.");
+
+    await triggerSyncIfOnline(db);
   } catch (err) {
     console.error("❌ Failed to save achievement/update content:", err);
   }

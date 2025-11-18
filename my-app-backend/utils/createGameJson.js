@@ -24,7 +24,8 @@ export const createAndUploadGameJson = async (connection, gameId, gameType) => {
             'title', COALESCE(gb.title, NULL),
             'subtext', COALESCE(gb.subtext, NULL),
             'icon', COALESCE(gb.icon, NULL),
-            'color', COALESCE(gb.color, NULL)
+            'color', COALESCE(gb.color, NULL),
+            'id', COALESCE(gb.badge_id, NULL)
           ),
           'items', JSON_ARRAYAGG(
             CASE gt.name

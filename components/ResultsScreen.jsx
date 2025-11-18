@@ -1,8 +1,10 @@
-// components/ResultScreen.jsx
+// SAMPLEREACTAPP/components/ResultScreen.jsx
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
+import { triggerSyncIfOnline } from "../local-database/services/syncUp"
+
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt });
@@ -47,8 +49,8 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
       // Step 3: Insert new score with incremented attempt
       await db.runAsync(
         `INSERT INTO pupil_test_scores 
-        (pupil_id, test_id, score, max_score, taken_at, grade, attempt_number)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (pupil_id, test_id, score, max_score, taken_at, grade, attempt_number, is_synced, server_score_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)`,
         [
           userId,
           quizData.quizId,
@@ -66,7 +68,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
           `UPDATE subject_contents 
           SET done = 1, completed_at = ?, started_at = ?, duration = ?
           WHERE server_content_id = ? `,
-          [now, startedAt, duration, quizData.quizId]
+          [now, startedAt, duration, quizData.contentId]
         );
 
         // 🔎 Step 2: Fetch the lesson_belong for this content
@@ -74,7 +76,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
           `SELECT lesson_belong 
           FROM subject_contents 
           WHERE server_content_id = ?`,
-          [quizData.quizId]
+          [quizData.contentId]
         );
 
         if (contentRow && contentRow.length > 0) {
@@ -113,27 +115,56 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
       for (const q of quizData.questions) {
         const userAns = answers[q.id];
 
+        // function to map answer text → choice_id
+        const findChoiceId = (question, answerText) => {
+          if (!question.choices) return null;
+          const item = question.choices.find(c => c.text === answerText);
+          return item ? item.choice_id : null;
+        };
+
+        // MULTIPLE CHOICE & TRUE/FALSE
         if (q.type === "multichoice" || q.type === "truefalse") {
+          const choiceId = findChoiceId(q, userAns);
+
           await db.runAsync(
-            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)` ,
-            [userId, q.id, userAns ?? null]
+            `INSERT INTO pupil_answers 
+            (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+            VALUES (?, ?, ?, 0, NULL)`,
+            [userId, q.id, choiceId]
           );
-        } else if (q.type === "enumeration") {
+        }
+
+        // ENUMERATION (no choice_id, only answer_text)
+        else if (q.type === "enumeration") {
           await db.runAsync(
-            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)` ,
-            [userId, q.id, JSON.stringify(userAns)]
+            `INSERT INTO pupil_answers 
+            (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+            VALUES (?, ?, NULL, 0, NULL)`,
+            [userId, q.id]
           );
-        } else if (q.type === "multiselect") {
-          for (const choice of userAns || []) {
+        }
+
+        // MULTISELECT
+        else if (q.type === "multiselect") {
+          const arr = userAns || [];
+
+          for (const ansText of arr) {
+            const choiceId = findChoiceId(q, ansText);
+
             await db.runAsync(
-              `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)` ,
-              [userId, q.id, choice]
+              `INSERT INTO pupil_answers 
+              (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+              VALUES (?, ?, ?, 0, NULL)`,
+              [userId, q.id, choiceId]
             );
           }
         }
       }
 
+
       console.log("✅ Results saved for user:", userId);
+
+      await triggerSyncIfOnline(db);  // <-- Sync scores & answers if online
     } catch (err) {
       console.error("❌ Error saving results:", err);
     }

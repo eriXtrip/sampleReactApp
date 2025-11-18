@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Image, ScrollView, TouchableOpacity, Animated  } from 'react-native';
 import { Link, useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
@@ -17,17 +18,25 @@ import ThemedActivity from '../../components/ThemedActivity';
 import { lightenColor } from '../../utils/colorUtils';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { useContext } from 'react';
+import { ASSETS_ICONS } from '../../data/assets_icon';
+import { getLocalAvatarPath } from '../../utils/avatarHelper';
 
 
 const Home = () => {
   const colorScheme = useColorScheme();
-  const { themeColors } = useContext(ProfileContext);
+  const { themeColors, user } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current; // starts fully visible
+
+  const [subjectsProgress, setSubjectsProgress] = useState([]);
+
+  const [recentActivities, setRecentActivities] = useState([]);
+
+  const [avatarUri, setAvatarUri] = useState(null);
 
   const [achievements, setAchievements] = useState([]);
   const db = useSQLiteContext();
@@ -68,69 +77,151 @@ const Home = () => {
     }, 5000); // 5 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [achievements, fadeAnim]);
 
-  const recentActivities = [
-    { id: 1, title: 'Lesson 1 English', status: 'Recent', time: '2h ago' },
-    { id: 2, title: 'Quiz Science', status: 'Completed', time: '1d ago' },
-    { id: 3, title: 'Assignment Math', status: 'Due Tomorrow', time: '5h ago' },
-    
-  ];
+  useEffect(() => {
+    setCurrentIndex(0); // Always start from first real achievement
+    fadeAnim.setValue(1); // Reset opacity
+  }, [achievements]);
 
-  const subjects = [
-    { name: 'English', progress: 75 },
-    { name: 'Filipino', progress: 60 },
-    { name: 'Science', progress: 45 },
-    { name: 'Math', progress: 80 },
-  ];
+  useEffect(() => {
+    const loadSubjectsProgress = async () => {
+      try {
+        const result = await db.getAllAsync(`
+         SELECT 
+            s.subject_id,
+            s.subject_name,
+            COUNT(l.lesson_id) AS total_lessons,
+            SUM(CASE WHEN l.status = 1 OR l.progress >= 100 THEN 1 ELSE 0 END) AS completed_lessons,
+            CASE 
+              WHEN COUNT(l.lesson_id) = 0 THEN 0 
+              ELSE ROUND(
+                SUM(CASE WHEN l.status = 1 OR l.progress >= 100 THEN 1 ELSE 0 END) * 100.0 / COUNT(l.lesson_id)
+              , 1)
+            END AS progress_percentage
+          FROM subjects s
+          LEFT JOIN lessons l ON l.subject_belong = s.subject_id
+          GROUP BY s.subject_id, s.subject_name
+          ORDER BY s.subject_name ASC;
+        `);
 
-  // const achievements = [
-  //   {
-  //     id: '1',
-  //     iconName: 'trophy',
-  //     iconColor: '#FFD700',
-  //     title: 'Top Performer',
-  //     subtext: "You're in the top 5%!",
-  //     bgColor: '#FFF9E6',
-  //     borderColor: '#FFD700',
-  //   },
-  //   {
-  //     id: '2',
-  //     iconName: 'alarm',
-  //     iconColor: '#90be6d',
-  //     title: 'Early Bird',
-  //     subtext: 'Logged in before 7AM!',
-  //     bgColor: '#ECFDF5',
-  //     borderColor: '#90be6d',
-  //   },
-  //   {
-  //     id: '3',
-  //     iconName: 'ribbon',
-  //     iconColor: '#ffb703',
-  //     title: 'Badge Unlocked',
-  //     subtext: 'Fast Learner unlocked!',
-  //     bgColor: '#FFF6E5',
-  //     borderColor: '#ffb703',
-  //   },
-  //   {
-  //     id: '4',
-  //     iconName: 'school',
-  //     iconColor: '#7cb9e8',
-  //     title: 'Subject Enrolled',
-  //     subtext: 'You joined Science G4',
-  //     bgColor: '#E6F4FF',
-  //     borderColor: '#7cb9e8',
-  //   },
-  //   {
-  //     id: '5',
-  //     iconName: 'checkmark-done-circle',
-  //     iconColor: '#9d4edd',
-  //     title: 'Task Completed',
-  //     subtext: 'Assignment turned in!',
-  //     bgColor: '#F3E8FF',
-  //     borderColor: '#9d4edd',
-  //   },
-  // ];
+        setSubjectsProgress(result);
+      } catch (error) {
+        console.error('Failed to load subjects:', error);
+        setSubjectsProgress([]);
+      }
+    };
+
+    loadSubjectsProgress();
+    const interval = setInterval(loadSubjectsProgress, 15000);
+    return () => clearInterval(interval);
+  }, [db]);
+
+  useEffect(() => {
+    const loadRecentActivity = async () => {
+      try {
+        const activities = await db.getAllAsync(`
+          -- Completed lessons
+          SELECT 
+            'lesson' AS type,
+            'Completed Lesson' AS status,
+            l.lesson_title AS title,
+            l.completed_at AS timestamp,
+            l.lesson_id AS source_id
+
+          FROM lessons l
+          WHERE l.completed_at IS NOT NULL
+
+          UNION ALL
+
+          -- Accessed content
+          SELECT 
+            'content' AS type,
+            'Accessed' AS status,
+            sc.title AS title,
+            sc.last_accessed AS timestamp,
+            sc.content_id AS source_id
+
+          FROM subject_contents sc
+          WHERE sc.last_accessed IS NOT NULL
+
+          UNION ALL
+
+          -- Achievements
+          SELECT 
+            'achievement' AS type,
+            'Achievement Unlocked' AS status,
+            pa.title AS title,
+            pa.earned_at AS timestamp,
+            pa.id AS source_id
+
+          FROM pupil_achievements pa
+          WHERE pa.earned_at IS NOT NULL
+
+          ORDER BY timestamp DESC
+          LIMIT 15
+        `);
+
+        const now = Date.now();
+        const formatted = activities.map((act, index) => {
+          const diffMs = now - new Date(act.timestamp).getTime();
+          const diffMin = Math.floor(diffMs / 60000);
+          const diffHr = Math.floor(diffMin / 60);
+          const diffDay = Math.floor(diffHr / 24);
+
+          let timeAgo = '';
+          if (diffMin < 1) timeAgo = 'just now';
+          else if (diffMin < 60) timeAgo = `${diffMin}m ago`;
+          else if (diffHr < 24) timeAgo = `${diffHr}h ago`;
+          else if (diffDay < 7) timeAgo = `${diffDay}d ago`;
+          else timeAgo = '1w+ ago';
+
+          return {
+            id: `${act.type}-${act.source_id}-${index}`, // 100% unique!
+            title: act.title,
+            status: act.status,
+            time: timeAgo,
+          };
+        });
+
+        setRecentActivities(formatted);
+      } catch (err) {
+        console.error('Recent activity error:', err);
+        setRecentActivities([]);
+      }
+    };
+
+    loadRecentActivity();
+    const interval = setInterval(loadRecentActivity, 30000);
+    return () => clearInterval(interval);
+  }, [db]);
+
+  useEffect(() => {
+    (async () => {
+      if (!user) {
+        setAvatarUri(null);
+        return;
+      }
+
+      // If we have file name → check if local file exists
+      if (user.avatar_file_name) {
+        const localPath = getLocalAvatarPath(user.avatar_file_name);
+        try {
+          const info = await FileSystem.getInfoAsync(localPath);
+          if (info.exists) {
+            setAvatarUri(localPath);
+            console.log('Local avatar found:', localPath);
+            return;
+          }
+        } catch (e) {
+          console.log('Avatar file check failed');
+        }
+      }
+
+      // Fallback to thumbnail
+      setAvatarUri(user.avatar_thumbnail || null);
+    })();
+  }, [user]);
 
 
   return (
@@ -155,9 +246,15 @@ const Home = () => {
           <TouchableOpacity
             onPress={() => router.push('/profile_page')}
             >
-            <Image 
-              source={{ uri: `https://api.dicebear.com/9.x/bottts-neutral/png?seed=Aidan` }}
+            <Image
+              key={avatarUri || 'no-avatar'}   // ← Forces remount when URI changes
+              source={{ uri: avatarUri || undefined }}
               style={styles.avatar}
+              onLoad={() => console.log('AVATAR LOADED:', avatarUri)}
+              onError={(e) => {
+                console.log('IMAGE ERROR:', e.nativeEvent.error);
+                console.log('CURRENT URI:', avatarUri);
+              }}
             />
           </TouchableOpacity>
         </View>
@@ -227,19 +324,25 @@ const Home = () => {
           </Link>
         </View>
         
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.carousel}
         >
-          {recentActivities.map((activity) => (
-            <ThemedActivity
-              key={activity.id}
-              title={activity.title}
-              status={activity.status}
-              time={activity.time}
-            />
-          ))}
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity, index) => (
+              <ThemedActivity
+                key={index} // Simple, safe, no warning gone
+                title={activity.title}
+                status={activity.status}
+                time={activity.time}
+              />
+            ))
+          ) : (
+            <ThemedText>
+              No recent activity yet.
+            </ThemedText>
+          )}
         </ScrollView>
 
         <Spacer height={30} />
@@ -247,25 +350,42 @@ const Home = () => {
         {/* Subjects Progress */}
         <ThemedText style={styles.sectionTitle}>📖 Your Subjects</ThemedText>
         
-        {subjects.map((subject, index) => (
-          <View key={index} style={styles.subjectContainer}>
-            <View style={styles.subjectHeader}>
-              <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
-              <ThemedText style={styles.progressText}>{subject.progress}%</ThemedText>
-            </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill,
-                  { 
-                    width: `${subject.progress}%`,
-                    backgroundColor: theme.tint, // Fallback color
-                  }
-                ]}
-              />
-            </View>
+        {subjectsProgress.length > 0 ? (
+          subjectsProgress.map((subject) => {
+            const subjectKey = subject.subject_name.trim();
+            const asset = ASSETS_ICONS[subjectKey] || ASSETS_ICONS['English']; // fallback
+            const subjectColor = asset?.color || '#888888';
+
+            return (
+              <View key={subject.subject_id} style={styles.subjectContainer}>
+                <View style={styles.subjectHeader}>
+                  <ThemedText style={styles.subjectName}>{subjectKey}</ThemedText>
+                  <ThemedText style={styles.progressText}>
+                    {Math.round(subject.progress_percentage)}%
+                  </ThemedText>
+                </View>
+
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${subject.progress_percentage}%`,
+                        backgroundColor: subjectColor,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            );
+          })
+        ) : (
+          <View style={styles.subjectContainer}>
+            <ThemedText style={{ opacity: 0.6, textAlign: 'center', paddingVertical: 20 }}>
+              No subjects enrolled yet.
+            </ThemedText>
           </View>
-        ))}
+        )}
       </ScrollView>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Spacer height={100} />

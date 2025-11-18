@@ -42,6 +42,11 @@ import {
 import { 
   authenticateToken 
 } from './middleware/authenticateToken.js';
+import { 
+  syncUp,
+  syncProgress,
+  syncAchievements
+} from './controllers/userSyncUpController.js';
 import adminRoutes from './routes/admin.js'; 
 import config from './config.js';
 import os from 'os';
@@ -106,6 +111,10 @@ app.get('/api/enrollment/section/:sectionId/requires-key', checkSectionRequiresK
 
 // Sync route (protected)
 app.get('/api/user/sync-data', authenticateToken, getSyncData);
+
+app.post('/api/user/sync-up', authenticateToken, syncUp);
+app.post('/api/user/sync-up-progress', authenticateToken, syncProgress);
+app.post('/api/user/sync-up-achievements', authenticateToken, syncAchievements);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);

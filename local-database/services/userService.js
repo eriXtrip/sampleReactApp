@@ -59,8 +59,8 @@ export default class UserService {
             token,
             serverUser.avatar?.id || null,
             serverUser.avatar?.avatar || null,
-            serverUser.avatar?.url || null,
-            serverUser.avatar?.fileName || null,
+            serverUser.avatar_url || null,
+            serverUser.avatar.avatar_file_name || null,
             serverUser.avatar?.thumbnail || null,
             serverUser.email
           ]
@@ -90,9 +90,9 @@ export default class UserService {
             token,
             serverUser.avatar?.id || null,
             serverUser.avatar?.avatar || null,
-            serverUser.avatar?.url || null,
-            serverUser.avatar?.fileName || null,
-            serverUser.avatar?.thumbnail || null
+            serverUser.avatar_url || null,           // ← Local file path
+            serverUser.avatar_file_name || null,     // ← Original avatar_file_name
+            serverUser.avatar?.thumbnail || null,
           ]
         );
       }

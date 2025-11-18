@@ -31,13 +31,14 @@ export async function saveSyncDataToSQLite(data, db) {
       for (const s of data.sections) {
         await db.runAsync(
           `INSERT INTO sections (
-            server_section_id, teacher_id, teacher_name, section_name, school_year
-          ) VALUES (?, ?, ?, ?, ?)`,
+            server_section_id, teacher_id, teacher_name, section_name, school_name, school_year
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
           [
             s.section_id,
             s.teacher_id,
             s.teacher_name || "Unknown Teacher",
             s.section_name || "Unnamed Section",
+            s.school_name || "",
             s.school_year || "",
           ]
         );
@@ -76,8 +77,8 @@ export async function saveSyncDataToSQLite(data, db) {
 
         await db.runAsync(
           `INSERT INTO lessons (
-            server_lesson_id, lesson_title, description, subject_belong, quarter, lesson_number
-          ) VALUES (?, ?, ?, ?, ?, ?)`,
+            server_lesson_id, lesson_title, description, subject_belong, quarter, lesson_number, status, progress, last_accessed, completed_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             l.lesson_id,
             l.lesson_title || "Untitled Lesson",
@@ -85,6 +86,10 @@ export async function saveSyncDataToSQLite(data, db) {
             localSubject.subject_id,
             l.quarter || 1,
             l.lesson_number,
+            Boolean(l.status),
+            l.progress || 0,
+            l.last_accessed || null,
+            l.completed_at || null,
           ]
         );
       }
@@ -104,8 +109,8 @@ export async function saveSyncDataToSQLite(data, db) {
 
         await db.runAsync(
           `INSERT INTO subject_contents (
-            server_content_id, lesson_belong, content_type, url, title, description, file_name, downloaded_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+            server_content_id, lesson_belong, content_type, url, title, description, file_name, done, last_accessed, started_at, completed_at, duration
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             c.content_id,
             localLesson.lesson_id,
@@ -114,6 +119,11 @@ export async function saveSyncDataToSQLite(data, db) {
             c.title || "Untitled Content",
             c.description || null,
             c.file_name || null,
+            Boolean(c.done),
+            c.last_accessed || null,
+            c.started_at || null,
+            c.completed_at || null,
+            c.duration || null,
           ]
         );
       }
@@ -183,8 +193,8 @@ export async function saveSyncDataToSQLite(data, db) {
         for (const score of data.pupil_test_scores) {
           await db.runAsync(
             `INSERT INTO pupil_test_scores (
-              server_score_id, pupil_id, test_id, score, max_score, attempt_number, taken_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              server_score_id, pupil_id, test_id, score, max_score, attempt_number, taken_at, grade, is_synced
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               score.score_id,
               localUser.user_id,
@@ -193,6 +203,8 @@ export async function saveSyncDataToSQLite(data, db) {
               score.max_score || 0,
               score.attempt_number || 1,
               score.taken_at || new Date().toISOString(),
+              score.grade || 0,
+              score.is_synced ? 1 : 0,
             ]
           );
         }
@@ -206,17 +218,19 @@ export async function saveSyncDataToSQLite(data, db) {
         for (const ach of data.pupil_achievements) {
           await db.runAsync(
             `INSERT INTO pupil_achievements (
-              server_achievement_id, pupil_id, title, description, icon, color, earned_at, subject_content_id
-            ) VALUES (?, ?, ?, ?)`,
+              server_achievement_id, server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id, is_synced
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               ach.achievement_id,
+              ach.badge_id,
               localUser.user_id,
-              ach.title || "Achievement",
-              ach.description || null,
-              ach.icon || null,
-              ach.color || null,
+              ach.title,
+              ach.description,
+              ach.icon,
+              ach.color,
               ach.earned_at || new Date().toISOString(),
-              ach.content_id || null,
+              ach.subject_content_id,
+              ach.is_synced ? 1 : 0,
             ]
           );
         }

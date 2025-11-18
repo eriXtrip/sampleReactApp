@@ -1,24 +1,18 @@
-// SAMPLEREACTAPP/app/index.jsx
-
+// app/index.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Image,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  Easing,
-} from 'react-native';
+import { View, Image, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '../hooks/useUser';
 import { UserProvider } from "../contexts/UserContext";
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext  } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
+import { setupNetworkSyncListener, triggerSyncIfOnline, markDbInitialized } from '../local-database/services/syncUp.js';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = 100;
 
 const Index = () => {
+
   return (
     <SQLiteProvider databaseName="mydatabase.db" onInit={initializeDatabase}>
       <UserProvider>
@@ -30,7 +24,17 @@ const Index = () => {
 
 export default Index;
 
+// 1. Setup NetInfo listener once
+const SyncInitializer = () => {
+  useEffect(() => {
+    const unsubscribe = setupNetworkSyncListener();
+    return unsubscribe;
+  }, []);
+  return null;
+};
+
 const SplashScreen = () => {
+  const db = useSQLiteContext();
   const router = useRouter();
   const { user, isLoading } = useUser();
   const [targetRoute, setTargetRoute] = useState(null);
@@ -41,109 +45,50 @@ const SplashScreen = () => {
   const logoPulse = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Animation effect
+  // Animation
   useEffect(() => {
-    console.log('Starting animations');
-    // Run finite animations
     const mainAnimations = Animated.sequence([
-      Animated.timing(circle1Scale, {
-        toValue: 10,
-        duration: 500,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle2Scale, {
-        toValue: 10,
-        duration: 500,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 580,
-        useNativeDriver: true,
-      }),
+      Animated.timing(circle1Scale, { toValue: 10, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(circle2Scale, { toValue: 10, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 580, useNativeDriver: true }),
     ]);
 
-    // Run looped logo pulse separately
     const pulseAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(logoPulse, {
-          toValue: 1.1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoPulse, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(logoPulse, { toValue: 1.1, duration: 300, useNativeDriver: true }),
+        Animated.timing(logoPulse, { toValue: 1, duration: 300, useNativeDriver: true }),
       ])
     );
 
-    // Start both animations
-    mainAnimations.start(() => {
-      console.log('Main animations completed');
-      setAnimationsCompleted(true);
-    });
+    mainAnimations.start(() => setAnimationsCompleted(true));
     pulseAnimation.start();
 
-    // Stop pulse animation when main animations complete
-    return () => {
-      console.log('Stopping pulse animation');
-      pulseAnimation.stop();
-    };
+    return () => pulseAnimation.stop();
   }, []);
 
-  // User check effect
+  // 2. When user is loaded → mark DB ready + trigger sync
   useEffect(() => {
     if (!isLoading) {
-      console.log('User check complete, user:', user);
       setTargetRoute(user ? '/home' : '/login');
+      markDbInitialized();  // ← Enable sync
+      triggerSyncIfOnline(db); // ← TRIGGER SYNC NOW
     }
   }, [isLoading, user]);
 
-  // Navigation effect
+  // 3. Navigate when ready
   useEffect(() => {
     if (targetRoute && animationsCompleted) {
-      console.log('Navigating to:', targetRoute);
       router.replace(targetRoute);
     }
   }, [targetRoute, animationsCompleted, router]);
 
   return (
     <View style={styles.container}>
-      {/* Circle 1 */}
-      <Animated.View
-        style={[
-          styles.expandingCircle,
-          {
-            transform: [{ scale: circle1Scale }],
-            opacity: fadeAnim,
-          },
-        ]}
-      />
-      {/* Circle 2 */}
-      <Animated.View
-        style={[
-          styles.expandingCircle,
-          {
-            backgroundColor: '#ffffffff', // slightly lighter
-            transform: [{ scale: circle2Scale }],
-            opacity: fadeAnim,
-          },
-        ]}
-      />
-      {/* Logo with pulse */}
+      <Animated.View style={[styles.expandingCircle, { transform: [{ scale: circle1Scale }], opacity: fadeAnim }]} />
+      <Animated.View style={[styles.expandingCircle, { backgroundColor: '#ffffffff', transform: [{ scale: circle2Scale }], opacity: fadeAnim }]} />
       <Animated.Image
         source={require('../assets/img/Login_Logo.png')}
-        style={[
-          styles.logo,
-          {
-            transform: [{ scale: logoPulse }],
-            opacity: fadeAnim,
-          },
-        ]}
+        style={[styles.logo, { transform: [{ scale: logoPulse }], opacity: fadeAnim }]}
         resizeMode="contain"
       />
     </View>
@@ -151,13 +96,7 @@ const SplashScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
+  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   expandingCircle: {
     position: 'absolute',
     width: CIRCLE_SIZE,
@@ -168,9 +107,5 @@ const styles = StyleSheet.create({
     left: width / 2 - CIRCLE_SIZE / 2,
     zIndex: 0,
   },
-  logo: {
-    width: 200,
-    height: 200,
-    zIndex: 1,
-  },
+  logo: { width: 200, height: 200, zIndex: 1 },
 });

@@ -19,7 +19,8 @@ export const createAndUploadTestJson = async (connection, testId) => {
       SELECT
         JSON_OBJECT(
           'title', t.test_title,
-          'quizId', t.content_id,
+          'quizId', t.test_id,
+          'contentId', t.content_id,
           'description', t.description,
           'settings', JSON_OBJECT(
             'mode', 'open',

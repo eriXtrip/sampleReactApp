@@ -1,7 +1,8 @@
-import React, { useContext, useLayoutEffect } from 'react';
+import React, { useContext, useLayoutEffect, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useColorScheme} from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -10,53 +11,133 @@ import ThemedActivity from '../../components/ThemedActivity';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 
-const RECENT_ACTIVITIES = [
-  { id: 'ra-1', title: 'Lesson 1 English', status: 'Recent', time: '2h ago' },
-  { id: 'ra-2', title: 'Quiz Science', status: 'Completed', time: '1d ago' },
-  { id: 'ra-3', title: 'Assignment Math', status: 'Due Tomorrow', time: '5h ago' },
-  { id: 'ra-4', title: 'Watched: Ecosystems', status: 'Viewed', time: '3h ago' },
-  { id: 'ra-5', title: 'Flashcards: Vocab A', status: 'Completed', time: '2d ago' },
-  { id: 'ra-6', title: 'Practice: Fractions', status: 'In Progress', time: '20m ago' },
-  { id: 'ra-7', title: 'Pretest: Geography', status: 'Completed', time: '4d ago' },
-  { id: 'ra-8', title: 'Reading: Chapter 3', status: 'Recent', time: '30m ago' },
-];
-
 const RecentActivityPage = () => {
   const navigation = useNavigation();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
+  const db = useSQLiteContext();
+
+  const [activities, setActivities] = useState([]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: true });
+    navigation.setOptions({ headerShown: true, title: 'Recent Activity' });
   }, [navigation]);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      try {
+        const raw = await db.getAllAsync(`
+          -- Completed Lessons
+          SELECT 
+            'lesson' AS type,
+            'Completed Lesson' AS status,
+            l.lesson_title AS title,
+            l.completed_at AS timestamp,
+            l.lesson_id AS source_id
+
+          FROM lessons l
+          WHERE l.completed_at IS NOT NULL
+
+          UNION ALL
+
+          -- Accessed Content (Games, PDFs, Quizzes, etc.)
+          SELECT 
+            'content' AS type,
+            CASE 
+              WHEN sc.content_type LIKE '%quiz%' THEN 'Quiz Taken'
+              WHEN sc.content_type LIKE '%game%' THEN 'Game Played'
+              ELSE 'Content Viewed'
+            END AS status,
+            sc.title AS title,
+            sc.last_accessed AS timestamp,
+            sc.content_id AS source_id
+
+          FROM subject_contents sc
+          WHERE sc.last_accessed IS NOT NULL
+
+          UNION ALL
+
+          -- Achievements Earned
+          SELECT 
+            'achievement' AS type,
+            'Achievement Unlocked' AS status,
+            pa.title AS title,
+            pa.earned_at AS timestamp,
+            pa.id AS source_id
+
+          FROM pupil_achievements pa
+          WHERE pa.earned_at IS NOT NULL
+
+          ORDER BY timestamp DESC
+          LIMIT 50  -- More than enough for full page
+        `);
+
+        const now = Date.now();
+        const formatted = raw.map((act, index) => {
+          const diffMs = now - new Date(act.timestamp).getTime();
+          const diffMin = Math.floor(diffMs / 60000);
+          const diffHr = Math.floor(diffMin / 60);
+          const diffDay = Math.floor(diffHr / 24);
+
+          let timeAgo = 'just now';
+          if (diffMin >= 1 && diffMin < 60) timeAgo = `${diffMin}m ago`;
+          else if (diffHr >= 1 && diffHr < 24) timeAgo = `${diffHr}h ago`;
+          else if (diffDay >= 1 && diffDay < 7) timeAgo = `${diffDay}d ago`;
+          else if (diffDay >= 7) timeAgo = '1w+ ago';
+
+          return {
+            id: `${act.type}-${act.source_id}-${index}`, // 100% unique key
+            title: act.title,
+            status: act.status,
+            time: timeAgo,
+          };
+        });
+
+        setActivities(formatted);
+      } catch (err) {
+        console.error('Failed to load recent activity:', err);
+        setActivities([]);
+      }
+    };
+
+    loadActivity();
+    const interval = setInterval(loadActivity, 30000);
+    return () => clearInterval(interval);
+  }, [db]);
 
   return (
     <ThemedView style={styles.container} safe={true}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Spacer height={8} />
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          {RECENT_ACTIVITIES.map((a) => (
-            <View key={a.id} style={[styles.itemWrap, { width: '48%' }]}>
-              <ThemedActivity
-                title={a.title}
-                status={a.status}
-                time={a.time}
-                cardStyle={{
-                  width: '100%',
-                  backgroundColor: theme.navBackground,
-                  borderColor: theme.cardBorder,
-                }}
-                titleStyle={{ color: theme.text }}
-                statusStyle={{ color: theme.text, opacity: 0.9 }}
-                timeStyle={{ color: theme.text, opacity: 0.7 }}
-              />
-            </View>
-          ))}
-        </View>
+        {activities.length === 0 ? (
+          <ThemedText style={{ textAlign: 'center', padding: 40, opacity: 0.6 }}>
+            No activity yet. Start learning to see your progress!
+          </ThemedText>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            {activities.map((a) => (
+              <View key={a.id} style={[styles.itemWrap, { width: '48%' }]}>
+                <ThemedActivity
+                  title={a.title}
+                  status={a.status}
+                  time={a.time}
+                  cardStyle={{
+                    width: '100%',
+                    backgroundColor: theme.navBackground,
+                    borderColor: theme.cardBorder,
+                  }}
+                  titleStyle={{ color: theme.text }}
+                  statusStyle={{ color: theme.text, opacity: 0.9 }}
+                  timeStyle={{ color: theme.text, opacity: 0.7 }}
+                />
+              </View>
+            ))}
+          </View>
+        )}
 
-        <Spacer height={12} />
+        <Spacer height={24} />
       </ScrollView>
     </ThemedView>
   );
@@ -71,13 +152,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 24,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: '700',
+    paddingBottom: 40,
   },
   itemWrap: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
 });

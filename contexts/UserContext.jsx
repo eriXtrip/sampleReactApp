@@ -1,6 +1,7 @@
 // SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system';
 import  UserService  from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
@@ -8,6 +9,7 @@ import { testServerConnection } from '../local-database/services/testServerConne
 import { triggerLocalNotification } from '../utils/notificationUtils';
 import { saveSyncDataToSQLite } from '../local-database/services/syncService';
 import { getApiUrl } from '../utils/apiManager.js';
+import { getLocalAvatarPath, ensureAvatarDirectory } from '../utils/avatarHelper';
 
 export const UserContext = createContext();
 
@@ -114,6 +116,7 @@ export function UserProvider({ children }) {
     }
   };
 
+
   const login = async (email, password) => {
     try {
       setLoading(true);
@@ -177,6 +180,32 @@ export function UserProvider({ children }) {
           thumbnail: data.user.avatar.thumbnail
         } : null
       };
+
+      if (data.user.avatar?.url && data.user.avatar?.fileName) {
+        console.log('Downloading avatar:', data.user.avatar.fileName);
+
+        await ensureAvatarDirectory(); // ← same pattern as your videos
+
+        const localPath = getLocalAvatarPath(data.user.avatar.fileName);
+
+        const downloadRes = await FileSystem.downloadAsync(
+          data.user.avatar.url,
+          localPath
+        );
+
+        if (downloadRes.status === 200) {
+          console.log('AVATAR DOWNLOADED:', localPath);
+          userDataForSync.avatar_url = localPath;         // ← save full path
+          userDataForSync.avatar_file_name = data.user.avatar.fileName; // ← save name only
+        }
+      }
+
+      console.log("CHECK LOCAL AVATAR PATH:", getLocalAvatarPath(userDataForSync.avatar_file_name));
+
+      const info = await FileSystem.getInfoAsync(
+        getLocalAvatarPath(userDataForSync.avatar_file_name)
+      );
+      console.log("DOES LOCAL AVATAR EXIST?", info);
 
       // store auth token and userData sequentially so we know exactly what failed
       try {

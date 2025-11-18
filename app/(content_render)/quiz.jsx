@@ -85,33 +85,61 @@ export default function QuizScreen() {
       for (const q of quizData.questions) {
         const userAns = answers[q.id];
 
-        if (q.type === "multichoice" || q.type === "truefalse") {
+        // MULTIPLE CHOICE
+        if (q.type === "multichoice") {
+          const selected = q.choices.find(c => c.text === userAns);
+          const choiceId = selected ? selected.choice_id : null;
+
           await db.runAsync(
-            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
-            [userId, q.id, userAns]
+            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+            VALUES (?, ?, ?, 0, NULL)`,
+            [userId, q.id, choiceId]
           );
-        } else if (q.type === "enumeration") {
+        }
+
+        // TRUE/FALSE
+        else if (q.type === "truefalse") {
+          const selected = q.choices.find(c => c.text === userAns);
+          const choiceId = selected ? selected.choice_id : null;
+
           await db.runAsync(
-            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
-            [userId, q.id, JSON.stringify(userAns)]
+            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+            VALUES (?, ?, ?, 0, NULL)`,
+            [userId, q.id, choiceId]
           );
-        } else if (q.type === "multiselect") {
-          for (const choice of userAns || []) {
+        }
+
+        // MULTISELECT
+        else if (q.type === "multiselect") {
+          const selectedChoices = userAns || [];
+
+          for (const ansText of selectedChoices) {
+            const selected = q.choices.find(c => c.text === ansText);
+            const choiceId = selected ? selected.choice_id : null;
+
             await db.runAsync(
-              `INSERT INTO pupil_answers (pupil_id, question_id, choice_id) VALUES (?, ?, ?)`,
-              [userId, q.id, choice]
+              `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
+              VALUES (?, ?, ?, 0, NULL)`,
+              [userId, q.id, choiceId]
             );
           }
         }
+
+        // ENUMERATION (NO choice_id)
+        else if (q.type === "enumeration") {
+          await db.runAsync(
+            `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, answer_text, is_synced, server_answer_id)
+            VALUES (?, ?, NULL, ?, 0, NULL)`,
+            [userId, q.id, userAns || ""]
+          );
+        }
       }
-      console.log("✅ Answers saved");
+
+      console.log("✅ Answers saved correctly with proper choice_id mapping");
     } catch (err) {
       console.error("❌ Error saving answers:", err);
     }
   };
-
-
-
 
   const theme = {
     cardBorder: "#ccc",
