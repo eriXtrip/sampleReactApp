@@ -18,8 +18,9 @@ const LessonPage = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const router = useRouter();
 
-  const { id = '', title = '', Quarter = '', description = '' } = useLocalSearchParams();
-  console.log('Lesson Params:', { id, title, Quarter, description });
+  const { id = '', title = '', Quarter = '', description = '', accentColor } = useLocalSearchParams();
+  const decodedColor = accentColor ? decodeURIComponent(accentColor) : '#48cae4';
+  console.log('Lesson Params:', { id, title, Quarter, description, decodedColor });
 
   const db = useSQLiteContext();
 
@@ -86,10 +87,10 @@ const LessonPage = () => {
         ListHeaderComponent={
           <>
             {/* Parent Card */}
-            <View style={styles.cardContainer}>
+            <View style={[styles.cardContainer, { backgroundColor: accentColor }]}>
               <View style={styles.cardContent}>
                 <View style={styles.numberBox}>
-                  <ThemedText style={styles.lessonNumber}>{id}</ThemedText>
+                  <ThemedText style={[styles.lessonNumber, {color: decodedColor}]}>{id}</ThemedText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <ThemedText style={styles.lessonTitle}>{title}</ThemedText>
@@ -122,10 +123,10 @@ const { height } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: { flex: 1, paddingBottom: 0, paddingHorizontal: 16,  },
   listContainer: { paddingBottom: 50, paddingTop: 0 },
-  cardContainer: { height: height * 0.20, padding: 15, borderRadius: 15, backgroundColor: '#48cae4', justifyContent: 'center', marginTop: 20, marginBottom: 15, shadowColor: '#48cae4', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 15, elevation: 15 },
+  cardContainer: { height: height * 0.20, padding: 15, borderRadius: 15, justifyContent: 'center', marginTop: 20, marginBottom: 15, shadowColor: '#48cae4', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 15, elevation: 15 },
   cardContent: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  numberBox: { width: 70, height: 70, borderRadius: 15, backgroundColor: '#0d669eff', justifyContent: 'center', alignItems: 'center', marginRight: 12, marginHorizontal: 10 },
-  lessonNumber: { fontSize: 40, fontWeight: 'bold', color: '#ffffffff' },
+  numberBox: { width: 70, height: 70, borderRadius: 15, backgroundColor: '#ffffffff', justifyContent: 'center', alignItems: 'center', marginRight: 12, marginHorizontal: 10 },
+  lessonNumber: { fontSize: 40, fontWeight: 'bold'},
   lessonTitle: { fontSize: 30, fontWeight: '600', flexShrink: 1, color: '#fff', marginLeft: 10 },
   quarterText: { fontSize: 16, color: '#fff', marginTop: 4, marginLeft: 10 },
   aboutText: { fontSize: 20, fontWeight: '600', marginBottom: 5 },

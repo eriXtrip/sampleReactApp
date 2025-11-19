@@ -75,7 +75,7 @@ const ThemedActionBar = ({
           onPress={onUndone}
           onLongPress={() => showHint('undone')}
         >
-          <Ionicons name="close-circle-outline" size={28} color={theme.text} />
+          <Ionicons name="close-outline" size={28} color={theme.text} />
           {activeHint === 'undone' && (
             <Text style={[styles.hintText, { color: theme.text }]}>Undone</Text>
           )}
@@ -86,7 +86,7 @@ const ThemedActionBar = ({
           onPress={onDownload}
           onLongPress={() => showHint('download')}
         >
-          <Ionicons name="arrow-down-outline" size={28} color={theme.text} />
+          <Ionicons name="cloud-download-outline" size={28} color={theme.text} /> 
           {activeHint === 'download' && (
             <Text style={[styles.hintText, { color: theme.text }]}>Download</Text>
           )}
@@ -97,7 +97,7 @@ const ThemedActionBar = ({
           onPress={onDelete}
           onLongPress={() => showHint('delete')}
         >
-          <Ionicons name="trash-bin-outline" size={28} color={theme.text} />
+          <Ionicons name="trash-outline" size={28} color={theme.text} />
           {activeHint === 'delete' && (
             <Text style={[styles.hintText, { color: theme.text }]}>Delete</Text>
           )}

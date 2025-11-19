@@ -4,12 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { ProfileContext } from '../contexts/ProfileContext';
 import { Colors } from '../constants/Colors';
+import { useDownloadQueue } from '../contexts/DownloadContext';
+
 
 const ThemedHeader = ({ options, navigation }) => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const [menuVisible, setMenuVisible] = useState(false);
+  const { clearQueue, pauseDownload, resumeDownload, queue } = useDownloadQueue();
+
 
   return (
     <View
@@ -41,18 +45,18 @@ const ThemedHeader = ({ options, navigation }) => {
       </Text>
 
       {/* Subject menu trigger */}
-      {options?.title === 'Subject' && (
+      {/* {options?.title === 'Subject' && (
         <TouchableOpacity onPress={() => setMenuVisible((v) => !v)}>
           <Ionicons name="download-outline" size={24} color={theme.title} />
         </TouchableOpacity>
-      )}
+      )} */}
 
       {/* Download queue menu trigger */}
-      {options?.title === 'Download queue' && (
+      {/* {options?.title === 'Download queue' && (
         <TouchableOpacity onPress={() => setMenuVisible((v) => !v)}>
           <Ionicons name="ellipsis-vertical-outline" size={24} color={theme.title} />
         </TouchableOpacity>
-      )}
+      )} */}
 
       {/* Popup Menu */}
       <Modal
@@ -93,13 +97,23 @@ const ThemedHeader = ({ options, navigation }) => {
 
             {options?.title === 'Download queue' && (
               <>
-                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
+                <TouchableOpacity onPress={() => {
+                  setMenuVisible(false);
+                    queue.forEach(item => {
+                      if (item.status === 'downloading') pauseDownload(item.id);
+                    });
+                  }} style={[style.menu]}>
                   <Text style={{ color: theme.title }}>Pause</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu]}>
+                <TouchableOpacity onPress={() => { 
+                  setMenuVisible(false);
+                    queue.forEach(item => {
+                      if (item.status === 'paused') resumeDownload(item.id);
+                    });
+                  }} style={[style.menu]}>
                   <Text style={{ color: theme.title }}>Resume</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setMenuVisible(false)} style={[style.menu, { borderBottomWidth: 0 }]}>
+                <TouchableOpacity onPress={() => {setMenuVisible(false); clearQueue();}} style={[style.menu, { borderBottomWidth: 0 }]}>
                   <Text style={{ color: theme.title }}>Cancel All</Text>
                 </TouchableOpacity>
               </>

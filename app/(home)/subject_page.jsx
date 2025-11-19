@@ -22,6 +22,11 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import { ensureLessonFile } from '../../utils/fileHelper';
 import { SUBJECT_ICON_MAP } from '../../data/lessonData';
 import { lightenColor } from '../../utils/colorUtils';
+import { handleDownload } from '../../utils/handleDownload';
+import { handleDelete } from '../../utils/handleDelete';
+import { useDownloadQueue } from '../../contexts/DownloadContext';
+import { ASSETS_ICONS } from '../../data/assets_icon';
+
 
 const SubjectPage = () => {
   const db = useSQLiteContext();
@@ -40,7 +45,7 @@ const SubjectPage = () => {
   const subjectGrade = String(grade);
   //const progress = Math.max(0, Math.min(100, Number(progressParam ?? 45)));
 
-  const accentColor = '#48cae4';
+  const accentColor = ASSETS_ICONS[subjectName]?.color ?? '#48cae4';
   const iconName = 'book';
 
   const bannerHeight = 0;
@@ -51,6 +56,12 @@ const SubjectPage = () => {
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const [downloading, setDownloading] = useState(false);
+  const [downloadedFiles, setDownloadedFiles] = useState({});
+
+  const { addDownload, updateDownload, removeDownload, clearQueue } = useDownloadQueue();
+
 
   // Animated scroll value used to lift the details view up as the list scrolls
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -66,57 +77,57 @@ const SubjectPage = () => {
 
   // Fetch lessons & achievements from local DB
   useEffect(() => {
-    const fetchLessonsAndAchievements = async () => {
-      try {
-        // 1️⃣ Fetch lessons for this subject
-        const lessonsData = await db.getAllAsync(
-          `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number
-          FROM lessons
-          WHERE subject_belong = ?
-          ORDER BY lesson_number ASC`, // or DESC for descending order
-          [subject_id]
-        );
-
-
-        // 2️⃣ Collect all lesson_ids
-        const lessonIds = lessonsData.map(l => l.lesson_id);
-
-        // 3️⃣ Fetch all content_ids related to these lessons
-        const contentsData = await db.getAllAsync(
-          `SELECT content_id, lesson_belong 
-            FROM subject_contents
-            WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
-          lessonIds
-        );
-
-        const contentIds = contentsData.map(c => c.content_id);
-
-        // 4️⃣ Fetch pupil achievements for these contents
-        const achievementsData = await db.getAllAsync(
-          `SELECT * 
-            FROM pupil_achievements
-            WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
-          [ ...contentIds] // all content IDs
-        );
-
-        // 5️⃣ Calculate total progress
-        const totalLessons = lessonsData.length;
-        const completedLessons = lessonsData.filter(l => l.status === 1 || l.status === true).length;
-        const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-
-        setLessons(lessonsData);
-        setAchievements(achievementsData);
-        setProgress(progressPercent);
-
-      } catch (err) {
-        console.error("❌ Error fetching lessons/achievements:", err);
-      }
-    };
-
     if (isFocused) {
       fetchLessonsAndAchievements();
     }
   }, [isFocused, db, subject_id]);
+
+  const fetchLessonsAndAchievements = async () => {
+    try {
+      // 1️⃣ Fetch lessons for this subject
+      const lessonsData = await db.getAllAsync(
+        `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number
+        FROM lessons
+        WHERE subject_belong = ?
+        ORDER BY lesson_number ASC`, // or DESC for descending order
+        [subject_id]
+      );
+
+
+      // 2️⃣ Collect all lesson_ids
+      const lessonIds = lessonsData.map(l => l.lesson_id);
+
+      // 3️⃣ Fetch all content_ids related to these lessons
+      const contentsData = await db.getAllAsync(
+        `SELECT content_id, lesson_belong 
+          FROM subject_contents
+          WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
+        lessonIds
+      );
+
+      const contentIds = contentsData.map(c => c.content_id);
+
+      // 4️⃣ Fetch pupil achievements for these contents
+      const achievementsData = await db.getAllAsync(
+        `SELECT * 
+          FROM pupil_achievements
+          WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
+        [ ...contentIds] // all content IDs
+      );
+
+      // 5️⃣ Calculate total progress
+      const totalLessons = lessonsData.length;
+      const completedLessons = lessonsData.filter(l => l.status === 1 || l.status === true).length;
+      const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+      setLessons(lessonsData);
+      setAchievements(achievementsData);
+      setProgress(progressPercent);
+
+    } catch (err) {
+      console.error("❌ Error fetching lessons/achievements:", err);
+    }
+  };
 
   // no banner overlap in SubjectPage
   const initialOverlap = 0;
@@ -152,11 +163,182 @@ const SubjectPage = () => {
     setSelectionMode(false);
   };
 
-  // handlers for action bar
-  const onMarkDone = () => {};
-  const onUndone = () => {};
-  const onDownload = () => {};
-  const onDelete = () => {};
+  // Mark selected lessons as done
+  const onMarkDone = async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      for (const lessonNumber of selectedIds) {
+        // Find lesson object
+        const lesson = lessons.find(l => l.lesson_number === lessonNumber);
+        if (!lesson) continue;
+
+        // Update all subject_contents for this lesson
+        await db.runAsync(
+          `UPDATE subject_contents
+          SET done = 1
+          WHERE lesson_belong = ?`,
+          [lesson.lesson_id]
+        );
+
+        // Optionally, mark lesson itself as done
+        await db.runAsync(
+          `UPDATE lessons
+          SET status = 1
+          WHERE lesson_id = ?`,
+          [lesson.lesson_id]
+        );
+      }
+
+      console.log("✅ Selected lessons marked as done");
+      await fetchLessonsAndAchievements();
+
+      // Clear selection
+      clearSelection();
+
+    } catch (err) {
+      console.error("❌ Error marking lessons done:", err);
+    }
+  };
+
+  // Mark selected lessons as undone
+  const onUndone = async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      for (const lessonNumber of selectedIds) {
+        const lesson = lessons.find(l => l.lesson_number === lessonNumber);
+        if (!lesson) continue;
+
+        await db.runAsync(
+          `UPDATE subject_contents
+          SET done = 0
+          WHERE lesson_belong = ?`,
+          [lesson.lesson_id]
+        );
+
+        await db.runAsync(
+          `UPDATE lessons
+          SET status = 0
+          WHERE lesson_id = ?`,
+          [lesson.lesson_id]
+        );
+      }
+
+      console.log("✅ Selected lessons marked as undone");
+      await fetchLessonsAndAchievements();
+
+      clearSelection();
+
+    } catch (err) {
+      console.error("❌ Error marking lessons undone:", err);
+    }
+  };
+
+  
+  const onDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    for (const lesson_number of selectedIds) {
+      const lesson = lessons.find(l => l.lesson_number === lesson_number);
+      if (!lesson) continue;
+
+      const contents = await getContentsForLesson(lesson.lesson_id);
+
+      for (const content of contents) {
+        const fileName = getFileNameForLesson(content);
+        if (!fileName) continue;
+
+        await handleDelete(
+          fileName,
+          content.content_type,
+          () => {}  // setFileExists not needed here
+        );
+      }
+    }
+
+    console.log("🗑️ Deleted all downloaded files for selected lessons.");
+    clearSelection();
+  };
+
+  const onDownload = async () => {
+    if (!db) return;
+    if (selectedIds.size === 0) return;
+
+    setDownloading(true);
+
+    try {
+      const lessonsToDownload = Array.from(selectedIds);
+
+      // 1️⃣ Collect all content items first
+      let allContents = [];
+      for (const lessonNumberOrId of lessonsToDownload) {
+        const lessonId = lessonNumberOrId;
+
+        const contents = await db.getAllAsync(
+          `SELECT content_id, title, file_name, url, content_type FROM subject_contents WHERE lesson_belong = ?`,
+          [lessonId]
+        );
+
+        contents.forEach(c => {
+          const fileName = getFileNameForLesson(c);
+          if (!fileName) return;
+
+          // Add to global download queue immediately
+          addDownload({
+            id: c.content_id,
+            title: c.title,
+            status: 'queued',
+            progress: 0
+          });
+
+          // Prepare item for async download
+          allContents.push({ ...c, fileName });
+        });
+      }
+
+      // 2️⃣ Start downloads asynchronously, independent of each other
+      allContents.forEach(async (c) => {
+        // update status to downloading
+        updateDownload(c.content_id, { status: 'downloading', progress: 0 });
+
+        const localPath = await handleDownload(
+          c.fileName,
+          c.url,
+          c.content_type,
+          () => {},
+          () => {}
+        );
+
+        if (localPath) {
+          updateDownload(c.content_id, { status: 'completed', progress: 100 });
+
+          // mark in SQLite
+          try {
+            await db.runAsync(
+              `UPDATE subject_contents 
+              SET downloaded_at = datetime('now'), file_name = ?, is_synced = 0
+              WHERE content_id = ?`,
+              [c.fileName, c.content_id]
+            );
+          } catch (e) {
+            console.warn('Failed to update subject_contents after download', e);
+          }
+        } else {
+          updateDownload(c.content_id, { status: 'failed', progress: 0 });
+          console.warn('Download failed for', c);
+        }
+      });
+
+    } catch (err) {
+      console.error('❌ Download error:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+
+
 
   // Auto-exit selection mode when no cards are selected
   useEffect(() => {
@@ -165,19 +347,40 @@ const SubjectPage = () => {
     }
   }, [selectedIds, selectionMode]);
 
-  const [downloadedFiles, setDownloadedFiles] = useState({}); // { lessonId: true/false }
-
   // helper: maps lesson type to actual filename
   const getFileNameForLesson = (item) => {
-    if (!item.content) return null;
+    if (!item) return null;
+    // use explicit file_name column if present
+    if (item.file_name && item.file_name.trim() !== "") return item.file_name;
+
+    // otherwise try to parse from url
+    const url = item.url || item.content || "";
+    if (!url) return null;
+
     try {
-      // take last part of the URL after slash
-      const urlParts = item.content.split('/');
-      return decodeURIComponent(urlParts[urlParts.length - 1]);
-    } catch {
+      const parts = url.split('/');
+      const last = parts[parts.length - 1] || parts[parts.length - 2] || '';
+      return decodeURIComponent(last);
+    } catch (e) {
       return null;
     }
   };
+
+
+  const getContentsForLesson = async (lessonId) => {
+    try {
+      return await db.getAllAsync(
+        `SELECT content_id, content_type, url, file_name
+        FROM subject_contents 
+        WHERE lesson_belong = ?`,
+        [lessonId]
+      );
+    } catch (err) {
+      console.error("❌ Error loading contents for lesson:", err);
+      return [];
+    }
+  };
+
   
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
@@ -199,6 +402,7 @@ const SubjectPage = () => {
               pathname: '/lesson_page',
               params: {
                 id: item.lesson_id,
+                accentColor: encodeURIComponent(accentColor),
                 title: item.title,
                 description: item.description,
                 Quarter: item.Quarter,
@@ -214,13 +418,13 @@ const SubjectPage = () => {
         }}
         style={[
           styles.cardBox,
-          isSelected && { backgroundColor: '#d1f7ff', borderColor: '#00b4d8' },
-          isDone && { borderColor: '#48cae4' },
+          isSelected && { backgroundColor: lightenColor(accentColor, 0.4), borderColor: accentColor },
+          isDone && { borderColor: accentColor },
           isLocked && !selectionMode,
         ]}
       >
         {/* Lesson Number */}
-        <View style={[styles.numberBox, isDone && { backgroundColor: '#48cae4' }]}>
+        <View style={[styles.numberBox, isDone && { backgroundColor: accentColor }]}>
           <ThemedText style={styles.lessonNumber}>{item.lesson_number}</ThemedText>
           {isLocked && !selectionMode && (
             <Ionicons
@@ -243,7 +447,7 @@ const SubjectPage = () => {
           <Ionicons
             name={isSelected ? 'checkbox' : 'square-outline'}
             size={28}
-            color={isSelected ? '#00b4d8' : '#ccc'}
+            color={isSelected ? accentColor : '#ccc'}
             style={{ marginLeft: 10 }}
           />
         )}

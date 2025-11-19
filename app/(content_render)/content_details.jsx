@@ -23,6 +23,7 @@ import { resolveLocalPath } from '../../utils/resolveLocalPath';
 import { handleDownload } from '../../utils/handleDownload';
 import { handleDelete } from '../../utils/handleDelete';
 import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
+import { useDownloadQueue } from '../../contexts/DownloadContext';
 
 const ContentDetails = () => {
   const { id, title, type, shortdescription, content, file, status} = useLocalSearchParams();
@@ -43,6 +44,8 @@ const ContentDetails = () => {
   const db = useSQLiteContext();
 
   const [contents, setContents] = useState([]);
+
+  const { addDownload, updateDownload } = useDownloadQueue();
 
   const isFocused = useIsFocused();
 
@@ -179,15 +182,28 @@ const ContentDetails = () => {
       setShowDeleteAlert(true);
     } else {
       try {
+        // Add to download queue immediately
+        addDownload({
+          id: item.content_id,
+          title: item.title,
+          status: 'downloading',
+          progress: 0
+        });
+
         const fileUri = await handleDownload(
           item.file_name,
           item.url,
           item.content_type,
           setFileExists,
-          setDownloading
+          setDownloading,
+          addDownload,        // pass to handleDownload
+          updateDownload      // pass to handleDownload
         );
 
         if (fileUri) {
+          // Mark download as completed in the queue
+          updateDownload(item.content_id, { status: 'completed', progress: 100 });
+
           const now = new Date().toISOString();
           await db.runAsync(
             `UPDATE subject_contents 
@@ -196,9 +212,13 @@ const ContentDetails = () => {
             [now, item.content_id]
           );
           console.log(`✅ Updated downloaded_at for content_id ${item.content_id}: ${now}`);
+        } else {
+          // Mark as failed in queue
+          updateDownload(item.content_id, { status: 'failed', progress: 0 });
         }
       } catch (err) {
         console.error("❌ Error marking as downloaded:", err);
+        updateDownload(item.content_id, { status: 'failed', progress: 0 });
       }
     }
   };

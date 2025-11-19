@@ -9,6 +9,7 @@ import { ApiUrlProvider, ApiUrlContext } from '../contexts/ApiUrlContext';
 import { UserProvider } from '../contexts/UserContext';
 import { SearchProvider } from '../contexts/SearchContext';
 import { EnrollmentProvider } from '../contexts/EnrollmentContext';
+import { DownloadProvider } from '../contexts/DownloadContext';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
@@ -168,16 +169,20 @@ const RootLayout = () => {
   return (
     <SQLiteProvider databaseName="mquest.db">
       <DatabaseBinder />
-      <ApiUrlProvider>
-        <UserProvider>
-          <ProfileProvider>
-            <SearchProvider>
-              <EnrollmentProvider>
-                <RootLayoutContent/>
-              </EnrollmentProvider>
-            </SearchProvider>
-          </ProfileProvider>
-        </UserProvider>
+      <ApiUrlProvider> 
+        <DownloadProvider>
+          <UserProvider>
+            <ProfileProvider>
+              <SearchProvider>
+                <EnrollmentProvider>
+                
+                    <RootLayoutContent/>
+                  
+                </EnrollmentProvider>
+              </SearchProvider>
+            </ProfileProvider>
+          </UserProvider>
+        </DownloadProvider>
       </ApiUrlProvider>
     </SQLiteProvider>
   );

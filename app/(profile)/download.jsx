@@ -1,76 +1,43 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useContext } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
-import ThemedButton from '../../components/ThemedButton';
+import { useDownloadQueue  } from '../../contexts/DownloadContext';
 
 const DownloadPage = () => {
-  const router = useRouter();
   const colorScheme = useColorScheme();
-  // try to use theme from ProfileContext if available at runtime; fallback to light
-  let theme = Colors.light;
-  try {
-    // dynamic require to avoid runtime crash if context not present in this file
-    const { useContext } = require('react');
-    const { ProfileContext } = require('../../contexts/ProfileContext');
-    const { themeColors } = useContext(ProfileContext) || {};
-    theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors] || Colors.light;
-  } catch (e) {
-    theme = Colors[colorScheme === 'dark' ? 'dark' : 'light'] || Colors.light;
-  }
+  const { queue: downloads, removeDownload, updateDownload } = useDownloadQueue();
 
-  const [loading, setLoading] = useState(true);
-  const [downloads, setDownloads] = useState([]);
-
-  // Replace this loader with your real download-queue source (context, async storage, api)
-  const loadQueue = useCallback(async () => {
-    setLoading(true);
-    try {
-      // simulate async load
-      await new Promise((r) => setTimeout(r, 400));
-      // example structure: [{ id, title, status, progress }]
-      // setDownloads([]); // <- empty queue example
-      setDownloads([
-        // sample items (remove or replace in real app)
-        { id: '1', title: 'General', status: 'paused', progress: 48 },
-        { id: '2', title: 'Topic 1', status: 'downloading', progress: 12 },
-        { id: '3', title: 'Lesson 2', status: 'queued', progress: 0 },
-        { id: '4', title: 'Pretest', status: 'completed', progress: 100 },
-      ]);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to load download queue');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadQueue();
-  }, [loadQueue]);
+  const theme = Colors[colorScheme === 'light' ? 'light' : 'dark'];
 
   const removeItem = (id) => {
-    setDownloads((prev) => prev.filter((d) => d.id !== id));
+    removeDownload(id);
   };
 
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'completed': return '#4caf50';
+      case 'downloading': return '#2196f3';
+      case 'paused': return '#ff9800';
+      default: return '#999';
+    }
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
-      style={[styles.item, { backgroundColor: theme.navBackground, borderColor: theme.cardBorder }]}
+      style={[styles.item, { backgroundColor: "#fff", borderColor: theme.cardBorder }]}
     >
       <View style={styles.itemLeft}>
         <ThemedText style={styles.itemTitle}>{item.title}</ThemedText>
         <ThemedText style={styles.itemSub}>Status: {item.status}</ThemedText>
 
-        {/* Progress bar container */}
         <View style={[styles.progressContainer, { backgroundColor: theme.iconBackground }]}>
-          <View style={[styles.progressBar, { width: `${item.progress ?? 0}%`, backgroundColor: theme.iconColorFocused }]} />
+          <View style={[styles.progressBar, { width: `${item.progress ?? 0}%`, backgroundColor: getStatusColor(item.status) }]} />
         </View>
       </View>
 
@@ -82,13 +49,11 @@ const DownloadPage = () => {
     </TouchableOpacity>
   );
 
-
   return (
     <ThemedView style={styles.container} safe={true}>
-
       <Spacer height={12} />
 
-      {loading ? (
+      {downloads === null ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.text} />
         </View>
@@ -115,87 +80,19 @@ const DownloadPage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
-  },
-  header: {
-    width: '100%',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-  },
-  iconButton: { 
-    padding: 1,
-    size: 24,
-  },
-  headerTitle: { 
-    fontSize: 18, 
-    fontWeight: '600',
-  },
-  center: { 
-    flex: 1, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    padding: 20,
-  },
-  emptyTitle: { fontSize: 18, 
-    fontWeight: '700', 
-    marginTop: 6 ,
-  },
-  emptySubtitle: { fontSize: 14, 
-    color: '#666', 
-    textAlign: 'center', 
-    marginHorizontal: 24,
-  },
-
-  list: { padding: 12, 
-    paddingBottom: 40,
- },
-  item: {
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  itemLeft: { 
-    flex: 1, 
-    paddingRight: 8 
- },
-  itemTitle: { 
-    fontSize: 15, 
-    fontWeight: '600',
-  },
-  itemSub: { 
-    fontSize: 13, 
-    color: '#666', 
-    marginTop: 4,
- },
-  itemRight: { 
-    flexDirection: 'row', 
-    alignItems: 'center',
-  },
-  iconBtn: { 
-    padding: 6, 
-    marginRight: 0,
- },
-  progressContainer: {
-    width: '100%',
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 6,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 4,
-  },
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 6 },
+  emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginHorizontal: 24 },
+  list: { padding: 12, paddingBottom: 40 },
+  item: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  itemLeft: { flex: 1, paddingRight: 8 },
+  itemTitle: { fontSize: 15, fontWeight: '600' },
+  itemSub: { fontSize: 13, color: '#666', marginTop: 4 },
+  itemRight: { flexDirection: 'row', alignItems: 'center' },
+  iconBtn: { padding: 6, marginRight: 0 },
+  progressContainer: { width: '100%', height: 8, borderRadius: 4, overflow: 'hidden', marginTop: 6 },
+  progressBar: { height: '100%', borderRadius: 4 },
 });
 
 export default DownloadPage;
