@@ -43,17 +43,23 @@ export function RankingProvider({ children }) {
 
   // 3️⃣ Load user token
   useEffect(() => {
-    const loadToken = async () => {
+    if (!db?.nativeDatabase) return;
+
+    const loadUserToken = async () => {
       try {
-        const row = await db.getAllAsync(`SELECT token FROM users LIMIT 1;`);
-        if (row.length > 0) setToken(row[0].token);
+        // If your db has getAllAsync helper
+        const rows = await db.getAllAsync(`SELECT token FROM users LIMIT 1;`);
+        if (rows.length > 0) setToken(rows[0].token);
       } catch (err) {
         console.error("Failed to load user token:", err);
         setError('TOKEN NOT AVAILABLE');
       }
     };
-    loadToken();
+
+    loadUserToken();
   }, [db]);
+
+
 
   // 4️⃣ Fetch ranking if online, API ready, and token available
   useEffect(() => {

@@ -98,6 +98,73 @@ export async function syncTestScoresToServer(db) {
   }
 }
 
+export async function syncNotifications(db) {
+if (!db || !isDbInitialized) return false;
+
+  const net = await NetInfo.fetch();
+  if (!net.isConnected) return false;
+
+  try {
+    const API_URL = await getApiUrl();
+    const token = await SecureStore.getItemAsync('authToken');
+
+    const user = await db.getFirstAsync(`
+      SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
+    `);
+    if (!user?.server_id) return false;
+
+    // ---- Get unsynced local notifications ----
+    const unsyncedNotifications = await db.getAllAsync(`
+      SELECT rowid, server_notification_id, type, title, message, is_read, created_at, read_at, is_synced
+      FROM notifications
+      WHERE is_synced = 0
+    `);
+
+    if (!unsyncedNotifications.length) return true;
+
+    const res = await fetch(`${API_URL}/user/sync-up-notifications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        notifications: unsyncedNotifications.map(n => ({
+          notification_id: n.server_notification_id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          is_read: n.is_read === 1,
+          created_at: n.created_at,
+          read_at: n.read_at,
+          is_synced: n.is_synced === 1
+        }))
+      })
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const { inserted_notification_ids = [] } = await res.json();
+
+    // ---- Mark local notifications as synced ----
+    for (let i = 0; i < unsyncedNotifications.length; i++) {
+      await db.runAsync(`
+        UPDATE notifications
+        SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now')
+        WHERE rowid = ?
+      `, [inserted_notification_ids[i] || null, unsyncedNotifications[i].rowid]);
+    }
+
+    console.log(`✅ Synced ${unsyncedNotifications.length} notifications`);
+    return true;
+
+  } catch (err) {
+    console.error('❌ Notifications sync error:', err);
+    return false;
+  }
+}
+
+
 export async function syncProgressToServer(db) {
   if (!db || !isDbInitialized) {
     console.log('❌ DB not initialized or null → cannot sync progress');
@@ -282,6 +349,7 @@ export async function triggerSyncIfOnline(db) {
     await syncTestScoresToServer(db);
     await syncProgressToServer(db);
     await syncAchievements(db);
+    await syncNotifications(db);
   }
 }
 

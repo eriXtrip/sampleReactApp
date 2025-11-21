@@ -80,6 +80,9 @@ const SubjectList = () => {
           type: 'subject',
         }));
 
+          console.log('sectionData:', sectionData);
+          console.log('standaloneData:', standaloneData);
+
         // 4. Combine everything
         setCombinedData([...sectionData, ...standaloneData]);
       } catch (err) {
@@ -88,7 +91,10 @@ const SubjectList = () => {
     };
 
     fetchData();
+
   }, [db]);
+
+  
 
   const renderSubject = (item) =>{ 
     //console.log("Rendering subject:", item);
@@ -111,11 +117,11 @@ const SubjectList = () => {
               <ThemedText style={[styles.subjectTitle, { color: theme.text }]}>{item.title}</ThemedText>
               <ThemedText style={[styles.subjectGrade, { color: theme.text }]}>{item.grade}</ThemedText>
             </View>
-            <Ionicons
+            {/* <Ionicons
               name={item.downloaded ? 'checkmark-circle-outline' : 'arrow-down-circle-outline'}
               size={40}
               color={item.downloaded ? 'green' : theme.text}
-            />
+            /> */}
           </View>
         </TouchableOpacity>
       );
@@ -167,16 +173,26 @@ const SubjectList = () => {
   const renderItem = ({ item }) => {
     return item.type === 'section' ? renderSection(item) : renderSubject(item);
   };
+  
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      <FlatList
-        data={combinedData}
-        renderItem={renderItem}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      {combinedData.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="book-outline" size={80} color={theme.tint} />
+          <ThemedText style={[styles.emptyText, { color: theme.iconColor }]}>
+            No subject enrolled yet
+          </ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={combinedData}
+          renderItem={renderItem}
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </ThemedView>
   );
 };
@@ -198,4 +214,16 @@ const styles = StyleSheet.create({
   textContainer: { flex: 1 },
   subjectTitle: { fontSize: 25, fontWeight: 'bold' },
   subjectGrade: { fontSize: 14, opacity: 0.6 },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 20,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
 });

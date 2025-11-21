@@ -10,6 +10,7 @@ import { triggerLocalNotification } from '../utils/notificationUtils';
 import { saveSyncDataToSQLite } from '../local-database/services/syncService';
 import { getApiUrl } from '../utils/apiManager.js';
 import { getLocalAvatarPath, ensureAvatarDirectory } from '../utils/avatarHelper';
+import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
 
 export const UserContext = createContext();
 
@@ -97,7 +98,7 @@ export function UserProvider({ children }) {
       throw new Error(errorData.error || 'Registration failed');
     }
 
-    await triggerLocalNotification('👋 Welcome Aboard!', `Your account has been created. Let's start the quest, ${data.first_name}!`);
+    await triggerLocalNotification('Welcome Aboard!', `Your account has been created. Let's start the quest, ${data.first_name}!`);
     
     return await response.json();
   };
@@ -228,7 +229,7 @@ export function UserProvider({ children }) {
         // continue to full sync attempt (or decide to abort)
       }
 
-      await triggerLocalNotification('✅ Login Successful', `Welcome back, ${userDataForSync.first_name}`);
+      await triggerLocalNotification('Login Successful', `Welcome back, ${userDataForSync.first_name}`);
       setUser(userDataForSync);
 
       // Fetch full sync data then save to sqlite (guard db)
@@ -334,7 +335,7 @@ export function UserProvider({ children }) {
     // 0. Check server reachability first
     try {
       const isReachable = await testServerConnection(API_URL);
-      console.log("api in logout: ", API_URL);
+      console.log("API URL in logout:", API_URL);
       if (!isReachable) {
         console.warn('❌ Server not reachable — aborting logout');
         return false;
@@ -347,26 +348,36 @@ export function UserProvider({ children }) {
     // 1. Wait if DB is still initializing
     if (!dbInitialized) {
       console.warn('⏳ Waiting for DB to finish initializing before logout...');
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     try {
-      // 🔹 Send logout request to server with server_id
-      const token = await SecureStore.getItemAsync("authToken");
+      // 🔄 Trigger offline sync if online
+      if (db) {
+        try {
+          console.log("🔄 Triggering offline sync before logout...");
+          await triggerSyncIfOnline(db);
+          console.log("✅ Offline sync completed");
+        } catch (syncErr) {
+          console.warn("⚠️ Sync before logout failed (non-fatal):", syncErr);
+        }
+      }
 
+      // 🔹 Logout from server
+      const token = await SecureStore.getItemAsync("authToken");
       const response = await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ user_id: server_id }) // ✅ include server_id
+        body: JSON.stringify({ user_id: server_id })
       });
-
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || "Logout failed on server");
       }
+      console.log("✅ Server logout successful");
 
       // 2. Clear SecureStore
       await Promise.all([
@@ -375,11 +386,25 @@ export function UserProvider({ children }) {
       ]);
       console.log("🧹 SecureStore cleared");
 
-      // 3. Clear + close DB in one safe call
-      if (dbInitialized && UserService.db) {
-        await UserService.clearAllUserData(); // Safe clear + close in UserService
+      // 3. Clear all local DB tables
+      if (dbInitialized && db) {
+        console.log("🗑️ Clearing local DB tables...");
+        await db.execAsync(`
+          DELETE FROM users;
+          DELETE FROM sections;
+          DELETE FROM subjects;
+          DELETE FROM subjects_in_section;
+          DELETE FROM lessons;
+          DELETE FROM subject_contents;
+          DELETE FROM games;
+          DELETE FROM notifications;
+          DELETE FROM pupil_test_scores;
+          DELETE FROM pupil_achievements;
+          DELETE FROM classmates;
+        `);
+        console.log("✅ Local DB cleared");
       } else {
-        console.warn("⚠️ DB not ready — skipped clear/close");
+        console.warn("⚠️ DB not ready — skipped clear");
       }
 
       // 4. Clear React state
@@ -429,7 +454,7 @@ export function UserProvider({ children }) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Account not found');
     }
-    await triggerLocalNotification('⚠️ Security Alert', 'A password reset was requested for your account.');
+    await triggerLocalNotification('Security Alert', 'A password reset was requested for your account.');
     return await response.json();
   };
 
@@ -452,7 +477,7 @@ export function UserProvider({ children }) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to Reset Password');
     }
-    await triggerLocalNotification('🔐 Password Changed', 'Your password was updated successfully.');
+    await triggerLocalNotification('Password Changed', 'Your password was updated successfully.');
     return await response.json();
   };
 
@@ -490,7 +515,7 @@ export function UserProvider({ children }) {
     if (!response.ok) {
       throw new Error(responseData.error || 'Failed to change password');
     }
-    await triggerLocalNotification('🔐 Password Changed', 'Your password was updated successfully.');
+    await triggerLocalNotification('Password Changed', 'Your password was updated successfully.');
     return responseData;
   };
 

@@ -2,19 +2,19 @@
 
 export const ASSETS_ICONS = {
   English: {
-    icon: require('../assets/icons/english_.png'),
+    icon: require('../assets/icons/3.png'),
     color: '#4A90E2', // Blue
   },
   Filipino: {
-    icon: require('../assets/icons/filipino_.png'),
+    icon: require('../assets/icons/2.png'),
     color: '#F5A623', // Orange
   },
   Mathematics: {
-    icon: require('../assets/icons/math_.png'),
+    icon: require('../assets/icons/1.png'),
     color: '#7B61FF', // Purple
   },
   Science: {
-    icon: require('../assets/icons/saturn_.png'),
+    icon: require('../assets/icons/4.png'),
     color: '#50E3C2', // Teal
   },
   Section: {

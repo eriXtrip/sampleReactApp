@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useRanking } from '../contexts/RankingContext'; // make sure to import your context
+import { Ionicons } from '@expo/vector-icons'; 
 
 const medalColors = {
   1: '#FFD700',
@@ -43,6 +44,7 @@ export default function RankingBoard() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
+        <Ionicons name="cloud-offline-outline" size={48} color="#989898ff" style={{ marginBottom: 10 }} />
         <Text style={styles.errorTitle}>RANKING NOT AVAILABLE</Text>
         <Text style={styles.errorSubtitle}>Please connect to the internet</Text>
       </View>
@@ -212,13 +214,15 @@ const styles = StyleSheet.create({
   // Error / Offline styles
   errorContainer: {
     alignItems: 'center',
+    height: 200,
     justifyContent: 'center',
     padding: 20,
     marginTop: 50,
+    margin: 20,
     backgroundColor: '#fff',
     borderRadius: 12,
     elevation: 3,
   },
-  errorTitle: { fontSize: 18, fontWeight: '900', marginBottom: 6, color: '#ff3b30' },
+  errorTitle: { fontSize: 18, fontWeight: '900', marginBottom: 6, color: '#4e4e4eff' },
   errorSubtitle: { fontSize: 14, fontWeight: '600', color: '#333' },
 });

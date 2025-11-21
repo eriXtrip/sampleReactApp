@@ -240,8 +240,6 @@ export const getSyncData = async (req, res) => {
           -- Must have a valid earned_at
           AND pa.earned_at IS NOT NULL
           
-          -- Optional: require subject_content_id (remove if some badges don't need it)
-          -- AND COALESCE(a.content_id, g.content_id) IS NOT NULL
         )
 
       ORDER BY pa.earned_at DESC;
@@ -287,6 +285,7 @@ export const getSyncData = async (req, res) => {
         };
       });
     }
+
     
 
     // ✅ Send all data in one response

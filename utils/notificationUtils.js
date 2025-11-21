@@ -1,3 +1,5 @@
+// utils/notificationUtils.js
+
 import * as Notifications from 'expo-notifications';
 
 export const triggerLocalNotification = async (title, body) => {

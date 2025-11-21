@@ -1,8 +1,10 @@
-import { StyleSheet, FlatList } from 'react-native';
+import { StyleSheet, FlatList, View  } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useContext, useEffect, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import ThemedView from '../../components/ThemedView';
+import ThemedText from '../../components/ThemedText';
+import { Ionicons } from '@expo/vector-icons';
 import Spacer from '../../components/Spacer';
 import CardNotif from '../../components/card_notif';
 import { Colors } from '../../constants/Colors';
@@ -60,13 +62,24 @@ const Notification = () => {
   return (
     <ThemedView style={styles.container} safe={true}>
       <Spacer height={20} />
-      <FlatList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.notification_id)}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+
+      {notifications.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="notifications-off-outline" size={80} color={theme.tint} />
+          <ThemedText style={[styles.emptyText, { color: theme.iconColor }]}>
+            No notification yet
+          </ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item.notification_id)}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
       <Spacer height={100} />
     </ThemedView>
   );
@@ -82,4 +95,16 @@ const styles = StyleSheet.create({
   list: {
     paddingVertical: 10,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 20,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
 });

@@ -26,6 +26,15 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
       ]
     );
 
+    // Insert earned achievement
+    await db.runAsync(
+      `INSERT OR IGNORE INTO notifications 
+        (title, message, type, created_at)
+      VALUES ('Badge Earn', ?, 'achievement_badge', datetime('now'))`,
+      [gameBadge?.title]
+    );
+
+
     // Update subject_contents
     await db.runAsync(
       `UPDATE subject_contents 

@@ -45,7 +45,8 @@ import {
 import { 
   syncUp,
   syncProgress,
-  syncAchievements
+  syncAchievements,
+  syncNotification
 } from './controllers/userSyncUpController.js';
 import adminRoutes from './routes/admin.js'; 
 import { getOverallRanking } from './controllers/ranking.js';
@@ -117,6 +118,7 @@ app.get('/api/user/sync-data', authenticateToken, getSyncData);
 app.post('/api/user/sync-up', authenticateToken, syncUp);
 app.post('/api/user/sync-up-progress', authenticateToken, syncProgress);
 app.post('/api/user/sync-up-achievements', authenticateToken, syncAchievements);
+app.post('/api/user/sync-up-notifications', authenticateToken, syncNotification);
 
 app.use('/api/ranking', authenticateToken, rankingRoutes);
 

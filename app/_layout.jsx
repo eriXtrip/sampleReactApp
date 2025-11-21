@@ -21,6 +21,7 @@ import { LESSONS_DIR } from '../utils/resolveLocalPath';
 import { initializeDatabase } from '../local-database/services/database';
 import UserService from '../local-database/services/userService';
 import ThemedStatusBar from '../components/ThemedStatusBar';
+import { useNotificationListener } from '../utils/notificationListener';
 
 
 // Notification handler
@@ -107,6 +108,7 @@ const RootLayoutContent = () => {
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
+  useNotificationListener();
 
   const { isApiLoaded } = useContext(ApiUrlContext);
 
@@ -166,7 +168,8 @@ const RootLayoutContent = () => {
   );
 };
 
-const RootLayout = () => {
+const RootLayout = () => { 
+
   return (
     <SQLiteProvider databaseName="mquest.db">
       <DatabaseBinder />

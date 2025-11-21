@@ -3,12 +3,13 @@ import pool from '../services/db.js';
 
 export const syncUp = async (req, res) => {
   const userId = req.user.userId;
-  const { pupil_test_scores = [], pupil_answers = [], pupil_progress = [] } = req.body;
+  const { pupil_test_scores = [], pupil_answers = [], pupil_progress = [], notifications = [] } = req.body;
 
   const client = await pool.getConnection();
   const insertedScoreIds = [];
   const insertedAnswerIds = [];
   const insertedProgressIds = [];
+  const insertedNotificationIds = [];
 
   try {
     await client.query('START TRANSACTION');
@@ -77,7 +78,7 @@ export const syncUp = async (req, res) => {
       success: true,
       message: 'Sync successful',
       inserted_score_ids: insertedScoreIds,
-      inserted_answer_ids: insertedAnswerIds,
+      inserted_answer_ids: insertedAnswerIds
     });
 
   } catch (error) {
@@ -262,6 +263,76 @@ export const syncAchievements = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Achievements sync failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Sync failed',
+      details: error.message
+    });
+  } finally {
+    client.release();
+  }
+};
+
+
+export const syncNotification = async (req, res) => {
+  const userId = req.user.userId;
+  const { notifications = [] } = req.body;
+
+  if (!notifications.length) {
+    return res.json({ success: true, message: 'No notifications to sync', inserted_notification_ids: [] });
+  }
+
+  const client = await pool.getConnection();
+  const insertedNotificationIds = [];
+
+  try {
+    await client.query('START TRANSACTION');
+
+    for (const n of notifications) {
+      const createdAt = n.created_at
+        ? new Date(n.created_at).toISOString().slice(0, 19).replace('T', ' ')
+        : new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+      const readAt = n.is_read ? (n.read_at ? new Date(n.read_at).toISOString().slice(0, 19).replace('T', ' ') : createdAt) : null;
+
+      const [result] = await client.query(
+        `INSERT INTO notifications
+          (notification_id, user_id, sender_id, type, title, message, is_read, created_at, read_at, is_synced)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+        ON DUPLICATE KEY UPDATE
+          title = VALUES(title),
+          message = VALUES(message),
+          type = VALUES(type),
+          is_read = VALUES(is_read),
+          read_at = VALUES(read_at),
+          created_at = VALUES(created_at)`,
+        [
+          n.notification_id || null,
+          userId,
+          n.sender_id || null,
+          n.type || 'info',
+          n.title,
+          n.message,
+          n.is_read ? 1 : 0,
+          createdAt,
+          readAt
+        ]
+      );
+
+      insertedNotificationIds.push(result.insertId || null);
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: 'Notifications sync successful',
+      inserted_notification_ids: insertedNotificationIds
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Notifications sync failed:', error);
     res.status(500).json({
       success: false,
       error: 'Sync failed',

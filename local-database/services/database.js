@@ -190,7 +190,9 @@ export async function initializeDatabase(db) {
         type TEXT DEFAULT 'info',
         is_read BOOLEAN DEFAULT FALSE,
         created_at TEXT NOT NULL,
-        read_at TEXT
+        read_at TEXT,
+        is_synced BOOLEAN DEFAULT FALSE,
+        synced_at TEXT
     );
 
     -- Classmates (users in the same sections)

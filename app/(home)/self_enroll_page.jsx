@@ -1,10 +1,11 @@
 // SAMPLEREACTNATIVE/app/(home)/subject_details.jsx
 
-import React, { useContext, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useContext, useLayoutEffect, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Alert } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -15,6 +16,11 @@ import { useEnrollment } from '../../contexts/EnrollmentContext';
 import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { getApiUrl } from '../../utils/apiManager.js';
+import { triggerSyncIfOnline } from '../../local-database/services/syncUp';
+import {  saveSyncDataToSQLite } from '../../local-database/services/syncService';
+import { useSQLiteContext } from 'expo-sqlite';
+
 
 const typeToAccent = {
   subject: '#48cae4',
@@ -25,6 +31,27 @@ const typeToIcon = {
   subject: 'book',
   section: 'layers',
 };
+
+async function safeOfflineSync(db, syncData) {
+  if (!db) {
+    console.log("❌ No DB initialized — cannot sync or save.");
+    return;
+  }
+
+  try {
+    // 1️⃣ Trigger sync first
+    await triggerSyncIfOnline(db);
+
+    // 2️⃣ Then save to SQLite locally
+    await saveSyncDataToSQLite(syncData, db);
+
+    console.log("✅ Sync + Save completed");
+  } catch (err) {
+    console.error("❌ Sync/Save error:", err);
+  }
+}
+
+
 
 const SelfEnrollPage = () => {
   const colorScheme = useColorScheme();
@@ -38,6 +65,9 @@ const SelfEnrollPage = () => {
     enrollInSectionWithoutKey,
     loading: enrolling 
   } = useEnrollment();
+
+  const db = useSQLiteContext();
+  const [API_URL, setApiUrl] = useState(null);
   
   const navigation = useNavigation();
   const router = useRouter();
@@ -62,6 +92,8 @@ const SelfEnrollPage = () => {
 
   const bannerHeight = Math.round(Dimensions.get('window').height * 0.2);
 
+  const [Enrolling, setEnrolling] = useState(false);
+
   const parseTitleAndGrade = (rawName, rawGrade) => {
     if (rawGrade) return { title: String(rawName), grade: String(rawGrade) };
     const m = String(rawName).match(/^(.*)\s+(Grade\s*\d+|G\s*\d+)$/i);
@@ -80,7 +112,7 @@ const SelfEnrollPage = () => {
 
   const navigateToSubjectPage = () => {
     router.push({
-      pathname: '/subject_page',
+      pathname: '/subjectlist',
       params: {
         name: parsedTitle,
         grade: parsedGrade,
@@ -101,50 +133,91 @@ const SelfEnrollPage = () => {
     });
   };
 
+  useEffect(() => {
+    (async () => {
+      const url = await getApiUrl();
+      setApiUrl(url);
+      console.log('URL: ', url);
+      
+    })();
+  }, []);
+
   const [showEnroll, setShowEnroll] = useState(false);
 
   // ✅ NEW: Handle enrollment based on type
   const handlePressEnroll = async () => {
-    if (!user?.server_id) {
-      Alert.alert('Error', 'User not authenticated');
+    if (!user?.server_id || !db) {
+      Alert.alert('Error', 'User not ready');
       return;
     }
 
     try {
+      setEnrolling(true);
+
+      let success = false;
+
       if (type === 'subject') {
-        // Enroll in subject (always public, no key needed)
         await enrollInSubject(user.server_id, parseInt(subjectId));
-        navigateToSubjectPage();
+        success = true;
       } else if (type === 'section') {
-        // Check if section requires enrollment key
         const requiresKey = await checkSectionRequiresKey(parseInt(sectionId));
-        
         if (requiresKey) {
-          // Show enrollment key modal
           setShowEnroll(true);
+          return;
         } else {
-          // Enroll directly (no key needed)
           await enrollInSectionWithoutKey(user.server_id, parseInt(sectionId));
-          navigateToSubjectPage();
+          success = true;
         }
       }
+
+      if (success) {
+        // THIS IS THE MISSING PIECE — REFRESH DATA FROM SERVER
+        const token = await SecureStore.getItemAsync('authToken');
+        const response = await fetch(`${API_URL}/user/sync-data`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to refresh data');
+
+        const freshSyncData = await response.json();
+
+        // THIS REPLACES ALL LOCAL DATA WITH FRESH ENROLLED CONTENT
+        await saveSyncDataToSQLite(freshSyncData, db);
+
+        console.log('ENROLLMENT SUCCESS + DATA REFRESHED');
+
+        // Now navigate
+        if (type === 'subject') {
+          navigateToSubjectPage();
+        } else {
+          navigateToSectionPage();
+        }
+      }
+
     } catch (error) {
-      Alert.alert('Enrollment Failed', error.message || 'Please try again');
+      console.error('Enrollment failed:', error);
+      Alert.alert('Failed', error.message || 'Please try again');
+    } finally {
+      setEnrolling(false);
     }
   };
 
   const handleConfirmEnroll = async (keyValue) => {
-    if (!user?.server_id) {
-      Alert.alert('Error', 'User not authenticated');
-      return;
-    }
-
     try {
       await enrollInSectionWithKey(user.server_id, parseInt(sectionId), keyValue);
+
+      // REFRESH DATA AFTER KEY ENROLLMENT TOO
+      const token = await SecureStore.getItemAsync('authToken');
+      const res = await fetch(`${API_URL}/user/sync-data`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      await saveSyncDataToSQLite(data, db);
+
       setShowEnroll(false);
-       navigateToSectionPage();
+      navigateToSectionPage();
     } catch (error) {
-      Alert.alert('Enrollment Failed', error.message || 'Invalid key');
+      Alert.alert('Failed', error.message || 'Invalid key');
     }
   };
 

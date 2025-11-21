@@ -40,10 +40,10 @@ export const LESSON_TYPE_ICON_MAP = {
 };
 
 export const SUBJECT_ICON_MAP = {
-  Mathematics: require('../assets/icons/math_.png'),
-  Science: require('../assets/icons/saturn_.png'),
-  English: require('../assets/icons/english_.png'),
-  Filipino: require('../assets/icons/filipino_.png'),
+  Mathematics: require('../assets/icons/1.png'),
+  Science: require('../assets/icons/4.png'),
+  English: require('../assets/icons/3.png'),
+  Filipino: require('../assets/icons/2.png'),
 };
 
 export const feedbackMessages = {
