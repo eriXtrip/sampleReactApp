@@ -10,6 +10,7 @@ import { UserProvider } from '../contexts/UserContext';
 import { SearchProvider } from '../contexts/SearchContext';
 import { EnrollmentProvider } from '../contexts/EnrollmentContext';
 import { DownloadProvider } from '../contexts/DownloadContext';
+import { RankingProvider } from '../contexts/RankingContext';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
@@ -175,9 +176,9 @@ const RootLayout = () => {
             <ProfileProvider>
               <SearchProvider>
                 <EnrollmentProvider>
-                
+                  <RankingProvider>
                     <RootLayoutContent/>
-                  
+                  </RankingProvider>
                 </EnrollmentProvider>
               </SearchProvider>
             </ProfileProvider>

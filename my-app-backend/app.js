@@ -48,6 +48,8 @@ import {
   syncAchievements
 } from './controllers/userSyncUpController.js';
 import adminRoutes from './routes/admin.js'; 
+import { getOverallRanking } from './controllers/ranking.js';
+import rankingRoutes from './routes/ranking.js';
 import config from './config.js';
 import os from 'os';
 import dotenv from 'dotenv';
@@ -115,6 +117,9 @@ app.get('/api/user/sync-data', authenticateToken, getSyncData);
 app.post('/api/user/sync-up', authenticateToken, syncUp);
 app.post('/api/user/sync-up-progress', authenticateToken, syncProgress);
 app.post('/api/user/sync-up-achievements', authenticateToken, syncAchievements);
+
+app.use('/api/ranking', authenticateToken, rankingRoutes);
+
 
 // Admin routes
 app.use('/api/admin', adminRoutes);

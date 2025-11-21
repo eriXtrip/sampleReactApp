@@ -1,6 +1,7 @@
-// ...existing code...
+// app/(profile)/profile_page.jsx
 import React, { useContext, useEffect, useState } from 'react';
-import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -12,6 +13,9 @@ import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import { UserContext } from '../../contexts/UserContext';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import  RankingBoard  from '../../components/RankingBoard';
+import { getLocalAvatarPath } from '../../utils/avatarHelper';
+import { useRanking } from '../../contexts/RankingContext';
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -28,6 +32,10 @@ const ProfilePage = () => {
   const [section, setSection] = useState(''); // new
   const [birthday, setBirthday] = useState(''); // new (YYYY-MM-DD)
   const [saving, setSaving] = useState(false);
+  const [avatarUri, setAvatarUri] = useState(null);
+
+  const { ranking, loading } = useRanking();
+
 
   useEffect(() => {
     if (user) {
@@ -90,13 +98,47 @@ const ProfilePage = () => {
     return b;
   };
 
+  useEffect(() => {
+  (async () => {
+    if (!user) {
+      setAvatarUri(null);
+      return;
+    }
+
+    if (user.avatar_file_name) {
+      const localPath = getLocalAvatarPath(user.avatar_file_name);
+      try {
+        const info = await FileSystem.getInfoAsync(localPath);
+        if (info.exists) {
+          setAvatarUri(localPath);
+          return;
+        }
+      } catch (e) {
+        console.log('Avatar file check failed', e);
+      }
+    }
+
+    setAvatarUri(user.avatar_thumbnail || null);
+  })();
+}, [user]);
+
   return (
     <ThemedView style={styles.container} safe={true}>
       {/* Profile Header */}
       <View style={[styles.header, { backgroundColor: theme.navBackground }]}>
         <View style={styles.profileBlock}>
           <View style={[styles.avatar, { backgroundColor: theme.card || '#ccc' }]}>
-            <ThemedText style={[styles.avatarText, { color: theme.text }]}>{initials.toUpperCase() || '?'}</ThemedText>
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={{ width: 56, height: 56, borderRadius: 28 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <ThemedText style={[styles.avatarText, { color: theme.text }]}>
+                {initials.toUpperCase() || '?'}
+              </ThemedText>
+            )}
           </View>
 
           <View style={styles.nameBlock}>
@@ -120,25 +162,9 @@ const ProfilePage = () => {
 
       {/* Pupil details card (visible when not editing) */}
       {!editing ? (
-        <View style={[styles.detailsCard, { backgroundColor: theme.navBackground, borderColor: theme.cardBorder }]}>
-          <View style={styles.detailRow}>
-            <Ionicons name="school-outline" size={18} color={theme.text} style={styles.detailIcon} />
-            <ThemedText style={[styles.detailLabel, { color: theme.text }]}>Grade</ThemedText>
-            <ThemedText style={[styles.detailValue, { color: theme.text }]}>{gradeLevel || 'N/A'}</ThemedText>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="people-outline" size={18} color={theme.text} style={styles.detailIcon} />
-            <ThemedText style={[styles.detailLabel, { color: theme.text }]}>Section</ThemedText>
-            <ThemedText style={[styles.detailValue, { color: theme.text }]}>{section || 'N/A'}</ThemedText>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Ionicons name="gift-outline" size={18} color={theme.text} style={styles.detailIcon} />
-            <ThemedText style={[styles.detailLabel, { color: theme.text }]}>Birthday</ThemedText>
-            <ThemedText style={[styles.detailValue, { color: theme.text }]}>{formatBirthday(birthday) || 'N/A'}</ThemedText>
-          </View>
-        </View>
+        <>
+          <RankingBoard ranking={ranking} />
+        </>
       ) : null}
 
       {editing ? (

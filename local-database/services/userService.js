@@ -217,32 +217,32 @@ export default class UserService {
       'classmates'
     ];
 
-    for (const table of tables) {
-      try {
-        const exists = await activeDb.getFirstAsync(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`,
-          [table]
-        );
+    // for (const table of tables) {
+    //   try {
+    //     const exists = await activeDb.getFirstAsync(
+    //       `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`,
+    //       [table]
+    //     );
 
-        if (!exists) {
-          console.log(`\n📋 Table '${table}': ❌ Not found`);
-          continue;
-        }
+    //     if (!exists) {
+    //       console.log(`\n📋 Table '${table}': ❌ Not found`);
+    //       continue;
+    //     }
 
-        const rows = await activeDb.getAllAsync(`SELECT * FROM ${table}`);
-        console.log(`\n📋 Table '${table}' (${rows.length} rows):`);
+    //     const rows = await activeDb.getAllAsync(`SELECT * FROM ${table}`);
+    //     console.log(`\n📋 Table '${table}' (${rows.length} rows):`);
 
-        if (rows.length === 0) {
-          console.log('  (empty)');
-        } else {
-          rows.forEach((row, i) => {
-            console.log(`  ${i + 1}.`, JSON.stringify(row, null, 2));
-          });
-        }
-      } catch (error) {
-        console.warn(`⚠️ Error reading table '${table}':`, error.message);
-      }
-    }
+    //     if (rows.length === 0) {
+    //       console.log('  (empty)');
+    //     } else {
+    //       rows.forEach((row, i) => {
+    //         console.log(`  ${i + 1}.`, JSON.stringify(row, null, 2));
+    //       });
+    //     }
+    //   } catch (error) {
+    //     console.warn(`⚠️ Error reading table '${table}':`, error.message);
+    //   }
+    // }
 
     console.log('\n✅ === END SNAPSHOT ===\n');
   }
