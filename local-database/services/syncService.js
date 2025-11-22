@@ -134,8 +134,8 @@ export async function saveSyncDataToSQLite(data, db) {
 
         await db.runAsync(
           `INSERT INTO subject_contents (
-            server_content_id, lesson_belong, content_type, url, title, description, file_name, done, last_accessed, started_at, completed_at, duration
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            server_content_id, lesson_belong, content_type, url, title, description, file_name, done, last_accessed, started_at, completed_at, duration, test_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(server_content_id) DO UPDATE SET
               lesson_belong=excluded.lesson_belong,
               content_type=excluded.content_type,
@@ -147,7 +147,8 @@ export async function saveSyncDataToSQLite(data, db) {
               last_accessed=excluded.last_accessed,
               started_at=excluded.started_at, 
               completed_at=excluded.completed_at,
-              duration=excluded.duration;
+              duration=excluded.duration,
+              test_id=excluded.test_id;
           `,
           [
             c.content_id,
@@ -162,6 +163,7 @@ export async function saveSyncDataToSQLite(data, db) {
             c.started_at || null,
             c.completed_at || null,
             c.duration || null,
+            c.test_id || null,
           ]
         );
       }

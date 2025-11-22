@@ -49,6 +49,9 @@ const ContentDetails = () => {
 
   const isFocused = useIsFocused();
 
+  const [quizScore, setQuizScore] = useState(null);
+
+
   // --- MIME detection ---
   const getMimeType = (filename) => {
     if (!filename) return '*/*';
@@ -67,32 +70,60 @@ const ContentDetails = () => {
   };
 
   useEffect(() => {
-      if (!id) return;
+    if (!id) return;
 
-      const fetchContents = async () => {
-        try {
-          const result = await db.getAllAsync(
-            `SELECT * FROM subject_contents WHERE content_id = ?`,
-            [id]
+    const fetchContents = async () => {
+      try {
+        const result = await db.getAllAsync(
+          `SELECT * FROM subject_contents WHERE content_id = ?`,
+          [id]
+        );
+        console.log("Fetched contents ✅:", result);
+
+        if (result.length > 0) {
+          const item = result[0];
+          setContents(result);
+          setIsDone(item.done === 1);
+          setFileExists(
+            await FileSystem.getInfoAsync(resolveLocalPath(item.file_name))
+              .then(f => f.exists)
           );
-          console.log("Fetched contents ✅:", result);
-          
-          if (result.length > 0) {
-            const item = result[0];
-            setContents(result);
-            setIsDone(item.done === 1);
-            setFileExists(await FileSystem.getInfoAsync(resolveLocalPath(item.file_name)).then(f => f.exists));
+
+          // 🔥 FETCH QUIZ SCORE WHEN type = quiz
+          if (item.content_type === "quiz" && item.test_id) {
+            const pupil = await db.getFirstAsync(
+              `SELECT user_id FROM users LIMIT 1`
+            );
+
+            if (pupil) {
+              const scoreRow = await db.getFirstAsync(
+                `SELECT score, max_score, grade, attempt_number, taken_at
+                FROM pupil_test_scores
+                WHERE test_id = ? AND pupil_id = ?
+                ORDER BY taken_at DESC
+                LIMIT 1`,
+                [item.test_id, pupil.user_id]
+              );
+
+              if (scoreRow) {
+                setQuizScore(scoreRow);
+              } else {
+                setQuizScore(null);
+              }
+            }
           }
-
-        } catch (err) {
-          console.error("❌ Error fetching contents:", err);
         }
-      };
 
-      if (isFocused) {
-        fetchContents();
+      } catch (err) {
+        console.error("❌ Error fetching contents:", err);
       }
-    }, [isFocused, id]);
+    };
+
+    if (isFocused) {
+      fetchContents();
+    }
+  }, [isFocused, id]);
+
 
     console.log("Current contents state:", contents);
 
@@ -305,6 +336,97 @@ const ContentDetails = () => {
     }
   };
 
+  const CollapsibleDescription = ({ description }) => {
+    const [expanded, setExpanded] = useState(false);
+    const [showToggle, setShowToggle] = useState(false);
+
+    return (
+      <View style={{ marginBottom: 12 }}>
+        <ThemedText
+          style={{ lineHeight: 22 }}
+          numberOfLines={expanded ? undefined : 3}
+          onTextLayout={(e) => {
+            const { lines } = e.nativeEvent;
+            if (lines.length > 3 && !showToggle) setShowToggle(true);
+          }}
+        >
+          {description}
+        </ThemedText>
+
+        {showToggle && (
+          <TouchableOpacity
+            onPress={() => setExpanded(!expanded)}
+            style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons
+              name={expanded ? "chevron-up-outline" : "chevron-down-outline"}
+              size={28}
+              color="#717171ff"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+
+  // --- QuizScore component ---
+  const QuizScoreDisplay = ({ quizScore }) => {
+    if (!quizScore) return (
+      <ThemedText style={{ textAlign: 'center', marginBottom: 12 }}>
+        No score yet — please take the quiz.
+      </ThemedText>
+    );
+
+    const passed = quizScore.grade >= 50; // pass criteria
+    const subtitle = passed ? "Congratulations! You passed!" : "Keep trying! You can do it!";
+
+    return (
+      <View
+        style={{
+          backgroundColor: passed ? '#fcfcfcff' : '#ffffffff', // light green or red background
+          borderColor: passed ? '#0eb85f' : 'tomato',      // matching border color
+          height: '60%',
+          borderWidth: 1.5,
+          borderRadius: 12,
+          padding: 16,
+          alignItems: 'center',
+          marginBottom: 12,
+          paddingTop: '10%',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 3, // Android shadow
+        }}
+      >
+        <Ionicons
+          name={passed ? "partly-sunny-outline" : "thunderstorm-outline"}
+          size={68} // bigger icon
+          color={passed ? '#0eb85f' : 'tomato'}
+          style={{ marginBottom: 8 }}
+        />
+        <ThemedText
+          style={{
+            fontSize: 16,
+            color: passed ? '#0eb85f' : 'tomato',
+            marginBottom: 4,
+            textAlign: 'center',
+            fontWeight: '600',
+          }}
+        >
+          {subtitle}
+        </ThemedText>
+        <ThemedText style={{ fontSize: 16, textAlign: 'center' }}>
+          Score: {quizScore.score} / {quizScore.max_score}{"\n"}
+          Grade: {quizScore.grade} | Attempt: {quizScore.attempt_number}
+        </ThemedText>
+      </View>
+    );
+  };
+
+
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -396,14 +518,28 @@ const ContentDetails = () => {
 
       <View style={styles.actionsRow}>
         <TouchableOpacity
-          style={[styles.doneButton, !isDone && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.cardBorder }]}
+          style={[
+            styles.doneButton, 
+            (!isDone || contents[0]?.content_type === "quiz") && { 
+              backgroundColor: contents[0]?.content_type === "quiz" ? '#e0e0e0' : 'transparent', 
+              borderWidth: 2, 
+              borderColor: contents[0]?.content_type === "quiz" ? '#ccc' : theme.cardBorder 
+            }
+          ]}
           onPress={handleMarkAsDone}
+          disabled={contents[0]?.content_type === "quiz"} // disable for quizzes
         >
           {isDone && <Ionicons name="checkmark-circle" size={20} color="#0eb85f" />}
-          <ThemedText style={[styles.doneText, !isDone && { color: theme.text }]}>
+          <ThemedText style={[
+            styles.doneText, 
+            (!isDone || contents[0]?.content_type === "quiz") && { 
+              color: contents[0]?.content_type === "quiz" ? '#999' : theme.text 
+            }
+          ]}>
             {isDone ? 'Done' : 'Mark as Done'}
           </ThemedText>
         </TouchableOpacity>
+
 
         {contents[0]?.content_type !== "url" && contents[0]?.content_type !== "general" && (
            <TouchableOpacity
@@ -430,7 +566,11 @@ const ContentDetails = () => {
 
       <View style={styles.bottomCard}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <ThemedText style={styles.detailText}>Short Description: {shortdescription}</ThemedText>
+          <CollapsibleDescription description={shortdescription} />
+
+          {contents[0]?.content_type === "quiz" && (
+            <QuizScoreDisplay quizScore={quizScore} />
+          )}
 
           {type === 'video' && (
             videoUri ? (

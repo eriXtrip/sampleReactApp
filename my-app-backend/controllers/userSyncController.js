@@ -114,22 +114,25 @@ export const getSyncData = async (req, res) => {
     if (lessonIds.length > 0) {
       const [cont] = await pool.query(`
         SELECT 
-          sc.content_id,
-          sc.lesson_belong,
-          sc.content_type,
-          sc.url,
-          sc.title,
-          sc.description,
-          sc.file_name,
-          pcp.done,
-          pcp.last_accessed,
-          pcp.started_at,
-          pcp.completed_at,
-          pcp.duration
+            sc.content_id,
+            sc.lesson_belong,
+            sc.content_type,
+            sc.url,
+            sc.title,
+            sc.description,
+            sc.file_name,
+            pcp.done,
+            pcp.last_accessed,
+            pcp.started_at,
+            pcp.completed_at,
+            pcp.duration,
+            t.test_id
         FROM subject_contents sc
         LEFT JOIN pupil_content_progress pcp
-          ON sc.content_id = pcp.content_id
-          AND pcp.pupil_id = ?
+            ON sc.content_id = pcp.content_id
+            AND pcp.pupil_id = ?
+        LEFT JOIN tests t
+            ON sc.content_id = t.content_id
         WHERE sc.lesson_belong IN (?)
       `, [userId, lessonIds]);
       

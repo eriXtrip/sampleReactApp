@@ -400,6 +400,8 @@ export function UserProvider({ children }) {
           DELETE FROM notifications;
           DELETE FROM pupil_test_scores;
           DELETE FROM pupil_achievements;
+          DELETE FROM pupil_answers;
+          DELETE FROM notifications;
           DELETE FROM classmates;
         `);
         console.log("✅ Local DB cleared");

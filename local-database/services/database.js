@@ -98,6 +98,7 @@ export async function initializeDatabase(db) {
       server_content_id INTEGER UNIQUE,  -- maps to MySQL subject_contents.content_id
       lesson_belong INTEGER NOT NULL,    -- local lesson_id
       content_type TEXT NOT NULL,        -- 'ppt', 'pdf', 'game', 'url', 'other', 'game_match', 'game_flash', 'quiz', 'game_speak', 'game_comp', 'game_img', 'general'
+      test_id INTEGER,                   -- local test_id (if tied to content)
       url TEXT,                          -- remote URL to fetch content
       title TEXT NOT NULL,
       description TEXT,

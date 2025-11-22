@@ -36,7 +36,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
     try {
       // ✅ Save score
       // Step 1: Check for existing attempts
-      const existing = await db.getAllAsync(
+      const rows = await db.getAllAsync(
         `SELECT MAX(attempt_number) AS max_attempt
         FROM pupil_test_scores
         WHERE pupil_id = ? AND test_id = ?`,
@@ -44,7 +44,8 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
       );
 
       // Step 2: Determine next attempt number
-      const nextAttempt = existing?.max_attempt ? existing.max_attempt + 1 : 1;
+      const maxAttempt = rows[0]?.max_attempt;   // grab the first row
+      const nextAttempt = maxAttempt ? maxAttempt + 1 : 1;
 
       // Step 3: Insert new score with incremented attempt
       await db.runAsync(

@@ -29,6 +29,12 @@ const LessonPage = () => {
 
   const isFocused = useIsFocused();
 
+  const [locks, setLocks] = useState({
+    pretestDone: true,
+    allOthersDone: false,
+  });
+
+
   useEffect(() => {
     const fetchLessonContents = async () => {
       try {
@@ -36,13 +42,44 @@ const LessonPage = () => {
 
         const contents = await db.getAllAsync(
           `SELECT content_id, title, content_type, done, description
-           FROM subject_contents
-           WHERE lesson_belong = ?`,
+          FROM subject_contents
+          WHERE lesson_belong = ?`,
           [id]
         );
 
-        //console.log('Fetched lesson contents:', contents);
-        setLessonContents(contents);
+        // ⭐ SORT THEN APPLY LOCKS
+        const sorted = contents.sort((a, b) => {
+          const A = a.title.toLowerCase();
+          const B = b.title.toLowerCase();
+
+          if (A.includes("pretest")) return -1;
+          if (B.includes("pretest")) return 1;
+
+          if (A.includes("posttest")) return 1;
+          if (B.includes("posttest")) return -1;
+
+          return 0;
+        });
+
+        // Identify content groups
+        const pretest = sorted.find(c => c.title.toLowerCase().includes("pretest"));
+        const posttest = sorted.find(c => c.title.toLowerCase().includes("posttest"));
+        const others = sorted.filter(
+          c =>
+            !c.title.toLowerCase().includes("pretest") &&
+            !c.title.toLowerCase().includes("posttest")
+        );
+
+        // Lock logic
+        const pretestDone = pretest ? pretest.done === 1 : true;
+        const allOthersDone = others.every(c => c.done === 1);
+
+        setLocks({
+          pretestDone,
+          allOthersDone,
+        });
+
+        setLessonContents(sorted);
       } catch (err) {
         console.error("❌ Error fetching lesson contents:", err);
       }
@@ -53,28 +90,81 @@ const LessonPage = () => {
     }
   }, [isFocused, db, id]);
 
+
   const toggleExpand = () => setExpanded(prev => !prev);
 
   const renderLessonContent = ({ item, index }) => {
     const iconName = LESSON_TYPE_ICON_MAP[item.content_type] || 'book-outline';
-    const isDone = item.done === 1 || item.done === true || item.done === 'true';
-    const isLast = index === lessonContents.length - 1;
+    const isDone = item.done === 1;
 
-    //console.log('Rendering content item:', item);
+    const isPretest = item.title.toLowerCase().includes("pretest");
+    const isPosttest = item.title.toLowerCase().includes("posttest");
+
+    // 🔒 LOCK CONDITIONS
+    let locked = false;
+
+    if (!isPretest && !locks.pretestDone) {
+      locked = true; // lock all other content
+    }
+
+    if (isPosttest && !locks.allOthersDone) {
+      locked = true; // lock posttest
+    }
 
     return (
       <TouchableOpacity
-        onPress={() => router.push({ pathname: '/content_details', params: { id: item.content_id, title: item.title, shortdescription: item.description, type: item.content_type, status: isDone} })}
+        disabled={locked}
+        onPress={() =>
+          !locked &&
+          router.push({
+            pathname: "/content_details",
+            params: {
+              id: item.content_id,
+              title: item.title,
+              shortdescription: item.description,
+              type: item.content_type,
+              status: isDone,
+            },
+          })
+        }
       >
-        <View style={[styles.cardBox, { borderColor: isDone ? '#48cae4' : theme.cardBorder }, isLast && styles.lastCardBox]}>
-          <Ionicons name={iconName} size={28} color={theme.text} style={{ marginRight: 12 }} />
+        <View
+          style={[
+            styles.cardBox,
+            {
+              borderColor: locked ? "#999" : isDone ? "#48cae4" : theme.cardBorder,
+              opacity: locked ? 0.4 : 1,
+            },
+            index === lessonContents.length - 1 && styles.lastCardBox,
+          ]}
+        >
+          <Ionicons
+            name={iconName}
+            size={28}
+            color={locked ? "#999" : theme.text}
+            style={{ marginRight: 12 }}
+          />
           <View style={styles.textContainer}>
-            <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{item.title}</ThemedText>
+            <ThemedText
+              style={[styles.cardTitle, { color: locked ? "#999" : theme.text }]}
+            >
+              {item.title}
+            </ThemedText>
           </View>
+
+          {locked && (
+            <Ionicons
+              name="lock-closed-outline"
+              size={22}
+              color="#999"
+              style={{ marginLeft: 10 }}
+            />
+          )}
         </View>
       </TouchableOpacity>
     );
   };
+
 
   return (
     <ThemedView style={styles.container} safe={true}>
