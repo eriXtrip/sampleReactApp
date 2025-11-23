@@ -278,12 +278,14 @@ export const syncNotification = async (req, res) => {
   const userId = req.user.userId;
   const { notifications = [] } = req.body;
 
+  // console.log('📩 Received notifications from client:', JSON.stringify(notifications, null, 2));
+
   if (!notifications.length) {
-    return res.json({ success: true, message: 'No notifications to sync', inserted_notification_ids: [] });
+    return res.json({ success: true, inserted_notification_ids: [] });
   }
 
   const client = await pool.getConnection();
-  const insertedNotificationIds = [];
+  const insertedNotificationIds = []; // Only for newly created ones
 
   try {
     await client.query('START TRANSACTION');
@@ -293,43 +295,53 @@ export const syncNotification = async (req, res) => {
         ? new Date(n.created_at).toISOString().slice(0, 19).replace('T', ' ')
         : new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-      const readAt = n.is_read ? (n.read_at ? new Date(n.read_at).toISOString().slice(0, 19).replace('T', ' ') : createdAt) : null;
+      const readAt = n.is_read && n.read_at
+        ? new Date(n.read_at).toISOString().slice(0, 19).replace('T', ' ')
+        : (n.is_read ? createdAt : null);
 
-      const [result] = await client.query(
-        `INSERT INTO notifications
-          (notification_id, user_id, sender_id, type, title, message, is_read, created_at, read_at, is_synced)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
-        ON DUPLICATE KEY UPDATE
-          title = VALUES(title),
-          message = VALUES(message),
-          type = VALUES(type),
-          is_read = VALUES(is_read),
-          read_at = VALUES(read_at),
-          created_at = VALUES(created_at)`,
-        [
-          n.notification_id || null,
-          userId,
-          n.sender_id || null,
-          n.type || 'info',
-          n.title,
-          n.message,
-          n.is_read ? 1 : 0,
-          createdAt,
-          readAt
-        ]
-      );
-
-      insertedNotificationIds.push(result.insertId || null);
+      if (!n.notification_id) {
+        // INSERT new notification (created offline)
+        const [result] = await client.query(
+          `INSERT INTO notifications
+            (user_id, type, title, message, is_read, created_at, read_at, is_synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
+          [
+            userId,
+            n.type || 'info',
+            n.title,
+            n.message,
+            n.is_read ? 1 : 0,
+            createdAt,
+            readAt
+          ]
+        );
+        insertedNotificationIds.push(result.insertId);
+      } else {
+        // UPDATE existing notification (usually just read status)
+        await client.query(
+          `UPDATE notifications
+           SET is_read = ?,
+               read_at = ?,
+               is_synced = TRUE
+           WHERE notification_id = ? AND user_id = ?`,
+          [
+            n.is_read ? 1 : 0,
+            readAt,
+            n.notification_id,
+            userId
+          ]
+        );
+        insertedNotificationIds.push(n.notification_id); // keep order consistent
+      }
     }
 
     await client.query('COMMIT');
 
     res.json({
       success: true,
-      message: 'Notifications sync successful',
+      message: 'Sync successful',
       inserted_notification_ids: insertedNotificationIds
     });
-
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Notifications sync failed:', error);
@@ -342,3 +354,4 @@ export const syncNotification = async (req, res) => {
     client.release();
   }
 };
+

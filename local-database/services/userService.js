@@ -202,19 +202,19 @@ export default class UserService {
     console.log('==================================\n');
 
     const tables = [
-      'roles',
-      'users',
-      'sections',
-      'subjects',
-      'subjects_in_section',
-      'lessons',
-      'subject_contents',
-      'games',
-      'game_types',
-      'notifications',
-      'pupil_test_scores',
-      'pupil_achievements',
-      'classmates'
+      // 'roles',
+      // 'users',
+      // 'sections',
+      // 'subjects',
+      // 'subjects_in_section',
+      // 'lessons',
+      // 'subject_contents',
+      // 'games',
+      // 'game_types',
+      'notifications'
+      // 'pupil_test_scores',
+      // 'pupil_achievements',
+      // 'classmates'
     ];
 
     for (const table of tables) {

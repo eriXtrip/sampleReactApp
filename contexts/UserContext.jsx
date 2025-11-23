@@ -1,5 +1,6 @@
-// SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview
-import { createContext, useState, useEffect, useCallback } from "react";
+// SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview    to expose API: ngrok http 3001
+
+import { createContext, useState, useEffect, useCallback, useContext } from "react";
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
 import  UserService  from '../local-database/services/userService';
@@ -11,6 +12,7 @@ import { saveSyncDataToSQLite } from '../local-database/services/syncService';
 import { getApiUrl } from '../utils/apiManager.js';
 import { getLocalAvatarPath, ensureAvatarDirectory } from '../utils/avatarHelper';
 import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
+import { ApiUrlContext } from '../contexts/ApiUrlContext';
 
 export const UserContext = createContext();
 
@@ -24,9 +26,17 @@ export function UserProvider({ children }) {
   const [API_URL, setApiUrl] = useState(null);
   const db = useSQLiteContext();
 
+  const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
+
   useEffect(() => {
     console.log("🔍 useSQLiteContext db in UserContext:", db);
   }, [db]);
+
+  const getCurrentFlags = () => ({
+    isOffline,
+    isReachable,
+    isApiLoaded,
+  });
 
   useEffect(() => {
     (async () => {
@@ -356,7 +366,7 @@ export function UserProvider({ children }) {
       if (db) {
         try {
           console.log("🔄 Triggering offline sync before logout...");
-          await triggerSyncIfOnline(db);
+          await triggerSyncIfOnline(db, getCurrentFlags());
           console.log("✅ Offline sync completed");
         } catch (syncErr) {
           console.warn("⚠️ Sync before logout failed (non-fatal):", syncErr);

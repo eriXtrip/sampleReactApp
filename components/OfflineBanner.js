@@ -1,16 +1,29 @@
 // components/OfflineBanner.js
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { useContext } from 'react';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
+import { startIntervalSync } from '../local-database/services/syncUp.js';
+import { useSQLiteContext } from 'expo-sqlite';
 
 const OfflineBanner = () => {
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const db = useSQLiteContext(); // <-- get DB instance from expo-sqlite
 
-  console.log('🛠 OfflineBanner mounted with isOffline:', isOffline, 'isReachable:', isReachable, 'isApiLoaded:', isApiLoaded);
+  useEffect(() => {
+    if (!db) return;
 
+    // Start background interval sync
+    startIntervalSync(db, () => ({
+      isOffline,
+      isReachable,
+      isApiLoaded,
+    }));
+
+    console.log('⏱ Background sync initialized from OfflineBanner');
+  }, [db, isOffline, isReachable, isApiLoaded]);
+
+  // Animate offline banner
   useEffect(() => {
     const show = isOffline || !isReachable;
     Animated.timing(fadeAnim, {

@@ -1,15 +1,18 @@
 // SAMPLEREACTAPP/components/ResultScreen.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext  } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
-import { triggerSyncIfOnline } from "../local-database/services/syncUp"
+import { startIntervalSync } from "../local-database/services/syncUp"
+import { ApiUrlContext } from '../contexts/ApiUrlContext';
 
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt });
   const db = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
+
+  const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 
   const passingPercent = parseInt(quizData.settings.passingScore.replace("%", ""), 10);
   const percentageScore = (score / quizData.settings.maxScore) * 100;
@@ -27,6 +30,12 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
     const result = await db.getFirstAsync(`SELECT user_id FROM users LIMIT 1`);
     return result?.user_id || null;
   };
+
+  const getCurrentFlags = () => ({
+    isOffline,
+    isReachable,
+    isApiLoaded,
+  });
 
   const saveResults = async () => {
     const userId = await getCurrentUserId();
@@ -165,7 +174,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
 
       console.log("✅ Results saved for user:", userId);
 
-      await triggerSyncIfOnline(db);  // <-- Sync scores & answers if online
+      await startIntervalSync(db, getCurrentFlags); // <-- Sync scores & answers if online
     } catch (err) {
       console.error("❌ Error saving results:", err);
     }

@@ -137,10 +137,11 @@ export const verifyCode = async (req, res) => {
 };
 
 export const completeRegistration = async (req, res) => {
+  const connection = await pool.getConnection(); // Get a connection for transaction
   try {
+    await connection.beginTransaction(); // Start transaction
 
     console.log("Raw request body:", req.body);
-    // Destructure and trim all string fields
     const {
       email: rawEmail,
       password: rawPassword,
@@ -156,7 +157,6 @@ export const completeRegistration = async (req, res) => {
       teacherId: rawTeacherId
     } = req.body;
 
-    // Trim all string inputs
     const email = rawEmail?.trim();
     const password = rawPassword?.trim();
     const confirmPassword = rawConfirmPassword?.trim();
@@ -167,107 +167,83 @@ export const completeRegistration = async (req, res) => {
     const suffix = rawSuffix?.trim();
     const gender = rawGender?.trim();
     const birthday = rawBirthday?.trim();
-    const lrn = rawLrn?.trim();
-    const teacherId = rawTeacherId?.trim();
+    let lrn = rawLrn?.trim();
+    let teacherId = rawTeacherId?.trim();
 
-
-    console.log("Destructured fields:", {
-      email, password, confirmPassword, role, firstName, 
-      lastName, gender, birthday, lrn, teacherId
-    });
-    
-    if ( !password || !confirmPassword || !role || 
-        !firstName || !lastName || !gender || !birthday) {
+    if (!password || !confirmPassword || !role || !firstName || !lastName || !gender || !birthday) {
+      await connection.rollback();
       return res.status(400).json({ error: 'Missing required fields' });
     }
-
-    // Validate password match and length
     if (password !== confirmPassword) {
+      await connection.rollback();
       return res.status(400).json({ error: 'Passwords do not match' });
     }
-
     if (password.length < 8) {
+      await connection.rollback();
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    // Check if email is verified in temporary table
-    const [verified] = await pool.query(
+    const [verified] = await connection.query(
       `SELECT is_verified FROM users_verification_code WHERE email = ? AND is_verified = TRUE`,
       [email]
     );
-
     if (verified.length === 0) {
+      await connection.rollback();
       return res.status(403).json({ error: 'Email not verified' });
     }
 
-    // Get initial registration data
-    const [regData] = await pool.query(
-      `SELECT * FROM users_verification_code WHERE email = ?`,
-      [email]
-    );
-
-    if (!regData || regData.length === 0) {
-      return res.status(404).json({ error: 'Registration data not found' });
-    }
-
-    // Map role to role_id
-    const roleMap = {
-      'admin': 1,
-      'teacher': 2,
-      'pupil': 3
-    };
-
-    const normalizedRole = role.toLowerCase(); // Make sure it's lowercase
-    const role_id = roleMap[normalizedRole];
-
+    const roleMap = { 'admin': 1, 'teacher': 2, 'pupil': 3 };
+    const role_id = roleMap[role.toLowerCase()];
     if (!role_id) {
+      await connection.rollback();
       return res.status(400).json({ error: 'Invalid user role' });
     }
 
-    // Hash password
+    // 🔹 Atomic ID generation using transaction + row lock
+    if (role_id === 2 && teacherId === '0000000000') {
+      const [latest] = await connection.query(
+        `SELECT teacher_id FROM users WHERE role_id = 2 ORDER BY teacher_id DESC LIMIT 1 FOR UPDATE`
+      );
+      const lastId = latest.length ? parseInt(latest[0].teacher_id, 10) : 0;
+      teacherId = String(lastId + 1).padStart(10, '0');
+    }
+
+    if (role_id === 3 && lrn === '000000000000') {
+      const [latest] = await connection.query(
+        `SELECT lrn FROM users WHERE role_id = 3 ORDER BY lrn DESC LIMIT 1 FOR UPDATE`
+      );
+      const lastLrn = latest.length ? parseInt(latest[0].lrn, 10) : 0;
+      lrn = String(lastLrn + 1).padStart(12, '0');
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert into users table
-    const [result] = await pool.query(
+    const [result] = await connection.query(
       `INSERT INTO users (
         email, password_hash, role_id, first_name, middle_name, 
         last_name, suffix, gender, birth_date, lrn, teacher_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        email,
-        hashedPassword,
-        role_id,
-        firstName,
-        middleName,
-        lastName,
-        suffix,
-        gender,
-        birthday,
-        lrn,
-        teacherId
-      ]
+      [email, hashedPassword, role_id, firstName, middleName, lastName, suffix, gender, birthday, lrn, teacherId]
     );
 
-    // Cleanup: remove from temp table
-    await pool.query(`DELETE FROM users_verification_code WHERE email = ?`, [email]);
+    await connection.query(`DELETE FROM users_verification_code WHERE email = ?`, [email]);
 
-    // Get the new user's id
+    await connection.commit(); // Commit transaction
+
     const newUserId = result.insertId;
-
-    // ✅ Call the utils to log activity
     await logActivity(newUserId, "New User");
 
-    // Send success response
-    res.status(201).json({
-      success: true,
-      message: 'Registration completed successfully'
-    });
+    res.status(201).json({ success: true, message: 'Registration completed successfully' });
 
   } catch (error) {
-    console.log('Registration completion error:', error);
+    await connection.rollback(); // Rollback on any error
+    console.error('Registration completion error:', error);
     res.status(500).json({ error: 'Registration completion failed' });
+  } finally {
+    connection.release(); // Release connection back to pool
   }
 };
+
 
 export const login = async (req, res) => {
     try {
