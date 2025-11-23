@@ -50,6 +50,7 @@ import {
 } from './controllers/userSyncUpController.js';
 import adminRoutes from './routes/admin.js'; 
 import { getOverallRanking } from './controllers/ranking.js';
+import { getTeacherDashboardStats } from './controllers/teacherDashboard.js'
 import rankingRoutes from './routes/ranking.js';
 import config from './config.js';
 import os from 'os';
@@ -121,6 +122,9 @@ app.post('/api/user/sync-up-achievements', authenticateToken, syncAchievements);
 app.post('/api/user/sync-up-notifications', authenticateToken, syncNotification);
 
 app.use('/api/ranking', authenticateToken, rankingRoutes);
+
+// Routes (Teacher Dashboard)
+app.get('/api/teacher/dashboard/stats', authenticateToken, getTeacherDashboardStats);
 
 
 // Admin routes
