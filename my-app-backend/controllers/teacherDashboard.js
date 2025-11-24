@@ -46,6 +46,7 @@ export const getTeacherDashboardStats = async (req, res) => {
                 recentMaterials: [],
                 pupil_progress: [],
                 recentActivity: [],
+                quarterlyProgress: [],
             });
         }
 
@@ -189,7 +190,7 @@ export const getTeacherDashboardStats = async (req, res) => {
                   FROM pupil_test_scores ts
                   JOIN tests t ON t.test_id = ts.test_id
                   JOIN users u ON u.user_id = ts.pupil_id
-                  WHERE ts.pupil_id = ?
+                  WHERE ts.pupil_id IN (?)
             ) AS dedup
             WHERE rn = 1
 
@@ -205,7 +206,7 @@ export const getTeacherDashboardStats = async (req, res) => {
             FROM pupil_content_progress pp
             JOIN subject_contents sc ON sc.content_id = pp.content_id
             JOIN users u ON u.user_id = pp.pupil_id
-            WHERE pp.pupil_id = ?
+            WHERE pp.pupil_id IN (?)
                   AND pp.completed_at IS NOT NULL
 
             UNION ALL
@@ -220,7 +221,7 @@ export const getTeacherDashboardStats = async (req, res) => {
             FROM pupil_achievements pa
             JOIN achievements a ON a.achievement_id = pa.achievement_id
             JOIN users u ON u.user_id = pa.pupil_id
-            WHERE pa.pupil_id = ?
+            WHERE pa.pupil_id IN (?)
 
             UNION ALL
 
@@ -233,7 +234,7 @@ export const getTeacherDashboardStats = async (req, res) => {
                   CONCAT(u.first_name, ' ', u.middle_name, ' ', u.last_name) AS fullname
             FROM enroll_me e
             JOIN users u ON u.user_id = e.pupil_id
-            WHERE e.pupil_id = ?
+            WHERE e.pupil_id IN (?)
 
             ) AS all_activities
             ORDER BY date DESC
@@ -247,6 +248,33 @@ export const getTeacherDashboardStats = async (req, res) => {
       console.error("Error fetching recent activity:", err);
       }
 
+      // 9️⃣.1 Get Quarterly Progress via Stored Procedure
+    let quarterlyProgress = {
+        q1: {},
+        q2: {},
+        q3: {},
+        q4: {}
+    };
+
+    try {
+        const [spRows] = await pool.query("CALL GetTeacherQuarterlyProgress(?)", [teacherId]);
+
+        const rows = spRows[0]; // MySQL returns result inside first element
+
+        // Transform rows → { q1: { math: [75,80], science: [...] }, q2:{...} }
+        for (const row of rows) {
+            const qKey = `q${row.quarter}`;
+
+            if (!quarterlyProgress[qKey][row.subject_name]) {
+                quarterlyProgress[qKey][row.subject_name] = [];
+            }
+
+            quarterlyProgress[qKey][row.subject_name].push(Number(row.progress_percent));
+        }
+    } catch (err) {
+        console.error("❌ Error getting quarterly progress:", err);
+    }
+
         avgScore = avgScore ? Number(avgScore) : 0;
         avgSessionTime = avgSessionTime ? Number(avgSessionTime) : 0;
 
@@ -259,6 +287,7 @@ export const getTeacherDashboardStats = async (req, res) => {
             recentMaterials: recentMaterials,
             pupil_progress: pupilProgress,
             recentActivity: recentActivity,
+            quarterlyProgress: quarterlyProgress,
         });
 
     } catch (error) {

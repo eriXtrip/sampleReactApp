@@ -144,7 +144,7 @@ export const syncProgress = async (req, res) => {
           userId,
           p.server_lesson_id,
           p.status,
-          p.progress_percent || 0.00,
+          p.progress_percent,
           lastAccessed,
           completedAt
         ]
@@ -192,6 +192,29 @@ export const syncProgress = async (req, res) => {
 
       insertedContentIds.push(result.insertId || null);
     }
+
+    await client.query(
+     `UPDATE pupil_progress pp
+      JOIN (
+          SELECT
+              sc.lesson_belong AS lesson_id,
+              pcp.pupil_id,
+              ROUND(SUM(pcp.done) / COUNT(sc.content_id) * 100, 2) AS progress_percent,
+              MAX(pcp.last_accessed) AS last_accessed,
+              CASE WHEN SUM(pcp.done) = COUNT(sc.content_id) THEN NOW() ELSE NULL END AS completed_at
+          FROM pupil_content_progress pcp
+          JOIN subject_contents sc ON pcp.content_id = sc.content_id
+          WHERE pcp.pupil_id = ?
+          GROUP BY sc.lesson_belong, pcp.pupil_id
+      ) AS sub ON pp.pupil_id = sub.pupil_id AND pp.lesson_id = sub.lesson_id
+      SET
+          pp.progress_percent = sub.progress_percent,
+          pp.last_accessed = sub.last_accessed,
+          pp.completed_at = sub.completed_at,
+          pp.status = CASE WHEN sub.progress_percent = 100 THEN 1 ELSE 0 END`,
+      [userId]
+    );
+
 
     await client.query('COMMIT');
 

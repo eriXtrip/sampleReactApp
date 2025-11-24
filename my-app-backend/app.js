@@ -51,6 +51,10 @@ import {
 import adminRoutes from './routes/admin.js'; 
 import { getOverallRanking } from './controllers/ranking.js';
 import { getTeacherDashboardStats } from './controllers/teacherDashboard.js'
+import { 
+  createSection,
+  fetchSectionsAndPupils
+} from "./controllers/teacherCreateSection.js";
 import rankingRoutes from './routes/ranking.js';
 import config from './config.js';
 import os from 'os';
@@ -125,6 +129,9 @@ app.use('/api/ranking', authenticateToken, rankingRoutes);
 
 // Routes (Teacher Dashboard)
 app.get('/api/teacher/dashboard/stats', authenticateToken, getTeacherDashboardStats);
+app.post("/api/teacher/create/section", authenticateToken, createSection);
+app.post("/api/teacher/fetch-sections-and-pupils", authenticateToken, fetchSectionsAndPupils);
+
 
 
 // Admin routes
