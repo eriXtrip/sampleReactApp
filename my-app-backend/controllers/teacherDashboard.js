@@ -249,31 +249,145 @@ export const getTeacherDashboardStats = async (req, res) => {
       }
 
       // 9️⃣.1 Get Quarterly Progress via Stored Procedure
-    let quarterlyProgress = {
-        q1: {},
-        q2: {},
-        q3: {},
-        q4: {}
-    };
+        let quarterlyProgress = {
+            q1: {},
+            q2: {},
+            q3: {},
+            q4: {}
+        };
 
-    try {
-        const [spRows] = await pool.query("CALL GetTeacherQuarterlyProgress(?)", [teacherId]);
+        try {
+            const [spRows] = await pool.query("CALL GetTeacherQuarterlyProgress(?)", [teacherId]);
 
-        const rows = spRows[0]; // MySQL returns result inside first element
+            const rows = spRows[0]; // MySQL returns result inside first element
 
-        // Transform rows → { q1: { math: [75,80], science: [...] }, q2:{...} }
-        for (const row of rows) {
-            const qKey = `q${row.quarter}`;
+            // Transform rows → { q1: { math: [75,80], science: [...] }, q2:{...} }
+            for (const row of rows) {
+                const qKey = `q${row.quarter}`;
 
-            if (!quarterlyProgress[qKey][row.subject_name]) {
-                quarterlyProgress[qKey][row.subject_name] = [];
+                if (!quarterlyProgress[qKey][row.subject_name]) {
+                    quarterlyProgress[qKey][row.subject_name] = [];
+                }
+
+                quarterlyProgress[qKey][row.subject_name].push(Number(row.progress_percent));
             }
-
-            quarterlyProgress[qKey][row.subject_name].push(Number(row.progress_percent));
+        } catch (err) {
+            console.error("❌ Error getting quarterly progress:", err);
         }
-    } catch (err) {
-        console.error("❌ Error getting quarterly progress:", err);
-    }
+
+        // 1️⃣0️⃣ Overall Dashboard Performance Stats
+        let overallStats = {
+            performance: 0,
+            engagement_rate: 0,
+            completion_rate: 0,
+            avg_study_time: 0,
+
+            lastWeekPerformance: 0,
+            lastWeekEngagement: 0,
+            lastWeekCompletion: 0,
+            lastWeekStudyTime: 0
+        };
+
+        try {
+            // 1. Performance (overall)
+            const [perf] = await pool.query(`
+                SELECT AVG(pp.progress_percent) AS performance
+                FROM pupil_progress pp
+                JOIN enroll_me e ON e.pupil_id = pp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?;
+            `, [teacherId]);
+
+            // 1B. Performance (LAST WEEK)
+            const [perfLast] = await pool.query(`
+                SELECT AVG(pp.progress_percent) AS performance
+                FROM pupil_progress pp
+                JOIN enroll_me e ON e.pupil_id = pp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?
+                AND YEARWEEK(pp.last_accessed, 1) = YEARWEEK(CURDATE() - INTERVAL 1 WEEK, 1);
+            `, [teacherId]);
+
+
+            // 2. Engagement Rate (overall)
+            const [engage] = await pool.query(`
+                SELECT 
+                    (SUM(CASE WHEN pcp.duration > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100 AS engagement_rate
+                FROM pupil_content_progress pcp
+                JOIN enroll_me e ON e.pupil_id = pcp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?;
+            `, [teacherId]);
+
+            // 2B. Engagement Rate (LAST WEEK)
+            const [engageLast] = await pool.query(`
+                SELECT 
+                    (SUM(CASE WHEN pcp.duration > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100 AS engagement_rate
+                FROM pupil_content_progress pcp
+                JOIN enroll_me e ON e.pupil_id = pcp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?
+                AND YEARWEEK(pcp.last_accessed, 1) = YEARWEEK(CURDATE() - INTERVAL 1 WEEK, 1);
+            `, [teacherId]);
+
+
+            // 3. Completion Rate (overall)
+            const [complete] = await pool.query(`
+                SELECT 
+                    (SUM(CASE WHEN pp.status = 1 THEN 1 ELSE 0 END) / COUNT(*)) * 100 AS completion_rate
+                FROM pupil_progress pp
+                JOIN enroll_me e ON e.pupil_id = pp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?;
+            `, [teacherId]);
+
+            // 3B. Completion Rate (LAST WEEK)
+            const [completeLast] = await pool.query(`
+                SELECT 
+                    (SUM(CASE WHEN pp.status = 1 THEN 1 ELSE 0 END) / COUNT(*)) * 100 AS completion_rate
+                FROM pupil_progress pp
+                JOIN enroll_me e ON e.pupil_id = pp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?
+                AND YEARWEEK(pp.last_accessed, 1) = YEARWEEK(CURDATE() - INTERVAL 1 WEEK, 1);
+            `, [teacherId]);
+
+
+            // 4. Study Time (overall)
+            const [study] = await pool.query(`
+                SELECT AVG(pcp.duration) / 60 AS avg_study_time_minutes
+                FROM pupil_content_progress pcp
+                JOIN enroll_me e ON e.pupil_id = pcp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?;
+            `, [teacherId]);
+
+            // 4B. Study Time (LAST WEEK)
+            const [studyLast] = await pool.query(`
+                SELECT AVG(pcp.duration) / 60 AS avg_study_time_minutes
+                FROM pupil_content_progress pcp
+                JOIN enroll_me e ON e.pupil_id = pcp.pupil_id
+                JOIN sections s ON s.section_id = e.section_id
+                WHERE s.teacher_id = ?
+                AND YEARWEEK(pcp.last_accessed, 1) = YEARWEEK(CURDATE() - INTERVAL 1 WEEK, 1);
+            `, [teacherId]);
+
+
+            // Convert results
+            overallStats.performance = Number(perf[0]?.performance || 0).toFixed(2);
+            overallStats.engagement_rate = Number(engage[0]?.engagement_rate || 0).toFixed(2);
+            overallStats.completion_rate = Number(complete[0]?.completion_rate || 0).toFixed(2);
+            overallStats.avg_study_time = Number(study[0]?.avg_study_time_minutes || 0).toFixed(0);
+
+            overallStats.lastWeekPerformance = Number(perfLast[0]?.performance || 0).toFixed(2);
+            overallStats.lastWeekEngagement = Number(engageLast[0]?.engagement_rate || 0).toFixed(2);
+            overallStats.lastWeekCompletion = Number(completeLast[0]?.completion_rate || 0).toFixed(2);
+            overallStats.lastWeekStudyTime = Number(studyLast[0]?.avg_study_time_minutes || 0).toFixed(0);
+
+        } catch (err) {
+            console.error("❌ Error computing overall stats:", err);
+        }
+
 
         avgScore = avgScore ? Number(avgScore) : 0;
         avgSessionTime = avgSessionTime ? Number(avgSessionTime) : 0;
@@ -288,6 +402,7 @@ export const getTeacherDashboardStats = async (req, res) => {
             pupil_progress: pupilProgress,
             recentActivity: recentActivity,
             quarterlyProgress: quarterlyProgress,
+            overall_progress: overallStats,
         });
 
     } catch (error) {
