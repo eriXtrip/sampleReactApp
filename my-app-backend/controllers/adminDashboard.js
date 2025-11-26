@@ -115,22 +115,174 @@ export const getSubjectSummary = async (req, res) => {
     }
 
     console.log('📊 Fetching data from v_subject_summary...');
-    const [rows] = await pool.query('SELECT * FROM v_subject_summary ORDER BY subject_name, quarter');
+    const [rows] = await pool.query(
+      'SELECT * FROM v_subject_summary ORDER BY subject_name, quarter'
+    );
 
+    console.log('📊 Fetching raw subject performance summary...');
+    const [performance] = await pool.query(`
+      SELECT 
+          s.subject_name,
+          l.quarter,
+          l.lesson_id,
+          l.lesson_title,
+          ROUND(AVG(pp.progress_percent), 2) AS avg_progress,
+          COUNT(pp.pupil_id) AS total_pupils,
+          SUM(pp.status = 1) AS total_completed
+      FROM lessons l
+      JOIN subjects s 
+          ON s.subject_id = l.subject_belong
+      LEFT JOIN pupil_progress pp 
+          ON pp.lesson_id = l.lesson_id
+      GROUP BY 
+          s.subject_name,
+          l.quarter,
+          l.lesson_id,
+          l.lesson_title
+      ORDER BY 
+          s.subject_name,
+          l.quarter,
+          l.lesson_number
+    `);
+
+    const [pupils] = await pool.query(`
+      SELECT
+        u.user_id AS pupil_id,
+        CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) AS full_name,
+        a.thumbnail AS avatar_thumbnail,
+        r.role_name AS role,
+        u.created_at,
+        u.active_status,
+        u.last_active,
+        u.email,
+        u.birth_date,
+        sec.school_name,
+        ROUND(AVG(TIME_TO_SEC(STR_TO_DATE(pcp.duration, '%H:%i:%s'))), 2) AS avg_session_seconds,
+        COUNT(DISTINCT pa.id) AS total_badges
+      FROM users u
+      LEFT JOIN avatar a ON u.avatar_id = a.id
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN enroll_me e ON u.user_id = e.pupil_id
+      LEFT JOIN sections sec ON e.section_id = sec.section_id
+      LEFT JOIN pupil_content_progress pcp ON u.user_id = pcp.pupil_id
+      LEFT JOIN pupil_achievements pa ON u.user_id = pa.pupil_id
+      WHERE u.role_id = 3
+      GROUP BY u.user_id, full_name, a.thumbnail, r.role_name, u.created_at, u.active_status, u.last_active, u.email, u.birth_date, sec.school_name
+      ORDER BY u.last_name, u.first_name
+    `);
+
+    // 🟢 Teachers list
+    const [teachers] = await pool.query(` 
+      SELECT
+          t.user_id,
+          a.thumbnail AS avatar_thumbnail,
+          r.role_name AS role,
+          CONCAT(t.first_name, ' ', COALESCE(t.middle_name, ''), ' ', t.last_name) AS full_name,
+          t.created_at,
+          t.active_status,
+          t.last_active,
+          t.email,
+          t.birth_date,
+          GROUP_CONCAT(DISTINCT tso.school_name SEPARATOR ', ') AS schools,
+          GROUP_CONCAT(DISTINCT tso.section_name SEPARATOR ', ') AS sections_created,
+          COALESCE(SUM(tso.pupil_count), 0) AS total_pupils
+      FROM users t
+      LEFT JOIN avatar a
+          ON t.avatar_id = a.id
+      LEFT JOIN roles r
+          ON t.role_id = r.role_id
+      LEFT JOIN teacher_sections_overview tso
+          ON t.user_id = tso.teacher_id
+      WHERE t.role_id = 2
+      GROUP BY t.user_id, a.thumbnail, r.role_name, t.first_name, t.middle_name, t.last_name,
+              t.created_at, t.active_status, t.last_active, t.email, t.birth_date
+      ORDER BY t.last_name
+    `);
+
+    // console.log("Teachers:", teachers);
+
+    // 🟢 Student progress per subject
+    const [studentProgress] = await pool.query(`
+      SELECT
+        v.pupil_id,
+        v.subject_name,
+        v.school_name,
+        v.section_id,
+        v.completed_lessons,
+        v.total_lessons,
+        v.progress_percent,
+        ROUND(sub_avg_score.avg_score, 2) AS avg_score
+      FROM v_pupil_progress_with_school v
+      LEFT JOIN (
+        SELECT 
+          pts.pupil_id, 
+          s.subject_name, 
+          AVG(pts.score) AS avg_score
+        FROM pupil_test_scores pts
+        JOIN lessons l ON pts.test_id = l.lesson_id
+        JOIN subjects s ON l.subject_belong = s.subject_id
+        GROUP BY pts.pupil_id, s.subject_name
+      ) sub_avg_score
+      ON v.pupil_id = sub_avg_score.pupil_id 
+      AND v.subject_name = sub_avg_score.subject_name
+      ORDER BY v.pupil_id, v.subject_name
+    `);
+
+
+    // 🟢 FORMAT subject performance with zero-fill for missing subject/quarter
+    const formattedPerformance = {};
+
+    // Step 1: Insert all found rows
+    performance.forEach(row => {
+      const {
+        subject_name,
+        quarter,
+        lesson_id,
+        lesson_title,
+        avg_progress,
+        total_pupils,
+        total_completed
+      } = row;
+
+      if (!formattedPerformance[subject_name]) {
+        formattedPerformance[subject_name] = {};
+      }
+
+      if (!formattedPerformance[subject_name][quarter]) {
+        formattedPerformance[subject_name][quarter] = [];
+      }
+
+      formattedPerformance[subject_name][quarter].push({
+        lesson_id,
+        lesson_title,
+        avg_progress: avg_progress ?? 0,
+        total_pupils: total_pupils ?? 0,
+        total_completed: total_completed ?? 0,
+      });
+    });
+
+    // 🟢 SEND BOTH: original + formatted
     res.json({
       success: true,
       total: rows.length,
-      data: rows,
+      data: rows,   
+      Pupils_list: pupils,
+      Teachers_list: teachers,
+      Student_progress_Subject: studentProgress,                             // Untouched original
+      subject_performance: formattedPerformance, // NEW formatted
     });
 
   } catch (error) {
     console.error('💥 Error in getSubjectSummary:', error);
+
     res.status(500).json({
       success: false,
       error: 'Failed to fetch subject summary',
     });
   }
 };
+
+
 
 
 /**
