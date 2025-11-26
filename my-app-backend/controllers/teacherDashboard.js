@@ -388,6 +388,157 @@ export const getTeacherDashboardStats = async (req, res) => {
             console.error("❌ Error computing overall stats:", err);
         }
 
+        // 1️⃣1️⃣ Fetch subjects with lessons and contents
+        let subjects = {}; // use object instead of array
+
+        try {
+            // 1️⃣ Get all subjects
+            const [subjectRows] = await pool.query(
+                `SELECT subject_id, subject_name FROM subjects`
+            );
+
+            for (const subj of subjectRows) {
+                // 2️⃣ Get lessons of this subject
+                const [lessons] = await pool.query(
+                    `SELECT 
+                        l.lesson_id,
+                        l.lesson_number,
+                        l.lesson_title,
+                        l.description,
+                        l.quarter,
+                        l.created_at
+                    FROM lessons l
+                    WHERE l.subject_belong = ? 
+                    ORDER BY l.lesson_number ASC`,
+                    [subj.subject_id]
+                );
+
+                // 3️⃣ For each lesson, get its contents
+                for (const lesson of lessons) {
+                    const [contents] = await pool.query(
+                        `SELECT content_type, url, title, content_id
+                        FROM subject_contents
+                        WHERE lesson_belong = ?`,
+                        [lesson.lesson_id]
+                    );
+
+                    // 4️⃣ For each content, if it's a quiz, fetch the quiz JSON from tests
+                    for (const content of contents) {
+                        if (content.content_type === "quiz" && content.content_id) {
+                            const [quizRows] = await pool.query(
+                                `SELECT 
+                                    JSON_OBJECT(
+                                        'title', t.test_title,
+                                        'quizId', t.test_id,
+                                        'contentId', t.content_id,
+                                        'description', t.description,
+                                        'settings', JSON_OBJECT(
+                                            'mode', 'open',
+                                            'password', '',
+                                            'allowBack', TRUE,
+                                            'instantFeedback', FALSE,
+                                            'review', TRUE,
+                                            'totalItems', (
+                                                SELECT COUNT(*) FROM test_questions q WHERE q.test_id = t.test_id
+                                            ),
+                                            'maxScore', (
+                                                SELECT SUM(
+                                                    CASE
+                                                        WHEN q.question_type = 'truefalse' THEN 1
+                                                        WHEN q.question_type = 'enumeration' THEN (
+                                                            SELECT COUNT(*) FROM question_choices c
+                                                            WHERE c.question_id = q.question_id AND c.is_correct = 1
+                                                        )
+                                                        ELSE (
+                                                            SELECT SUM(c.is_correct) FROM question_choices c
+                                                            WHERE c.question_id = q.question_id
+                                                        )
+                                                    END
+                                                ) FROM test_questions q WHERE q.test_id = t.test_id
+                                            ),
+                                            'passingScore', CONCAT(
+                                                ROUND(
+                                                    (t.passingScore / (SELECT COUNT(*) FROM test_questions q WHERE q.test_id = t.test_id)) * 100
+                                                ), '%'
+                                            ),
+                                            'shuffleQuestions', TRUE,
+                                            'shuffleChoices', TRUE
+                                        ),
+                                        'questions', (
+                                            SELECT JSON_ARRAYAGG(
+                                                JSON_MERGE_PATCH(
+                                                    JSON_OBJECT(
+                                                        'id', q.question_id,
+                                                        'type', q.question_type,
+                                                        'question', q.question_text
+                                                    ),
+                                                    CASE
+                                                        WHEN q.question_type IN ('enumeration','truefalse') THEN
+                                                            JSON_OBJECT(
+                                                                'answer', (
+                                                                    SELECT JSON_ARRAYAGG(c.choice_text)
+                                                                    FROM question_choices c
+                                                                    WHERE c.question_id = q.question_id AND c.is_correct = 1
+                                                                )
+                                                            )
+                                                        ELSE
+                                                            JSON_OBJECT(
+                                                                'choices', (
+                                                                    SELECT JSON_ARRAYAGG(
+                                                                        JSON_OBJECT(
+                                                                            'choice_id', c.choice_id,
+                                                                            'text', c.choice_text,
+                                                                            'points', c.is_correct
+                                                                        )
+                                                                    )
+                                                                    FROM question_choices c
+                                                                    WHERE c.question_id = q.question_id
+                                                                )
+                                                            )
+                                                    END,
+                                                    CASE
+                                                        WHEN q.question_type = 'truefalse' THEN JSON_OBJECT('points', 1)
+                                                        WHEN q.question_type = 'enumeration' THEN JSON_OBJECT(
+                                                            'points', (
+                                                                SELECT COUNT(*) FROM question_choices c
+                                                                WHERE c.question_id = q.question_id AND c.is_correct = 1
+                                                            )
+                                                        )
+                                                        ELSE JSON_OBJECT()
+                                                    END
+                                                )
+                                            )
+                                            FROM test_questions q
+                                            WHERE q.test_id = t.test_id
+                                        )
+                                    ) AS quiz_json
+                                FROM tests t
+                                WHERE t.content_id = ?`,
+                                [content.content_id]
+                            );
+
+                            // Replace the URL with the quiz JSON content
+                            if (quizRows.length > 0) {
+                                content.quiz_data = quizRows[0].quiz_json; // don't JSON.parse
+                                delete content.url; // optional
+                            }
+                        }
+                    }
+
+                    lesson.lessons_content = contents; // attach contents (including quiz_data)
+                }
+
+                // 5️⃣ Attach lessons to subject_name key
+                subjects[subj.subject_name] = {
+                    lessons: lessons
+                };
+            }
+        } catch (err) {
+            console.error("Error fetching subjects with lessons:", err);
+        }
+
+
+
 
         avgScore = avgScore ? Number(avgScore) : 0;
         avgSessionTime = avgSessionTime ? Number(avgSessionTime) : 0;
@@ -403,6 +554,7 @@ export const getTeacherDashboardStats = async (req, res) => {
             recentActivity: recentActivity,
             quarterlyProgress: quarterlyProgress,
             overall_progress: overallStats,
+            subjects: subjects,
         });
 
     } catch (error) {
