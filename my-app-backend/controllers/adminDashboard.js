@@ -147,18 +147,20 @@ export const getSubjectSummary = async (req, res) => {
 
     const [pupils] = await pool.query(`
       SELECT
-        u.user_id AS pupil_id,
-        CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) AS full_name,
-        a.thumbnail AS avatar_thumbnail,
-        r.role_name AS role,
-        u.created_at,
-        u.active_status,
-        u.last_active,
-        u.email,
-        u.birth_date,
-        sec.school_name,
-        ROUND(AVG(TIME_TO_SEC(STR_TO_DATE(pcp.duration, '%H:%i:%s'))), 2) AS avg_session_seconds,
-        COUNT(DISTINCT pa.id) AS total_badges
+          u.user_id AS pupil_id,
+          CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) AS full_name,
+          a.thumbnail AS avatar_thumbnail,
+          r.role_name AS role,
+          u.created_at,
+          u.active_status,
+          u.last_active,
+          u.email,
+          u.birth_date,
+          sec.school_name,
+          ROUND(AVG(TIME_TO_SEC(STR_TO_DATE(pcp.duration, '%H:%i:%s'))), 2) AS avg_session_seconds,
+          COUNT(DISTINCT pa.id) AS total_badges,
+          COALESCE(pp.completed_lessons, 0) AS completed_lessons,
+          ROUND(pp.avg_score, 2) AS avg_score
       FROM users u
       LEFT JOIN avatar a ON u.avatar_id = a.id
       LEFT JOIN roles r ON u.role_id = r.role_id
@@ -166,13 +168,35 @@ export const getSubjectSummary = async (req, res) => {
       LEFT JOIN sections sec ON e.section_id = sec.section_id
       LEFT JOIN pupil_content_progress pcp ON u.user_id = pcp.pupil_id
       LEFT JOIN pupil_achievements pa ON u.user_id = pa.pupil_id
+      -- Join for avg_score and completed_lessons
+      LEFT JOIN (
+          SELECT
+              v.pupil_id,
+              SUM(v.completed_lessons) AS completed_lessons,
+              AVG(sub_avg_score.avg_score) AS avg_score
+          FROM v_pupil_progress_with_school v
+          LEFT JOIN (
+              SELECT 
+                  pts.pupil_id, 
+                  s.subject_name, 
+                  AVG(pts.score) AS avg_score
+              FROM pupil_test_scores pts
+              JOIN lessons l ON pts.test_id = l.lesson_id
+              JOIN subjects s ON l.subject_belong = s.subject_id
+              GROUP BY pts.pupil_id, s.subject_name
+          ) sub_avg_score
+          ON v.pupil_id = sub_avg_score.pupil_id
+            AND v.subject_name = sub_avg_score.subject_name
+          GROUP BY v.pupil_id
+      ) pp
+      ON u.user_id = pp.pupil_id
       WHERE u.role_id = 3
-      GROUP BY u.user_id, full_name, a.thumbnail, r.role_name, u.created_at, u.active_status, u.last_active, u.email, u.birth_date, sec.school_name
+      GROUP BY u.user_id, full_name, a.thumbnail, r.role_name, u.created_at, u.active_status, u.last_active, u.email, u.birth_date, sec.school_name, pp.completed_lessons, pp.avg_score
       ORDER BY u.last_name, u.first_name
     `);
 
     // 🟢 Teachers list
-    const [teachers] = await pool.query(` 
+    const [teachers] = await pool.query(`
       SELECT
           t.user_id,
           a.thumbnail AS avatar_thumbnail,
@@ -182,22 +206,50 @@ export const getSubjectSummary = async (req, res) => {
           t.active_status,
           t.last_active,
           t.email,
-          t.birth_date,
-          GROUP_CONCAT(DISTINCT tso.school_name SEPARATOR ', ') AS schools,
-          GROUP_CONCAT(DISTINCT tso.section_name SEPARATOR ', ') AS sections_created,
-          COALESCE(SUM(tso.pupil_count), 0) AS total_pupils
+          t.birth_date
       FROM users t
-      LEFT JOIN avatar a
-          ON t.avatar_id = a.id
-      LEFT JOIN roles r
-          ON t.role_id = r.role_id
-      LEFT JOIN teacher_sections_overview tso
-          ON t.user_id = tso.teacher_id
+      LEFT JOIN avatar a ON t.avatar_id = a.id
+      LEFT JOIN roles r ON t.role_id = r.role_id
       WHERE t.role_id = 2
-      GROUP BY t.user_id, a.thumbnail, r.role_name, t.first_name, t.middle_name, t.last_name,
-              t.created_at, t.active_status, t.last_active, t.email, t.birth_date
       ORDER BY t.last_name
     `);
+
+    // Fetch sections separately
+    const [sections] = await pool.query(`
+      SELECT teacher_id, school_name, section_name, pupil_count
+      FROM teacher_sections_overview
+      ORDER BY teacher_id, section_name
+    `);
+
+    // Attach sections to each teacher
+    teachers.forEach(t => {
+        t.sections = sections.filter(s => s.teacher_id === t.user_id);
+        t.total_pupils = t.sections.reduce((sum, s) => sum + (s.pupil_count || 0), 0);
+    });
+
+    // 🟢 Fetch 10 most recent activities per teacher
+    const [teacherActivities] = await pool.query(`
+      SELECT teacher_id, activity_name, executed_at
+      FROM (
+          SELECT 
+              a.activity_by AS teacher_id, 
+              a.activity_name, 
+              a.executed_at,
+              ROW_NUMBER() OVER (PARTITION BY a.activity_by ORDER BY a.executed_at DESC) AS rn
+          FROM activity_log a
+      ) t
+      WHERE rn <= 5
+      ORDER BY teacher_id, executed_at DESC
+    `);
+
+    // Attach recent activities to each teacher
+    teachers.forEach(t => {
+        const activities = teacherActivities
+            .filter(a => a.teacher_id === t.user_id)
+            .map(a => ({ name: a.activity_name, executed_at: a.executed_at }));
+        t.recent_activities = activities; // Array of up to 10 activities
+    });
+
 
     // console.log("Teachers:", teachers);
 
@@ -227,6 +279,37 @@ export const getSubjectSummary = async (req, res) => {
       AND v.subject_name = sub_avg_score.subject_name
       ORDER BY v.pupil_id, v.subject_name
     `);
+
+    // Insert progress directly into pupils
+    for (const pupil of pupils) {
+      pupil.progress = studentProgress.filter(
+        sp => sp.pupil_id === pupil.pupil_id
+      );
+    }
+
+    // 🟢 Fetch 10 most recent activities per pupil
+    const [pupilActivities] = await pool.query(`
+      SELECT pupil_id, activity_name, executed_at
+      FROM (
+          SELECT 
+              a.activity_by AS pupil_id, 
+              a.activity_name, 
+              a.executed_at,
+              ROW_NUMBER() OVER (PARTITION BY a.activity_by ORDER BY a.executed_at DESC) AS rn
+          FROM activity_log a
+      ) t
+      WHERE rn <= 5
+      ORDER BY pupil_id, executed_at DESC
+    `);
+
+    // Attach recent activities to each pupil
+    pupils.forEach(p => {
+        const activities = pupilActivities
+            .filter(a => a.pupil_id === p.pupil_id)
+            .map(a => ({ name: a.activity_name, executed_at: a.executed_at }));
+        p.recent_activities = activities; // Array of up to 10 activities
+    });
+
 
 
     // 🟢 FORMAT subject performance with zero-fill for missing subject/quarter
@@ -261,6 +344,21 @@ export const getSubjectSummary = async (req, res) => {
       });
     });
 
+    // 🟢 Fetch recent activities for all users (both teachers and pupils)
+    const [activityLogs] = await pool.query(`
+      SELECT
+        u.user_id,
+        CONCAT(u.first_name, ' ', COALESCE(u.middle_name, ''), ' ', u.last_name) AS full_name,
+        r.role_name AS role,
+        a.activity_name,
+        a.executed_at
+      FROM activity_log a
+      JOIN users u ON a.activity_by = u.user_id
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      ORDER BY a.executed_at DESC
+      LIMIT 50;  -- adjust limit as needed
+    `);
+
     // 🟢 SEND BOTH: original + formatted
     res.json({
       success: true,
@@ -270,6 +368,7 @@ export const getSubjectSummary = async (req, res) => {
       Teachers_list: teachers,
       Student_progress_Subject: studentProgress,                             // Untouched original
       subject_performance: formattedPerformance, // NEW formatted
+      activity_logs: activityLogs,
     });
 
   } catch (error) {
