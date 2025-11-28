@@ -13,6 +13,7 @@ import { getApiUrl } from '../utils/apiManager.js';
 import { getLocalAvatarPath, ensureAvatarDirectory } from '../utils/avatarHelper';
 import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
+import { useRouter } from 'expo-router';
 
 export const UserContext = createContext();
 
@@ -25,6 +26,7 @@ export function UserProvider({ children }) {
   //const API_URL = "http://192.168.0.101:3001/api";
   const [API_URL, setApiUrl] = useState(null);
   const db = useSQLiteContext();
+  const router = useRouter();
 
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 
@@ -192,6 +194,20 @@ export function UserProvider({ children }) {
         } : null
       };
 
+      // Open in-app browser for roles 1 or 2
+      const roleNum = Number(userDataForSync.role_id);
+      const isWebUser = roleNum === 1 || roleNum === 2;
+
+      if (isWebUser) {
+        console.log('User is web user (role 1 or 2), skipping local storage');
+        // For web users, we don't store data locally or download avatars
+        return { 
+          success: true, 
+          user: userDataForSync,
+          isWebUser: true // This flag will control navigation
+        };
+      }
+
       if (data.user.avatar?.url && data.user.avatar?.fileName) {
         console.log('Downloading avatar:', data.user.avatar.fileName);
 
@@ -269,7 +285,7 @@ export function UserProvider({ children }) {
         console.warn('Sync failed:', syncErr);
       }
 
-      return { success: true, user: userDataForSync };
+      return { success: true, user: userDataForSync, isWebUser: false };
     } catch (error) {
       // don't swallow the real error — log then rethrow so caller/UI sees it
       console.error('Login flow error:', error);

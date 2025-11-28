@@ -163,6 +163,7 @@ const RootLayoutContent = () => {
         <Stack.Screen name="(home)" options={{ headerShown: false }} />
         <Stack.Screen name="(content_render)" options={{ headerShown: false }} />
         <Stack.Screen name="contact" options={{ title: 'Contact' }} />
+        <Stack.Screen name="inapp-browser" options={{ headerShown: false }} />
       </Stack>
     </>
   );

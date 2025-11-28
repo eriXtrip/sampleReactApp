@@ -46,8 +46,24 @@ const Login = () => {
       return showAlert('Invalid email format.');
     }
     try {
-      await login(email, password);
-      router.replace('/home');
+      const result = await login(email, password);
+      
+      // Check if user is web user or mobile user
+      if (result.isWebUser) {
+        // Navigate to in-app browser for web users (roles 1 & 2)
+        console.log('Navigating to in-app browser for web user');
+        router.replace({
+          pathname: '/inapp-browser',
+          params: {
+            url: encodeURIComponent('http://192.168.254.103:8000'),
+            title: 'MQuest Web Portal'
+          }
+        });
+      } else {
+        // Navigate to home for mobile users (role 3)
+        console.log('Navigating to home for mobile user');
+        router.replace('/home');
+      }
     } catch (error) {
       showAlert(error.message);
     } finally {

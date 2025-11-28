@@ -157,12 +157,16 @@ const Profile = () => {
         {/* ABOUT MQUEST Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>ABOUT MQUEST</ThemedText>
-          <TouchableOpacity style={styles.cardItem}>
+          <TouchableOpacity style={styles.cardItem}
+            onPress={() => router.push('/privacy')}
+          >
             <ThemedText>Privacy Policy</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}>
+          <TouchableOpacity style={[styles.cardItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/terms')}
+            >
             <ThemedText>Terms and Conditions</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>

@@ -57,6 +57,18 @@ export default function ProfileLayout() {
               title: 'Download queue',
             }}
           />
+          <Stack.Screen
+            name="terms"
+            options={{
+              title: 'Terms and Conditions',
+            }}
+          />
+          <Stack.Screen
+            name="privacy"
+            options={{
+              title: 'Privacy Policy',
+            }}
+          />
         </Stack>
       </UserProvider>
     </SQLiteProvider>

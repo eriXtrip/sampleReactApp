@@ -29,7 +29,6 @@ const SearchPage = () => {
   
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('subjects'); // 'subjects' or 'sections'
 
   const navigation = useNavigation();
   const router = useRouter();
@@ -41,84 +40,50 @@ const SearchPage = () => {
     }
   }, [user?.server_id, fetchPublicSubjects, fetchAvailableSections, user]);
 
-  // Combine search term matching for both subjects and sections
-  const filteredData = React.useMemo(() => {
+  // Filter sections based on search query
+  const filteredSections = React.useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) {
-      return activeTab === 'subjects' ? subjects : sections;
+      return sections;
     }
 
-    if (activeTab === 'subjects') {
-      return subjects.filter(subject => {
-        const subjectNameMatch = subject.subject_name.toLowerCase().includes(query);
-        const teacherName = `${subject.created_by_first || ''} ${subject.created_by_last || ''}`.toLowerCase();
-        const teacherMatch = teacherName.includes(query);
+    return sections.filter(section => {
+      const sectionNameMatch = section.section_name.toLowerCase().includes(query);
+      const teacherMatch = section.teacher.toLowerCase().includes(query);
+      const schoolYearMatch = section.school_year.toLowerCase().includes(query);
 
-        return subjectNameMatch || teacherMatch;
-      });
-    } else {
-      return sections.filter(section => {
-        const sectionNameMatch = section.section_name.toLowerCase().includes(query);
-        const teacherMatch = section.teacher.toLowerCase().includes(query);
-
-        return sectionNameMatch || teacherMatch;
-      });
-    }
-  }, [activeTab, searchQuery, subjects, sections]);
+      return sectionNameMatch || teacherMatch || schoolYearMatch;
+    });
+  }, [searchQuery, sections]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   const renderItem = ({ item }) => {
-    if (activeTab === 'subjects') {
-      return (
-        <SearchResultCard
-          key={item.subject_id}
-          type="subject"
-          name={item.subject_name}
-          createdBy={item.created_by_first ? `${item.created_by_first} ${item.created_by_last}` : 'Admin'}
-          schoolYear={item.created_at ? item.created_at.split('-')[0] : 'N/A'}
-          requiresEnrollmentKey={false}
-          onPress={() =>
-            router.push({
-              pathname: '/self_enroll_page',
-              params: {
-                subjectId: item.subject_id,
-                name: item.subject_name,
-                description: item.description,
-                schoolYear: item.created_at ? item.created_at.split('-')[0] : 'N/A',
-                createdBy: item.created_by_first ? `${item.created_by_first} ${item.created_by_last}` : 'Admin',
-              },
-            })
-          }
-        />
-      );
-    } else {
-      return (
-        <SearchResultCard
-          key={item.section_id}
-          type="section"
-          name={item.section_name}
-          createdBy={item.teacher}
-          schoolYear={item.school_year}
-          requiresEnrollmentKey={false}
-          onPress={() =>
-            router.push({
-              pathname: '/self_enroll_page',
-              params: {
-                type: 'section',
-                sectionId: item.section_id,
-                name: item.section_name,
-                createdBy: item.teacher,
-                schoolYear: item.school_year,
-                enrollment_key: item.enrollment_key,
-              },
-            })
-          }
-        />
-      );
-    }
+    return (
+      <SearchResultCard
+        key={item.section_id}
+        type="section"
+        name={item.section_name}
+        createdBy={item.teacher}
+        schoolYear={item.school_year}
+        requiresEnrollmentKey={false}
+        onPress={() =>
+          router.push({
+            pathname: '/self_enroll_page',
+            params: {
+              type: 'section',
+              sectionId: item.section_id,
+              name: item.section_name,
+              createdBy: item.teacher,
+              schoolYear: item.school_year,
+              enrollment_key: item.enrollment_key,
+            },
+          })
+        }
+      />
+    );
   };
 
   return (
@@ -128,33 +93,13 @@ const SearchPage = () => {
           <Ionicons name="arrow-back" size={24} color={theme.title} />
         </TouchableOpacity>
         <ThemedSearch
-          placeholder="Search subjects or sections..."
+          placeholder="Search sections..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           style={[styles.search, { flex: 1 }]}
           inputStyle={styles.searchInput}
           autoFocus={true}
         />
-      </View>
-
-      {/* Tab Switcher */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'subjects' && {backgroundColor: '#48cae4',}]}
-          onPress={() => setActiveTab('subjects')}
-        >
-          <ThemedText style={[styles.tabText, activeTab === 'subjects' && styles.activeTabText]}>
-            Subjects
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'sections' && {backgroundColor: '#9d4edd'}]}
-          onPress={() => setActiveTab('sections')}
-        >
-          <ThemedText style={[styles.tabText, activeTab === 'sections' && styles.activeTabText]}>
-            Sections
-          </ThemedText>
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -167,36 +112,30 @@ const SearchPage = () => {
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={theme.title} />
               <ThemedText style={{ marginTop: 10, color: theme.text }}>
-                Loading {activeTab}...
+                Loading sections...
               </ThemedText>
             </View>
           ) : error ? (
             <View style={styles.centered}>
               <ThemedText style={{ color: 'red' }}>{error}</ThemedText>
             </View>
-          ) : searchQuery.trim().length === 0 && filteredData.length === 0 ? (
+          ) : searchQuery.trim().length === 0 && filteredSections.length === 0 ? (
             <View style={[styles.helperContainer, { alignItems: 'center' }]}>
               <ThemedText style={[styles.text, { color: theme.text, textAlign: 'center' }]}>
-                {activeTab === 'subjects'
-                  ? "No public subjects available."
-                  : "No sections available for enrollment."}
+                No sections available for enrollment.
               </ThemedText>
             </View>
-          ) : filteredData.length === 0 ? (
+          ) : filteredSections.length === 0 ? (
             <View style={styles.centered}>
               <ThemedText style={{ color: theme.text }}>
-                No matching {activeTab} found.
+                No matching sections found.
               </ThemedText>
             </View>
           ) : (
             <FlatList
-              data={filteredData}
+              data={filteredSections}
               renderItem={renderItem}
-              keyExtractor={item => 
-                activeTab === 'subjects' 
-                  ? String(item.subject_id) 
-                  : String(item.section_id)
-              }
+              keyExtractor={item => String(item.section_id)}
               showsVerticalScrollIndicator={false}
             />
           )}
@@ -225,26 +164,6 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     fontSize: 16,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    backgroundColor: '#d5d7d82a',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  activeTabText: {
-    fontWeight: '600',
-    color: '#ffffffff',
   },
   text: {
     fontSize: 18,

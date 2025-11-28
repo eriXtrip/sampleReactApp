@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "692ca6ec-40e9-4462-9521-30421d0815e9"
       }
+    },
+    "android": {
+      "package": "com.tripulcaeric.samplereactapp"
     }
   }
 }

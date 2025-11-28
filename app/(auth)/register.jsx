@@ -43,6 +43,9 @@ const Register = () => {
     const inputRefs = useRef(Array(6).fill(null))
 
     const [alert, setAlert] = useState({ visible: false, message: '' });
+    
+    const [agreedTerms, setAgreedTerms] = useState(false);
+    const [agreedPrivacy, setAgreedPrivacy] = useState(false);
 
     const showAlert = (msg) => setAlert({ visible: true, message: msg });
     const closeAlert = () => setAlert({ ...alert, visible: false });
@@ -771,9 +774,72 @@ const Register = () => {
                         </KeyboardAvoidingView>
                         
 
-                        <Spacer height={25} />
+                        <Spacer height={20} />
+
+                        {/* Terms and Conditions Checkbox */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <TouchableOpacity
+                                onPress={() => setAgreedTerms(!agreedTerms)}
+                                style={{ paddingRight: 8, paddingTop: 2 }}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: agreedTerms }}
+                            >
+                                <Ionicons
+                                    name={agreedTerms ? 'checkbox' : 'square-outline'}
+                                    size={22}
+                                    color={agreedTerms ? Colors.primary : theme.iconColor}
+                                />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1, flexWrap: 'wrap' }}>
+                                <Text style={{ color: theme.text }}>
+                                    I agree to the
+                                    <Text> </Text>
+                                    <Text
+                                        onPress={() => router.push('/terms')}
+                                        style={{ color: Colors.primary, textDecorationLine: 'underline' }}
+                                    >
+                                        Terms and Conditions
+                                    </Text>
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Spacer height={12} />
+
+                        {/* Privacy Policy Checkbox */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <TouchableOpacity
+                                onPress={() => setAgreedPrivacy(!agreedPrivacy)}
+                                style={{ paddingRight: 8, paddingTop: 2 }}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: agreedPrivacy }}
+                            >
+                                <Ionicons
+                                    name={agreedPrivacy ? 'checkbox' : 'square-outline'}
+                                    size={22}
+                                    color={agreedPrivacy ? Colors.primary : theme.iconColor}
+                                />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1, flexWrap: 'wrap' }}>
+                                <Text style={{ color: theme.text }}>
+                                    I agree to the
+                                    <Text> </Text>
+                                    <Text
+                                        onPress={() => router.push('/privacy')}
+                                        style={{ color: Colors.primary, textDecorationLine: 'underline' }}
+                                    >
+                                        Privacy Policy
+                                    </Text>
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Spacer height={20} />
+
                         <ThemedButton 
                             onPress={handleCompleteRegistration}
+                            disabled={!agreedTerms || !agreedPrivacy || loading}
+                            loading={loading}
                         >
                             Complete Registration
                         </ThemedButton>

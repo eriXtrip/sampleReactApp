@@ -56,7 +56,7 @@ const SearchResultCard = ({ type = 'subject', name, createdBy, schoolYear, requi
             )}
           </View>
           <ThemedText style={styles.meta}>Created by: {createdBy}</ThemedText>
-          <ThemedText style={styles.meta}>Created at: {schoolYear}</ThemedText>
+          <ThemedText style={styles.meta}>School Year: {schoolYear}</ThemedText>
         </View>
       </View>
     </TouchableOpacity>

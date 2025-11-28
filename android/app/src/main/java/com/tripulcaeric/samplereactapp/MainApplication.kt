@@ -1,4 +1,4 @@
-package com.anonymous.MQuest
+package com.tripulcaeric.samplereactapp
 
 import android.app.Application
 import android.content.res.Configuration
