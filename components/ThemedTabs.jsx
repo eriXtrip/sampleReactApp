@@ -60,7 +60,7 @@ export default function ThemedTabs() {
         <Tabs.Screen 
           name="subjectlist" 
           options={{ 
-            title: "Subject", 
+            title: "Section", 
             tabBarIcon: ({ focused }) => (
               <AnimatedTabIcon focused={focused} iconName="book" theme={theme} />
             ) 
