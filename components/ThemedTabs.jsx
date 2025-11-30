@@ -31,7 +31,7 @@ export default function ThemedTabs() {
         tabBarStyle: {
           backgroundColor: theme.navBackground,
           paddingTop: 20,
-          height: Platform.OS === 'android' ? 120 : 0,
+          height: Platform.OS === 'android' ? 90 : 0,
           borderTopWidth: 0,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,

@@ -181,7 +181,7 @@ const SubjectList = () => {
         <View style={styles.emptyContainer}>
           <Ionicons name="book-outline" size={80} color={theme.tint} />
           <ThemedText style={[styles.emptyText, { color: theme.iconColor }]}>
-            No subject enrolled yet
+            No section enrolled yet
           </ThemedText>
         </View>
       ) : (

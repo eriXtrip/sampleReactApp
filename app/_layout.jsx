@@ -23,6 +23,8 @@ import UserService from '../local-database/services/userService';
 import ThemedStatusBar from '../components/ThemedStatusBar';
 import { useNotificationListener } from '../utils/notificationListener';
 
+// ADD THIS IMPORT
+import * as NavigationBar from 'expo-navigation-bar';
 
 // Notification handler
 Notifications.setNotificationHandler({
@@ -102,6 +104,25 @@ const ensureLessonsDir = async () => {
   }
 };
 
+// ADD THIS FUNCTION TO SETUP NAVIGATION BAR
+const setupNavigationBar = async () => {
+  if (Platform.OS === 'android') {
+    try {
+      // Set immersive mode - hides but shows when user swipes
+      await NavigationBar.setVisibilityAsync('immersive');
+      
+      // // Optional: Set navigation bar background to transparent
+      // await NavigationBar.setBackgroundColorAsync('#00000000');
+      
+      // // Optional: Set navigation bar button color (back, home, recent apps)
+      // await NavigationBar.setButtonStyleAsync('light');
+      
+    } catch (error) {
+      console.log('NavigationBar setup error:', error);
+    }
+  }
+};
+
 // This component renders the StatusBar + OfflineBanner + Stack
 const RootLayoutContent = () => {
   const colorScheme = useColorScheme();
@@ -126,6 +147,9 @@ const RootLayoutContent = () => {
         await ensureLessonsDir();
       }
       await askNotificationPermission();
+      
+      // ADD THIS: Setup navigation bar after permissions
+      await setupNavigationBar();
     })();
   }, []);
 
@@ -170,7 +194,6 @@ const RootLayoutContent = () => {
 };
 
 const RootLayout = () => { 
-
   return (
     <SQLiteProvider databaseName="mquest.db">
       <DatabaseBinder />

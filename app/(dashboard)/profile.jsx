@@ -205,6 +205,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginBottom: -20,
   },
   scrollContainer: {
     padding: 20,

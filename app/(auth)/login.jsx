@@ -55,7 +55,7 @@ const Login = () => {
         router.replace({
           pathname: '/inapp-browser',
           params: {
-            url: encodeURIComponent('http://192.168.254.103:8000'),
+            url: encodeURIComponent('https://mquestlaraveladmin-production-231c.up.railway.app/'),
             title: 'MQuest Web Portal'
           }
         });
@@ -130,7 +130,8 @@ const Login = () => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={handleTestSQLInjection}>
+        {/* onPress={handleTestSQLInjection} */}
+        <TouchableOpacity >
           <ThemedText title={true} style={styles.welcome}>
             Welcome!
           </ThemedText>
