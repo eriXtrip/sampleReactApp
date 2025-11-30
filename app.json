@@ -1,12 +1,56 @@
 {
   "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "692ca6ec-40e9-4462-9521-30421d0815e9"
-      }
+    "scheme": "MQuest",
+    "name": "MQuest",
+    "slug": "MQuest",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/img/Login_Logo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/img/Login_Logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.tripulcaeric.samplereactapp"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/img/Login_Logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.anonymous.MQuest",
+      "permissions": [
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MANAGE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-video",
+      "expo-web-browser",
+      "expo-dev-client"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b1f0b199-c155-40f0-8d85-755134b470a0"
+      }
     }
   }
 }
