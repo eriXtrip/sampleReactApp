@@ -22,6 +22,7 @@ import { initializeDatabase } from '../local-database/services/database';
 import UserService from '../local-database/services/userService';
 import ThemedStatusBar from '../components/ThemedStatusBar';
 import { useNotificationListener } from '../utils/notificationListener';
+import OfflineBanner from '../components/OfflineBanner';
 
 // ADD THIS IMPORT
 import * as NavigationBar from 'expo-navigation-bar';
@@ -171,6 +172,9 @@ const RootLayoutContent = () => {
     <>
       {/* Status bar */}
       <ThemedStatusBar themeColors={themeColors} />
+
+      {/* Offline banner */}
+      <OfflineBanner />
 
       {/* Stack navigator */}
       <Stack

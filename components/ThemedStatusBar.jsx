@@ -6,8 +6,6 @@ import { ApiUrlContext } from '../contexts/ApiUrlContext';
 
 const ThemedStatusBar = ({ themeColors }) => {
   const colorScheme = useColorScheme();
-  const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
-  const [bannerHeight] = useState(new Animated.Value(0));
 
   const themeKey =
     themeColors === 'system'
@@ -24,16 +22,6 @@ const ThemedStatusBar = ({ themeColors }) => {
 
   if (Platform.OS !== 'android') return null;
 
-  // Show banner if offline or server unreachable
-  const showBanner = isOffline || !isReachable;
-
-  useEffect(() => {
-    Animated.timing(bannerHeight, {
-      toValue: showBanner ? 25 : 0, // adjust height as needed
-      duration: 300,
-      useNativeDriver: false, // height animation requires false
-    }).start();
-  }, [showBanner]);
 
   return (
     <View>
@@ -46,26 +34,11 @@ const ThemedStatusBar = ({ themeColors }) => {
         />
       </View>
 
-      {/* Animated Offline Banner */}
-      {isApiLoaded && (
-        <Animated.View style={[styles.banner, { height: bannerHeight, backgroundColor: theme.bannerBackground }]}>
-          {showBanner && (
-            <Text style={styles.text}>
-              {isOffline ? 'Offline Mode' : 'Server cannot be reached'}
-            </Text>
-          )}
-        </Animated.View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
   text: {
     color: 'white',
     fontSize: 11,

@@ -30,8 +30,8 @@ export default function ThemedTabs() {
         statusBarColor: theme.navBackground,
         tabBarStyle: {
           backgroundColor: theme.navBackground,
-          paddingTop: 20,
-          height: Platform.OS === 'android' ? 90 : 0,
+          paddingTop: 25,
+          height: Platform.OS === 'android' ? 95 : 0,
           borderTopWidth: 0,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,

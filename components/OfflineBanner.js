@@ -1,26 +1,42 @@
 // components/OfflineBanner.js
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
-import { startIntervalSync } from '../local-database/services/syncUp.js';
+import { startIntervalSync, stopIntervalSync } from '../local-database/services/syncUp.js';
 import { useSQLiteContext } from 'expo-sqlite';
 
 const OfflineBanner = () => {
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
   const [fadeAnim] = useState(new Animated.Value(0));
   const db = useSQLiteContext(); // <-- get DB instance from expo-sqlite
+  const cleanupRef = useRef(null);
 
   useEffect(() => {
-    if (!db) return;
+     if (!db) {
+      console.log("⏱ No DB available for sync");
+      return;
+    }
 
     // Start background interval sync
+    console.log('⏱ Background sync initialized from OfflineBanner');
     startIntervalSync(db, () => ({
       isOffline,
       isReachable,
       isApiLoaded,
     }));
 
-    console.log('⏱ Background sync initialized from OfflineBanner');
+    // Cleanup on unmount
+    return () => {
+      console.log('🛑 Cleaning up background sync');
+      if (cleanupRef.current) {
+        cleanupRef.current(); // Use the stored cleanup function
+      } else {
+        stopIntervalSync(); // Fallback
+      }
+      cleanupRef.current = null; // Clear the ref
+    };
+
+    
   }, [db, isOffline, isReachable, isApiLoaded]);
 
   // Animate offline banner
@@ -52,8 +68,8 @@ const styles = StyleSheet.create({
     top: 40,
     left: 0,
     right: 0,
-    backgroundColor: '#6666668e',
-    paddingVertical: 2,
+    backgroundColor: '#8989898e',
+    paddingVertical: 3,
     zIndex: 1,
     alignItems: 'center',
   },

@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/(dashboard)/profile.jsx
 
-import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { useContext, useState, useEffect } from 'react';
 import { UserContext } from '../../contexts/UserContext';
@@ -11,6 +11,8 @@ import * as FileSystem from 'expo-file-system';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
+import DangerAlert from '../../components/DangerAlert';
+import ThemedAlert from '../../components/ThemedAlert';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import { ProfileContext } from '../../contexts/ProfileContext';
@@ -26,6 +28,9 @@ const Profile = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   const [avatarUri, setAvatarUri] = useState(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [exitAlertVisible, setExitAlertVisible] = useState(false);
 
   // Safely access user data with fallbacks
   const displayName = user 
@@ -36,25 +41,28 @@ const Profile = () => {
   const displayEmail = user?.email || "Loading...";
   const school = "Del Rosario Elementary School";
 
+  // Show the danger alert when logout is pressed
+  const handleLogoutPress = () => {
+    setExitAlertVisible(true);
+  };
+
+  // Show themed alert
+  const showThemedAlert = (message) => {
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
   const handleLogout = async () => {
     try {
       const success = await logout(user.server_id);
       if (success) {
         router.replace('/login');
       } else {
-        Alert.alert(
-          'Logout Failed',
-          'Server not reachable. Please try again.',
-          [{ text: 'OK' }]
-        );
+        showThemedAlert('Server not reachable. Please try again.');
       }
     } catch (error) {
       console.error('Logout error:', error);
-      Alert.alert(
-        'Logout Failed',
-        'Unexpected error occurred. Please try again.',
-        [{ text: 'OK' }]
-      );
+      showThemedAlert('Unexpected error occurred. Please try again.');
     }
   };
 
@@ -124,21 +132,7 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
 
-        {/* <Spacer height={5} />
-
-        
-        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
-          <ThemedText style={styles.cardTitle}>APPEARANCE</ThemedText>
-          <TouchableOpacity
-            style={[styles.cardItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/theme')}
-          >
-            <ThemedText>Theme</ThemedText>
-            <Ionicons name="chevron-forward-outline" size={20} color="#999" />
-          </TouchableOpacity>
-        </View> */}
-
-         <Spacer height={5} />
+        <Spacer height={5} />
 
         {/* Download Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
@@ -147,7 +141,7 @@ const Profile = () => {
             style={[styles.cardItem, { borderBottomWidth: 0 }]}
             onPress={() => router.push('/download')}
           >
-            <ThemedText>Dowload</ThemedText>
+            <ThemedText>Download</ThemedText>
             <Ionicons name="chevron-forward-outline" size={20} color="#999" />
           </TouchableOpacity>
         </View>
@@ -176,7 +170,7 @@ const Profile = () => {
 
         {/* Log Out Button */}
         <ThemedButton 
-          onPress={handleLogout}
+          onPress={handleLogoutPress}
           style={styles.logoutButton}
           textStyle={styles.logoutButtonText}
         >
@@ -197,6 +191,23 @@ const Profile = () => {
         </View>
 
       </ScrollView>
+
+      {/* Alerts */}
+      <ThemedAlert
+        visible={alertVisible}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
+
+      <DangerAlert
+        visible={exitAlertVisible}
+        message="Are you sure you want to log out?"
+        onCancel={() => setExitAlertVisible(false)}
+        onConfirm={() => {
+          setExitAlertVisible(false);
+          handleLogout(); // logout action
+        }}
+      />
       <Spacer height={100} />
     </ThemedView>
   );

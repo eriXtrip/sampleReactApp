@@ -3,6 +3,7 @@ import { getApiUrl } from '../../utils/apiManager.js';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { saveSyncDataToSQLite  } from '../../local-database/services/syncService.js';
+import { dbMutex } from '../../utils/databaseMutex.js';
 
 
 // ===============================
@@ -10,41 +11,61 @@ import { saveSyncDataToSQLite  } from '../../local-database/services/syncService
 // ===============================
 let syncQueue = [];
 let isSyncing = false;
-let retryCount = 0;
+
+// Remove retryCount from global scope - make it per-task
 const MAX_RETRIES = 3;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 async function runSyncQueue(db) {
-  if (isSyncing) return;
-  if (!syncQueue.length) return;
+  if (isSyncing) {
+    console.log("⏳ Sync already in progress, skipping...");
+    return;
+  }
+  
+  if (!syncQueue.length) {
+    console.log("📭 Sync queue is empty");
+    return;
+  }
 
   isSyncing = true;
+  
+  // Create a copy of the queue to process
+  const queueToProcess = [...syncQueue];
+  syncQueue = []; // Clear the main queue
 
-  while (syncQueue.length) {
-    const task = syncQueue.shift();
+  console.log(`🔄 Processing ${queueToProcess.length} sync tasks...`);
 
-    try {
-      console.log(`▶ Running sync task: ${task.name}`);
-      await task.fn(db);
-      retryCount = 0;
-    } catch (err) {
-      console.error(`❌ Sync task failed: ${task.name}`, err);
+  for (const task of queueToProcess) {
+    let retryCount = 0;
+    let success = false;
 
-      if (retryCount < MAX_RETRIES) {
+    while (retryCount <= MAX_RETRIES && !success) {
+      try {
+        console.log(`▶ Running sync task: ${task.name} (attempt ${retryCount + 1})`);
+        await task.fn(db);
+        console.log(`✅ Sync task completed: ${task.name}`);
+        success = true;
+        
+      } catch (err) {
         retryCount++;
-        const backoff = 5000 * retryCount;
-        console.log(`⟳ Retrying ${task.name} in ${backoff / 1000}s...`);
+        console.error(`❌ Sync task failed: ${task.name} (attempt ${retryCount})`, err);
 
-        await delay(backoff);
-        syncQueue.unshift(task); // push task back to queue
-      } else {
-        console.log(`⛔ Max retries reached for ${task.name}. Skipping.`);
+        if (retryCount <= MAX_RETRIES) {
+          const backoff = 2000 * retryCount; // 2s, 4s, 6s
+          console.log(`⟳ Retrying ${task.name} in ${backoff / 1000}s...`);
+          await delay(backoff);
+        } else {
+          console.log(`⛔ Max retries reached for ${task.name}. Moving to next task.`);
+          // Optionally re-queue the failed task for next sync cycle
+          syncQueue.push(task);
+        }
       }
     }
   }
 
   isSyncing = false;
+  console.log("🎯 Sync queue processing completed");
 }
 
 let isDbInitialized = false;
@@ -407,20 +428,59 @@ export async function triggerSyncIfOnline(db, flags = {}) {
     return;
   }
 
-  console.log("🌐 Online & API reachable → Queuing sync tasks...");
-
-  // Queue tasks
-  syncQueue.push(
-    { name: "syncTestScores", fn: syncTestScoresToServer },
-    { name: "syncProgress", fn: syncProgressToServer },
-    { name: "syncAchievements", fn: syncAchievements },
-    { name: "syncNotifications", fn: syncNotifications }
-  );
-
-  await runSyncQueue(db);
-
-  // 🔄 Refresh data from server before saving locally
+  // 🔍 Comprehensive user and auth check
   try {
+    // Check if user exists in local database
+    const user = await db.getFirstAsync(`
+      SELECT user_id, server_id FROM users LIMIT 1
+    `);
+    
+    if (!user) {
+      console.log("⛔ Sync blocked → no user found in database");
+      return;
+    }
+    
+    // Check if user has server_id (logged in to server)
+    if (!user.server_id) {
+      console.log("⛔ Sync blocked → user exists but no server_id (not logged in)");
+      return;
+    }
+    
+    // Check if auth token exists
+    const token = await SecureStore.getItemAsync('authToken');
+    if (!token) {
+      console.log("⛔ Sync blocked → no auth token found");
+      return;
+    }
+    
+    console.log("👤 User authenticated → proceeding with sync", { 
+      user_id: user.user_id, 
+      server_id: user.server_id 
+    });
+    
+  } catch (error) {
+    console.error("❌ Error during user/auth check:", error);
+    return;
+  }
+
+  console.log("🌐 Online & API reachable → Starting sync...");
+
+  // Acquire mutex for entire sync operation
+  await dbMutex.acquire('sync');
+
+  try {
+    // Queue tasks
+    syncQueue.push(
+      { name: "syncTestScores", fn: syncTestScoresToServer },
+      { name: "syncProgress", fn: syncProgressToServer },
+      { name: "syncAchievements", fn: syncAchievements },
+      { name: "syncNotifications", fn: syncNotifications }
+    );
+
+    // Run all queued sync tasks
+    await runSyncQueue(db);
+
+    // 🔄 Refresh data from server - KEEP THIS INSIDE MUTEX
     const API_URL = await getApiUrl();
     const token = await SecureStore.getItemAsync('authToken');
 
@@ -434,9 +494,13 @@ export async function triggerSyncIfOnline(db, flags = {}) {
 
     console.log("💾 Saving fresh server data to local SQLite...");
     await saveSyncDataToSQLite(freshSyncData, db);
-    console.log("✅ saveSyncDataToSQLite completed");
+    console.log("✅ Complete sync cycle finished");
+
   } catch (err) {
-    console.error("❌ Failed refreshing and saving sync data:", err);
+    console.error("❌ Sync operation failed:", err);
+  } finally {
+    // Always release mutex in finally block
+    dbMutex.release('sync');
   }
 }
 
@@ -457,17 +521,51 @@ export function setupNetworkSyncListener() {
 // 🔄 Background interval sync (30 sec)
 // =====================================
 let intervalSyncStarted = false;
+let syncIntervalId = null;
 
 export function startIntervalSync(db, flagsProvider) {
-  if (intervalSyncStarted) return;
+  // Prevent multiple intervals
+  if (intervalSyncStarted) {
+    console.log("🔄 Interval sync already running");
+    return null; // Return null if already running
+  }
+  
   intervalSyncStarted = true;
 
   console.log("⏱ Background sync every 30s started");
 
-  setInterval(() => {
-    const flags = flagsProvider(); // dynamic reading
-    triggerSyncIfOnline(db, flags);
+  syncIntervalId = setInterval(async () => {
+    try {
+      const flags = flagsProvider();
+      console.log("🔄 Interval sync check - flags:", {
+        isOffline: flags.isOffline,
+        isReachable: flags.isReachable, 
+        isApiLoaded: flags.isApiLoaded
+      });
+      await triggerSyncIfOnline(db, flags);
+    } catch (error) {
+      console.error("Interval sync error:", error);
+    }
   }, 30000); // 30 seconds
+
+  // Return cleanup function
+  return () => {
+    if (syncIntervalId) {
+      clearInterval(syncIntervalId);
+      syncIntervalId = null;
+    }
+    intervalSyncStarted = false;
+    console.log("🛑 Background sync stopped via cleanup function");
+  };
+}
+
+export function stopIntervalSync() {
+  if (syncIntervalId) {
+    clearInterval(syncIntervalId);
+    syncIntervalId = null;
+  }
+  intervalSyncStarted = false;
+  console.log("🛑 Background sync stopped via direct call");
 }
 
 async function getAuthToken() {

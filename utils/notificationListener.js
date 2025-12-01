@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { triggerLocalNotification } from './notificationUtils';
 import { waitForDbReady } from '../local-database/services/dbReady';
+import { dbMutex } from './databaseMutex';
 
 export function useNotificationListener() {
   const db = useSQLiteContext();
@@ -12,14 +13,14 @@ export function useNotificationListener() {
 
     let interval;
 
-    // Wait for DB once at startup
-    waitForDbReady(10000) // 10s timeout
+    waitForDbReady(10000)
       .then(() => {
         console.log('✅ DB ready → starting notification listener');
 
         interval = setInterval(async () => {
           try {
-            // Fetch all unread notifications
+            await dbMutex.acquire('notifications');
+            
             const notifications = await db.getAllAsync(
               `SELECT * FROM notifications WHERE is_read = 0 ORDER BY created_at`
             );
@@ -32,8 +33,11 @@ export function useNotificationListener() {
                 [n.notification_id]
               );
             }
+            
+            dbMutex.release('notifications');
           } catch (err) {
             console.error('Notification listener error:', err);
+            dbMutex.release('notifications');
           }
         }, 5000);
       })

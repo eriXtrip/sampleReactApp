@@ -14,6 +14,7 @@ import * as FileSystem from "expo-file-system";
 import BadgeReward from "../../components/BadgeReward";
 import ThemedView from "../../components/ThemedView";
 import ThemedText from "../../components/ThemedText";
+import ThemedAlert from "../../components/ThemedAlert";
 import LoadingAnimation from "../../components/loadingAnimation";
 import { resolveLocalPath } from "../../utils/resolveLocalPath";
 import { useSQLiteContext } from 'expo-sqlite';
@@ -237,6 +238,7 @@ export default function AngleHuntScreen() {
       <ScrollView contentContainerStyle={styles.choicesContainer}>
         {renderChoices()}
       </ScrollView>
+      
 
       {/* Custom Alert */}
       <Modal transparent visible={showAlert} animationType="fade">
