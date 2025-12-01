@@ -1,7 +1,7 @@
 // SAMPLEREACTAPP/utils/apiManager.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_KEY = 'http://192.168.254.103:8080/api';        // add your key here after node.js deployment https://mquest-backend-production.up.railway.app/api 
+const API_KEY = 'https://mquest-backend-production.up.railway.app/api';        // add your key here after node.js deployment http://192.168.254.103:8080/api
 let inMemoryApiUrl = null; // 🧠 In-memory cache
 
 export const getApiUrl = async () => {
