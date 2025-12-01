@@ -70,22 +70,26 @@ export default function AngleHuntScreen() {
 
     const loadImages = async () => {
       // Question
-      if (currentItem.questionType === "image") {
-        const localUri = currentItem.file ? resolveLocalPath(currentItem.file) : null;
-        if (localUri) {
-          const info = await FileSystem.getInfoAsync(localUri);
-          console.log(`Checking question image ${localUri}: ${info.exists ? "exists" : "does not exist"}`);
-          const source = info.exists ? localUri : currentItem.question;
-          console.log(`Using questionSource: ${source}`);
-          setQuestionSource(source);
-        } else {
-          const source = currentItem.question;
-          console.log(`Using questionSource (no file): ${source}`);
-          setQuestionSource(source);
-        }
+      if (currentItem.questionType === "image" || currentItem.questionType === "both") {
+      // FIX: Use question_img for the image URL, not question
+      const imageUrl = currentItem.question_img || currentItem.file;
+      const localUri = currentItem.file ? resolveLocalPath(currentItem.file) : null;
+      
+      if (localUri) {
+        const info = await FileSystem.getInfoAsync(localUri);
+        console.log(`Checking question image ${localUri}: ${info.exists ? "exists" : "does not exist"}`);
+        const source = info.exists ? localUri : imageUrl;
+        console.log(`Using questionSource: ${source}`);
+        setQuestionSource(source);
       } else {
-        setQuestionSource(null);
+        // FIX: Use the actual image URL from question_img
+        const source = imageUrl;
+        console.log(`Using questionSource (no file): ${source}`);
+        setQuestionSource(source);
       }
+    } else {
+      setQuestionSource(null);
+    }
 
       // Choices
       const choiceMap = {};
@@ -137,6 +141,29 @@ export default function AngleHuntScreen() {
   };
 
   const renderQuestion = () => {
+
+    // Handle "both" type - show both image and text
+    if (currentItem.questionType === "both") {
+      return (
+        <View style={styles.bothContainer}>
+          {/* Image part */}
+          {questionSource ? (
+            <Image
+              source={{ uri: questionSource }}
+              style={styles.questionImage}
+              resizeMode="contain"
+              onError={(e) => console.log("Image load error:", e.nativeEvent.error)}
+            />
+          ) : (
+            <ThemedText style={styles.loadingText}>Loading image...</ThemedText>
+          )}
+          
+          {/* Text part */}
+          <ThemedText style={styles.questionText}>{currentItem.question}</ThemedText>
+        </View>
+      );
+    }
+
     if (currentItem.questionType === "image" && !questionSource) {
       console.log("No questionSource for image question, showing placeholder");
       return <ThemedText style={styles.questionText}>Loading image...</ThemedText>;
