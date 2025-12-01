@@ -242,8 +242,6 @@ const SectionPage = () => {
           </View>
         </View>
       </Animated.ScrollView>
-
-      <Spacer height={20} />
     </ThemedView>
   );
 };
@@ -300,8 +298,8 @@ const styles = StyleSheet.create({
     marginBottom: -1,
   },
   tabContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 19,
+    paddingBottom: 0,
   },
   subjectBox: {
     flexDirection: 'row',

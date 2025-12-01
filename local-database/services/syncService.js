@@ -1,3 +1,5 @@
+import { triggerLocalNotification } from "../../utils/notificationUtils";
+
 /**
  * Saves full user sync data from server into local SQLite database (transactional).
  * @param {Object} data - The full sync payload from /user/sync-data
@@ -29,6 +31,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 1. Sections ===
     if (Array.isArray(data.sections)) {
+      console.log(`📋 Processing ${data.sections.length} sections...`);
       for (const s of data.sections) {
         await db.runAsync(
           `INSERT INTO sections (
@@ -55,6 +58,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 2. Subjects ===
     if (Array.isArray(data.subjects)) {
+      console.log(`📚 Processing ${data.subjects.length} subjects...`);
       for (const sub of data.subjects) {
         await db.runAsync(
           `INSERT INTO subjects (
@@ -79,6 +83,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 3. Lessons ===
     if (Array.isArray(data.lessons)) {
+      console.log(`📖 Processing ${data.lessons.length} lessons...`);
       for (const l of data.lessons) {
         const localSubject = await db.getFirstAsync(
           "SELECT subject_id FROM subjects WHERE server_subject_id = ?",
@@ -122,6 +127,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 4. Subject Contents ===
     if (Array.isArray(data.subject_contents)) {
+      console.log(`📦 Processing ${data.subject_contents.length} subject contents...`);
       for (const c of data.subject_contents) {
         const localLesson = await db.getFirstAsync(
           "SELECT lesson_id FROM lessons WHERE server_lesson_id = ?",
@@ -171,6 +177,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 5. Games ===
     if (Array.isArray(data.games)) {
+      console.log(`🎮 Processing ${data.games.length} games...`);
       for (const g of data.games) {
         let localSubjectId = null;
         if (g.subject_id) {
@@ -215,6 +222,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 6. Notifications ===
     if (Array.isArray(data.notifications)) {
+      console.log(`🔔 Processing ${data.notifications.length} notifications...`);
       for (const n of data.notifications) {
         await db.runAsync(
           `INSERT INTO notifications (
@@ -238,30 +246,35 @@ export async function saveSyncDataToSQLite(data, db) {
             n.read_at || null,
           ]
         );
+
+        // 🔔 Trigger local notification for unread notifications
+        if (!n.is_read) {
+          console.log(`📱 Triggering local notification: ${n.title}`);
+          await triggerLocalNotification(n.title, n.message || '');
+        }
       }
     }
 
     // === 7. Pupil Test Scores ===
     if (Array.isArray(data.pupil_test_scores)) {
+      console.log(`📊 Processing ${data.pupil_test_scores.length} pupil test scores...`);
       const localUser = await db.getFirstAsync("SELECT user_id FROM users LIMIT 1");
+      
       if (localUser) {
         for (const score of data.pupil_test_scores) {
+          
+          // Use INSERT OR REPLACE instead of ON CONFLICT
           await db.runAsync(
-            `INSERT INTO pupil_test_scores (
-              server_score_id, pupil_id, test_id, score, max_score, attempt_number, taken_at, grade, is_synced
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ON CONFLICT(server_score_id) DO UPDATE SET
-                pupil_id=excluded.pupil_id,
-                test_id=excluded.test_id,
-                score=excluded.score,
-                max_score=excluded.max_score,
-                attempt_number=excluded.attempt_number,
-                taken_at=excluded.taken_at,
-                grade=excluded.grade,
-                is_synced=excluded.is_synced;
-            `,
+            `INSERT OR REPLACE INTO pupil_test_scores (
+              score_id, server_score_id, pupil_id, test_id, score, max_score, 
+              attempt_number, taken_at, grade, is_synced
+            ) VALUES (
+              COALESCE((SELECT score_id FROM pupil_test_scores WHERE server_score_id = ?), NULL),
+              ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )`,
             [
-              score.score_id,
+              score.score_id, // For the SELECT in COALESCE
+              score.score_id, // For server_score_id column
               localUser.user_id,
               score.test_id,
               score.score || 0,
@@ -276,44 +289,52 @@ export async function saveSyncDataToSQLite(data, db) {
       }
     }
 
-    // === 8. Pupil Achievements ===
+    // === 8. Pupil Achievements (Simplified) ===
     if (Array.isArray(data.pupil_achievements)) {
+      console.log(`🏆 Processing ${data.pupil_achievements.length} pupil achievements...`);
       const localUser = await db.getFirstAsync("SELECT user_id FROM users LIMIT 1");
       if (localUser) {
         for (const ach of data.pupil_achievements) {
-          await db.runAsync(
-            `INSERT INTO pupil_achievements (
-              server_achievement_id, server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id, is_synced
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ON CONFLICT(server_achievement_id, pupil_id) DO UPDATE SET
-                server_badge_id=excluded.server_badge_id,
-                title=excluded.title,
-                description=excluded.description,
-                icon=excluded.icon,
-                color=excluded.color,
-                earned_at=excluded.earned_at,
-                subject_content_id=excluded.subject_content_id,
-                is_synced=excluded.is_synced;
-            `,
-            [
-              ach.achievement_id,
-              ach.badge_id,
-              localUser.user_id,
-              ach.title,
-              ach.description,
-              ach.icon,
-              ach.color,
-              ach.earned_at || new Date().toISOString(),
-              ach.subject_content_id,
-              ach.is_synced ? 1 : 0,
-            ]
-          );
+          try {
+            // Use INSERT OR REPLACE which works with any primary key conflict
+            await db.runAsync(
+              `INSERT OR REPLACE INTO pupil_achievements (
+                id, server_achievement_id, server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id, is_synced
+              ) VALUES (
+                COALESCE((SELECT id FROM pupil_achievements 
+                          WHERE pupil_id = ? AND 
+                                (server_achievement_id = ? OR server_badge_id = ?)
+                        ), NULL),
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+              )`,
+              [
+                localUser.user_id,
+                ach.server_achievement_id,
+                ach.server_badge_id,
+                ach.server_achievement_id || null,
+                ach.server_badge_id || null,
+                localUser.user_id,
+                ach.title,
+                ach.description,
+                ach.icon,
+                ach.color,
+                ach.earned_at || new Date().toISOString(),
+                ach.subject_content_id,
+                ach.is_synced ? 1 : 0,
+              ]
+            );
+          } catch (error) {
+            console.error("❌ Error in PUPIL_ACHIEVEMENTS table:", error.message);
+            console.error("Data:", ach);
+            throw error;
+          }
         }
       }
     }
 
     // === 9. Classmates ===
     if (Array.isArray(data.classmates)) {
+      console.log(`👥 Processing ${data.classmates.length} classmates...`);
       for (const c of data.classmates) {
         const section = await db.getFirstAsync(
           "SELECT section_id FROM sections LIMIT 1"
@@ -333,6 +354,7 @@ export async function saveSyncDataToSQLite(data, db) {
 
     // === 10. Subjects in Section (AFTER sections + subjects are inserted) ===
     if (Array.isArray(data.subjects_in_section)) {
+      console.log(`📚 Processing ${data.subjects_in_section.length} subjects in section...`);
       for (const sis of data.subjects_in_section) {
         await db.runAsync(
           `INSERT OR IGNORE INTO subjects_in_section 

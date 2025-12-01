@@ -31,6 +31,7 @@ const Profile = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Add loading state
 
   // Safely access user data with fallbacks
   const displayName = user 
@@ -53,6 +54,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true); // Start loading
     try {
       const success = await logout(user.server_id);
       if (success) {
@@ -63,6 +65,8 @@ const Profile = () => {
     } catch (error) {
       console.error('Logout error:', error);
       showThemedAlert('Unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoggingOut(false); // Stop loading
     }
   };
 
@@ -168,13 +172,18 @@ const Profile = () => {
 
         <Spacer height={30} />
 
-        {/* Log Out Button */}
+        {/* Log Out Button with Loading Indicator */}
         <ThemedButton 
           onPress={handleLogoutPress}
           style={styles.logoutButton}
           textStyle={styles.logoutButtonText}
+          disabled={isLoggingOut} // Disable button while loading
         >
-          Log Out
+          {isLoggingOut ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            'Log Out'
+          )}
         </ThemedButton>
 
         <Spacer height={30} />
@@ -207,6 +216,8 @@ const Profile = () => {
           setExitAlertVisible(false);
           handleLogout(); // logout action
         }}
+        confirmDisabled={isLoggingOut} // Disable confirm button while loading
+        confirmText={isLoggingOut ? "Logging out..." : "Log Out"}
       />
       <Spacer height={100} />
     </ThemedView>
@@ -268,10 +279,15 @@ const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: '#FF3B30',
     marginHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 48, // Ensure consistent height
   },
   logoutButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   footer: {
     alignItems: 'center',

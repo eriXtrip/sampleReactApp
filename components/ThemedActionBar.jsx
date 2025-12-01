@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'android' ? 15 : 12,
-    marginBottom: 25,
+    marginBottom: 0,
   },
   row: {
     flexDirection: 'row',

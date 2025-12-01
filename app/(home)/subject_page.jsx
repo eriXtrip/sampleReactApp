@@ -601,8 +601,6 @@ const SubjectPage = () => {
             </Animated.ScrollView>
           </View>
       </Animated.ScrollView>
-
-      <Spacer height={23} />
     </ThemedView>
   );
 };

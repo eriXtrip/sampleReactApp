@@ -212,8 +212,8 @@ export default class UserService {
       // 'games',
       // 'game_types',
       'notifications'
-      // 'pupil_test_scores',
-      // 'pupil_achievements',
+      //'pupil_test_scores',
+      //'pupil_achievements',
       // 'classmates'
     ];
 

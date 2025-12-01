@@ -184,12 +184,12 @@ export async function initializeDatabase(db) {
 
     -- User-specific notifications (offline support)
     CREATE TABLE IF NOT EXISTS notifications (
-        notification_id INTEGER PRIMARY KEY,
+        notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
         server_notification_id INTEGER UNIQUE,
         title TEXT NOT NULL,
         message TEXT NOT NULL,
         type TEXT DEFAULT 'info',
-        is_read BOOLEAN DEFAULT FALSE,
+        is_read BOOLEAN DEFAULT TRUE,
         created_at TEXT NOT NULL,
         read_at TEXT,
         is_synced BOOLEAN DEFAULT FALSE,

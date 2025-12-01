@@ -93,14 +93,14 @@ export async function syncTestScoresToServer(db) {
 
     // ---- Get unsynced test scores ----
     const unsyncedScores = await db.getAllAsync(`
-      SELECT rowid, test_id, score, max_score, grade, attempt_number, taken_at
+      SELECT score_id, test_id, score, max_score, grade, attempt_number, taken_at
       FROM pupil_test_scores 
       WHERE is_synced = 0
     `);
 
     // ---- Get unsynced pupil answers ----
     const unsyncedAnswers = await db.getAllAsync(`
-      SELECT rowid, question_id, choice_id, synced_at
+      SELECT answer_id, question_id, choice_id, synced_at
       FROM pupil_answers
       WHERE is_synced = 0
     `);
@@ -139,8 +139,8 @@ export async function syncTestScoresToServer(db) {
       await db.runAsync(
         `UPDATE pupil_test_scores
          SET server_score_id = ?, is_synced = 1, synced_at = datetime('now')
-         WHERE rowid = ?`,
-        [inserted_score_ids[i] || null, unsyncedScores[i].rowid]
+         WHERE score_id = ?`,
+        [inserted_score_ids[i] || null, unsyncedScores[i].score_id]
       );
     }
 
@@ -149,8 +149,8 @@ export async function syncTestScoresToServer(db) {
       await db.runAsync(
         `UPDATE pupil_answers
          SET server_answer_id = ?, is_synced = 1, synced_at = datetime('now')
-         WHERE rowid = ?`,
-        [inserted_answer_ids[i] || null, unsyncedAnswers[i].rowid]
+         WHERE answer_id = ?`,
+        [inserted_answer_ids[i] || null, unsyncedAnswers[i].answer_id]
       );
     }
 
@@ -158,7 +158,7 @@ export async function syncTestScoresToServer(db) {
     return true;
 
   } catch (err) {
-    console.error('Sync error:', err);
+    console.error('❌ Pupil Answer Sync error:', err);
     return false;
   }
 }
@@ -179,17 +179,15 @@ export async function syncNotifications(db) {
     // Get ALL local changes: new notifications OR read status updates
     const localChanges = await db.getAllAsync(`
       SELECT 
-        rowid,
+        notification_id,
         server_notification_id,
         type, title, message,
         is_read,
         created_at,
-        read_at
+        read_at,
+        is_synced
       FROM notifications
-      WHERE is_synced = 0                          -- new notifications
-         OR (server_notification_id IS NOT NULL 
-             AND is_read = 1 
-             AND read_at IS NOT NULL)              -- read status changed
+      WHERE is_synced = 0 AND server_notification_id IS NULL                     -- new notifications
     `);
 
     if (!localChanges.length) return true;
@@ -206,9 +204,10 @@ export async function syncNotifications(db) {
           type: n.type,
           title: n.title,
           message: n.message,
-          is_read: n.is_read === 1,
+          is_read: TRUE,
           created_at: n.created_at,
-          read_at: n.read_at
+          read_at: n.read_at,
+          is_synced: n.is_synced === 1
         }))
       })
     });
@@ -226,22 +225,22 @@ export async function syncNotifications(db) {
         await db.runAsync(`
           UPDATE notifications
           SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now')
-          WHERE rowid = ?
-        `, [newServerId, change.rowid]);
+          WHERE notification_id = ?
+        `, [newServerId, change.notification_id]);
       } else {
         // Already existed → just mark as synced (read status already sent)
         await db.runAsync(`
           UPDATE notifications
           SET is_synced = 1, synced_at = datetime('now')
-          WHERE rowid = ?
-        `, [change.rowid]);
+          WHERE notification_id = ?
+        `, [change.notification_id]);
       }
     }
 
     console.log(`Synced ${localChanges.length} notification(s) (creates + reads)`);
     return true;
   } catch (err) {
-    console.error('Notifications sync error:', err);
+    console.error('❌ Notifications sync error:', err);
     return false;
   }
 }
@@ -316,8 +315,8 @@ export async function syncProgressToServer(db) {
       await db.runAsync(`
         UPDATE lessons
         SET is_synced = 1, synced_at = datetime('now')
-        WHERE rowid = ?
-      `, [unsyncedLessonProgress[i].rowid]);
+        WHERE server_lesson_id = ?
+      `, [unsyncedLessonProgress[i].server_lesson_id]);
     }
 
     // ---- Mark content progress synced locally ----
@@ -546,7 +545,7 @@ export function startIntervalSync(db, flagsProvider) {
     } catch (error) {
       console.error("Interval sync error:", error);
     }
-  }, 30000); // 30 seconds
+  }, 300000); // 5 minutes = 300,000 milliseconds
 
   // Return cleanup function
   return () => {

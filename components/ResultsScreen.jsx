@@ -3,7 +3,6 @@ import React, { useEffect, useState, useContext  } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
-import { startIntervalSync } from "../local-database/services/syncUp"
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 
 
@@ -173,8 +172,6 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
 
 
       console.log("✅ Results saved for user:", userId);
-
-      await startIntervalSync(db, getCurrentFlags); // <-- Sync scores & answers if online
     } catch (err) {
       console.error("❌ Error saving results:", err);
     }

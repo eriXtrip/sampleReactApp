@@ -130,16 +130,16 @@ const RootLayoutContent = () => {
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
-  useNotificationListener();
+  //useNotificationListener();
 
   const { isApiLoaded } = useContext(ApiUrlContext);
 
-  useEffect(() => {
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('Notification received:', notification);
-    });
-    return () => subscription.remove();
-  }, []);
+  // useEffect(() => {
+  //   const subscription = Notifications.addNotificationReceivedListener((notification) => {
+  //     console.log('Notification received:', notification);
+  //   });
+  //   return () => subscription.remove();
+  // }, []);
 
   useEffect(() => {
     (async () => {
