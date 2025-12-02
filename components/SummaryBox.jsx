@@ -48,10 +48,10 @@ const SummaryBox = ({ passed = false, score = 0, maxScore = 100, children }) => 
       {/* Congratulation overlay */}
       {passed && (
         <Animated.View pointerEvents="none" style={[styles.overlay, { opacity: fade }]}>
-          <View style={styles.overlayInner}>
+          {/* <View>
             <Text style={styles.overlayTitle}>Congratulations!</Text>
             <Text style={styles.overlaySub}>Keep it up — you're doing great. You can do it!</Text>
-          </View>
+          </View> */}
         </Animated.View>
       )}
 

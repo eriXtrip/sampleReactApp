@@ -385,7 +385,7 @@ const ContentDetails = () => {
       <View
         style={{
           backgroundColor: passed ? '#fcfcfcff' : '#ffffffff', // light green or red background
-          borderColor: passed ? '#0eb85f' : 'tomato',      // matching border color
+          borderColor: passed ? '#0eb85f' : '#6B7280',      // matching border color
           height: '60%',
           borderWidth: 1.5,
           borderRadius: 12,
@@ -403,13 +403,13 @@ const ContentDetails = () => {
         <Ionicons
           name={passed ? "partly-sunny-outline" : "thunderstorm-outline"}
           size={68} // bigger icon
-          color={passed ? '#0eb85f' : 'tomato'}
+          color={passed ? '#0eb85f' : '#6B7280'}
           style={{ marginBottom: 8 }}
         />
         <ThemedText
           style={{
             fontSize: 16,
-            color: passed ? '#0eb85f' : 'tomato',
+            color: passed ? '#0eb85f' : '#6B7280',
             marginBottom: 4,
             textAlign: 'center',
             fontWeight: '600',
