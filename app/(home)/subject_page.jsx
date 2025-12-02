@@ -603,8 +603,8 @@ const SubjectPage = () => {
           </Animated.View>
 
         {/* Map tab */}
-        <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:0 }} resizeMode="cover">
-          <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
+        <ImageBackground source={require('../../assets/img/Gemini_Generated_Image_s24765s24765s247.png')} style={{ width: screenWidth, marginBottom:0 }} resizeMode="cover">
+          <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 20 }] }>
             <Map
               lessons={lessons}
               groupedLessons={groupedSections}

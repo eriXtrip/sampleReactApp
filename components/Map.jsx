@@ -305,13 +305,13 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
 
     // Start: place below the first node and offset horizontally so it doesn't overlay node
     const startSide = start.x < metrics.centerX ? 'left' : 'right';
-    const startX = startSide === 'left' ? Math.max(metrics.padX, start.x - metrics.radius - 12 - rectW) : Math.min(metrics.centerX * 2 - metrics.padX - rectW, start.x + metrics.radius + 12);
-    const startY = start.y + metrics.radius + 12;
+    const startX = startSide === 'left' ? Math.max(metrics.padX, start.x - metrics.radius - 12 - rectW) : Math.min(metrics.centerX * 2 - metrics.padX - rectW, start.x + metrics.radius + 19);
+    const startY = start.y + metrics.radius + -5;
 
     // Goal: place above the last node and offset horizontally
     const goalSide = goal.x < metrics.centerX ? 'left' : 'right';
     const goalX = goalSide === 'left' ? Math.max(metrics.padX, goal.x - metrics.radius - 12 - rectW) : Math.min(metrics.centerX * 2 - metrics.padX - rectW, goal.x + metrics.radius + 12);
-    const goalY = goal.y - metrics.radius - 12 - rectH;
+    const goalY = goal.y - metrics.radius - -5 - rectH;
 
     return (
       <>

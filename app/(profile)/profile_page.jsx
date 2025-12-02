@@ -219,14 +219,14 @@ const ProfilePage = () => {
 
           <Spacer height={12} />
 
-          <ThemedText style={styles.label}>Birthday</ThemedText>
+          {/* <ThemedText style={styles.label}>Birthday</ThemedText>
           <TextInput
             style={[styles.input, { backgroundColor: theme.navBackground, color: theme.text }]}
             value={birthday}
             onChangeText={setBirthday}
             placeholder="YYYY-MM-DD"
             placeholderTextColor="#999"
-          />
+          /> */}
 
           <Spacer height={24} />
 
