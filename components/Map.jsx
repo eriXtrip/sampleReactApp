@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
-import Svg, { Circle, Path, Text as SvgText, Image as SvgImage, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Text as SvgText, Image as SvgImage, Rect, Defs, ClipPath, Line } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system';
 
 function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style, lessons = null, currentAvatar = null, currentUserName = null }) {
@@ -110,6 +110,7 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
 
   const renderNodes = () => {
     if (!metrics) return null;
+    const total = totalStops;
     const nodes = [];
     const isDark = colorScheme === 'dark';
     for (let i = 0; i < total; i++) {
@@ -145,23 +146,33 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
           {/* Highlight */}
           <Circle cx={x - r * 0.35} cy={y - r * 0.35} r={Math.max(3, Math.floor(r * 0.22))} fill="rgba(255,255,255,0.6)" />
           {/* Number (hidden if avatar present on current node) */}
-          {!(isCurrent && currentAvatar) && (
+          {!(isCurrent && avatarExists && avatarUri) && (
             <SvgText x={x} y={y + metrics.fontSize / 3} fontSize={metrics.fontSize} fill={numberColor} fontWeight="700" textAnchor="middle">
               {label}
             </SvgText>
           )}
 
-          {/* If current node and avatar exists, show the avatar; else show initials placeholder */}
+          {/* If current node and avatar exists, show the avatar (clipped to circle); else show initials placeholder */}
           {isCurrent && avatarExists && avatarUri && (
-            <SvgImage
-              x={x - r}
-              y={y - r}
-              width={r * 2}
-              height={r * 2}
-              preserveAspectRatio="xMidYMid slice"
-              href={{ uri: avatarUri }}
-              clipPath={null}
-            />
+            <React.Fragment>
+              <Defs>
+                <ClipPath id={`clip-${i}`}>
+                  <Circle cx={x} cy={y} r={r} />
+                </ClipPath>
+              </Defs>
+              <SvgImage
+                x={x - r}
+                y={y - r}
+                width={r * 2}
+                height={r * 2}
+                preserveAspectRatio="xMidYMid slice"
+                href={{ uri: avatarUri }}
+                clipPath={`url(#clip-${i})`}
+              />
+              {/* ring on top of avatar to sit above image */}
+              <Circle cx={x} cy={y} r={r + 1.5} stroke="#ffffff" strokeWidth={2} fill="none" opacity={0.9} />
+              <Circle cx={x} cy={y} r={r + 4} stroke={accentColor} strokeWidth={2.2} fill="none" opacity={0.9} />
+            </React.Fragment>
           )}
 
           {isCurrent && !avatarExists && currentUserName && (
@@ -179,20 +190,7 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
             <Circle cx={x} cy={y} r={r * 0.85} fill="#ffffff" opacity={0.9} />
           )}
 
-          {/* Title label (next to each node) */}
-          {Array.isArray(lessons) && lessons[i] && (
-            (() => {
-              const title = String(lessons[i].title || '');
-              const short = title.length > 22 ? `${title.slice(0, 22)}…` : title;
-              const offsetX = x < metrics.centerX ? - (r + 10) : (r + 10);
-              const anchor = x < metrics.centerX ? 'end' : 'start';
-              return (
-                <SvgText x={x + offsetX} y={y + metrics.fontSize / 2} fontSize={Math.max(10, Math.floor(metrics.fontSize * 0.8))} fill={isFuture ? unfinishedText : '#111827'} textAnchor={anchor}>
-                  {short}
-                </SvgText>
-              );
-            })()
-          )}
+          {/* No title text per request (only numbers / avatar) */}
         </React.Fragment>
       );
     }
@@ -221,10 +219,26 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
     const start = getPoint(0);
     const goal = getPoint(Math.max(0, totalStops - 1));
     const f = Math.max(10, Math.floor(metrics.fontSize * 0.9));
+    const rectW = 72;
+    const rectH = 26;
+
+    // Start: place below the first node and offset horizontally so it doesn't overlay node
+    const startSide = start.x < metrics.centerX ? 'left' : 'right';
+    const startX = startSide === 'left' ? Math.max(metrics.padX, start.x - metrics.radius - 12 - rectW) : Math.min(metrics.centerX * 2 - metrics.padX - rectW, start.x + metrics.radius + 12);
+    const startY = start.y + metrics.radius + 12;
+
+    // Goal: place above the last node and offset horizontally
+    const goalSide = goal.x < metrics.centerX ? 'left' : 'right';
+    const goalX = goalSide === 'left' ? Math.max(metrics.padX, goal.x - metrics.radius - 12 - rectW) : Math.min(metrics.centerX * 2 - metrics.padX - rectW, goal.x + metrics.radius + 12);
+    const goalY = goal.y - metrics.radius - 12 - rectH;
+
     return (
       <>
-        <SvgText x={start.x} y={start.y + (metrics.radius + f + 2)} fontSize={f} fill={theme.background} textAnchor="middle">Start</SvgText>
-        <SvgText x={goal.x} y={goal.y - (metrics.radius + 6)} fontSize={f} fill={theme.background} textAnchor="middle">Goal</SvgText>
+        <Rect x={startX} y={startY} rx={8} ry={8} width={rectW} height={rectH} fill={accentColor} opacity={0.95} />
+        <SvgText x={startX + rectW / 2} y={startY + rectH / 2 + 4} fontSize={f} fill="#fff" textAnchor="middle" fontWeight="700">Start</SvgText>
+
+        <Rect x={goalX} y={goalY} rx={8} ry={8} width={rectW} height={rectH} fill={accentColor} opacity={0.95} />
+        <SvgText x={goalX + rectW / 2} y={goalY + rectH / 2 + 4} fontSize={f} fill="#fff" textAnchor="middle" fontWeight="700">Goal</SvgText>
       </>
     );
   };
@@ -239,16 +253,27 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
       if (lesson.Quarter !== lastQ) {
         lastQ = lesson.Quarter;
         const { x, y } = getPoint(idx);
-        // position badge slightly above the node
-        const bw = 80; // badge width
-        const bh = 26; // badge height
-        const bx = Math.max(metrics.padX, Math.min(metrics.centerX * 2 - bw - metrics.padX, x - bw / 2));
-        const by = y - metrics.radius - bh - 8;
+        // place the separator slightly below the node so it reads: Quarter N -> lessons below
+        const yLine = y + metrics.radius + 12;
+        // draw a dashed horizontal line across the viewport
+        const leftX = metrics.padX;
+        const rightX = Math.max(metrics.centerX * 2 - metrics.padX, metrics.centerX + metrics.amplitude + metrics.padX);
+
+        // center the quarter label on the line
+        const label = `Quarter ${String(lastQ)}`;
+        const labelW = Math.min(160, Math.max(80, label.length * 8));
+        const labelH = 22;
+        const labelX = metrics.centerX - labelW / 2;
+        const labelY = yLine - labelH / 2;
 
         items.push(
           <React.Fragment key={`q-${lastQ}-${idx}`}>
-            <Rect x={bx} y={by} rx={12} ry={12} width={bw} height={bh} fill={theme.background} stroke={accentColor} strokeWidth={1} opacity={0.98} />
-            <SvgText x={bx + bw / 2} y={by + bh / 2 + 5} fontSize={12} fill={accentColor} fontWeight="700" textAnchor="middle">Quarter {String(lastQ)}</SvgText>
+            {/* dashed separator line */}
+            <Line x1={leftX} y1={yLine} x2={labelX - 8} y2={yLine} stroke={accentColor} strokeWidth={1.2} strokeDasharray={[8, 6]} opacity={0.9} />
+            <Line x1={labelX + labelW + 8} y1={yLine} x2={rightX} y2={yLine} stroke={accentColor} strokeWidth={1.2} strokeDasharray={[8, 6]} opacity={0.9} />
+            {/* label box centered on the line */}
+            <Rect x={labelX} y={labelY} rx={10} ry={10} width={labelW} height={labelH} fill={theme.background} stroke={accentColor} strokeWidth={1} />
+            <SvgText x={labelX + labelW / 2} y={labelY + labelH / 2 + 4} fontSize={12} fill={accentColor} fontWeight="700" textAnchor="middle">{label}</SvgText>
           </React.Fragment>
         );
       }
