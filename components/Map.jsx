@@ -3,6 +3,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
+import { lightenColor } from '../utils/colorUtils';
 import Svg, { Circle, Path, Text as SvgText, Image as SvgImage, Rect, Defs, ClipPath, Line } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system';
 
@@ -23,10 +24,36 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
   };
   const scrollRef = useRef(null);
 
-  const totalStops = useMemo(() => {
-    if (Array.isArray(lessons) && lessons.length > 0) return lessons.length;
-    return Math.max(1, stops);
+  // Build a sequence of nodes: Quarter nodes, lesson nodes, then a final Goal node
+  const nodesSequence = useMemo(() => {
+    if (!Array.isArray(lessons) || lessons.length === 0) {
+      // fallback to simple sequence of empty lessons if lessons not given
+      const total = Math.max(1, stops);
+      return new Array(total).fill(null).map((_, idx) => ({ type: 'lesson', index: idx, label: idx + 1 }));
+    }
+
+    // Ensure lessons are sorted by lesson_number
+    const sorted = [...lessons].sort((a, b) => (a.lesson_number || 0) - (b.lesson_number || 0));
+
+    const seq = [];
+    let lastQ = null;
+    for (let i = 0; i < sorted.length; i++) {
+      const lesson = sorted[i];
+      const q = lesson.Quarter ?? 1;
+      if (q !== lastQ) {
+        seq.push({ type: 'quarter', quarter: q });
+        lastQ = q;
+      }
+      seq.push({ type: 'lesson', lesson });
+    }
+
+    // Add final goal node
+    seq.push({ type: 'goal' });
+
+    return seq;
   }, [lessons, stops]);
+
+  const totalStops = nodesSequence.length;
 
   const currentIndex = useMemo(() => {
     const total = totalStops;
@@ -116,8 +143,22 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
     for (let i = 0; i < total; i++) {
       const { x, y } = getPoint(i);
       const r = metrics.radius;
-      // Use lesson_number from lessons array when available (keeps numbering consistent with DB)
-      const label = Array.isArray(lessons) && lessons[i] ? lessons[i].lesson_number : (i + 1);
+      // Render quarter nodes, lesson nodes and goal node differently
+      const node = nodesSequence[i];
+      let label = '';
+      let isQuarter = false;
+      let isGoalNode = false;
+      if (!node) {
+        label = i + 1;
+      } else if (node.type === 'quarter') {
+        isQuarter = true;
+        label = `Q${node.quarter}`;
+      } else if (node.type === 'lesson') {
+        label = node.lesson?.lesson_number ?? (i + 1);
+      } else if (node.type === 'goal') {
+        isGoalNode = true;
+        label = '🏁';
+      }
       const candyPalette = ['#fda4af', '#f9a8d4', '#c4b5fd', '#93c5fd', '#86efac', '#fde68a'];
 
       const isCurrent = i === currentIndex;
@@ -126,7 +167,10 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
       const unfinishedFill = isDark ? '#4b5563' : '#e5e7eb';
       const unfinishedText = isDark ? '#e5e7eb' : '#6b7280';
 
-      const baseFill = candyPalette[i % candyPalette.length];
+      // pick color differently for quarter & goal nodes
+      let baseFill = candyPalette[i % candyPalette.length];
+      if (isQuarter) baseFill = lightenColor(accentColor, 0.6);
+      if (isGoalNode) baseFill = accentColor;
       const fill = isFuture ? unfinishedFill : baseFill;
 
       const numberColor = isFuture ? unfinishedText : '#1f2937';
@@ -145,15 +189,15 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
           )}
           {/* Highlight */}
           <Circle cx={x - r * 0.35} cy={y - r * 0.35} r={Math.max(3, Math.floor(r * 0.22))} fill="rgba(255,255,255,0.6)" />
-          {/* Number (hidden if avatar present on current node) */}
+          {/* Label / Number - for quarter nodes display Q#; for goal node show marker */}
           {!(isCurrent && avatarExists && avatarUri) && (
-            <SvgText x={x} y={y + metrics.fontSize / 3} fontSize={metrics.fontSize} fill={numberColor} fontWeight="700" textAnchor="middle">
+            <SvgText x={x} y={y + metrics.fontSize / 3} fontSize={isQuarter || isGoalNode ? Math.max(12, Math.floor(metrics.fontSize * 0.9)) : metrics.fontSize} fill={numberColor} fontWeight="700" textAnchor="middle">
               {label}
             </SvgText>
           )}
 
           {/* If current node and avatar exists, show the avatar (clipped to circle); else show initials placeholder */}
-          {isCurrent && avatarExists && avatarUri && (
+          {isCurrent && avatarExists && avatarUri && !isQuarter && !isGoalNode && (
             <React.Fragment>
               <Defs>
                 <ClipPath id={`clip-${i}`}>
@@ -175,7 +219,7 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
             </React.Fragment>
           )}
 
-          {isCurrent && !avatarExists && currentUserName && (
+          {isCurrent && !avatarExists && currentUserName && !isQuarter && !isGoalNode && (
             // initials placeholder
             <React.Fragment>
               <Circle cx={x} cy={y} r={r} fill={accentColor} stroke="#fff" strokeWidth={2} />
@@ -185,12 +229,12 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
             </React.Fragment>
           )}
 
-          {isCurrent && !avatarExists && !currentUserName && (
+          {isCurrent && !avatarExists && !currentUserName && !isQuarter && !isGoalNode && (
             // default visual: small white inner circle to indicate current
             <Circle cx={x} cy={y} r={r * 0.85} fill="#ffffff" opacity={0.9} />
           )}
 
-          {/* No title text per request (only numbers / avatar) */}
+          {/* No title text per request (only numbers / avatar). Quarter nodes appear as labeled nodes in the sequence. */}
         </React.Fragment>
       );
     }
@@ -243,43 +287,7 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
     );
   };
 
-  // Render quarter-start badges (if lessons provided)
-  const renderQuarterStarts = () => {
-    if (!Array.isArray(lessons) || lessons.length === 0 || !metrics) return null;
-
-    const items = [];
-    let lastQ = null;
-    lessons.forEach((lesson, idx) => {
-      if (lesson.Quarter !== lastQ) {
-        lastQ = lesson.Quarter;
-        const { x, y } = getPoint(idx);
-        // place the separator slightly below the node so it reads: Quarter N -> lessons below
-        const yLine = y + metrics.radius + 12;
-        // draw a dashed horizontal line across the viewport
-        const leftX = metrics.padX;
-        const rightX = Math.max(metrics.centerX * 2 - metrics.padX, metrics.centerX + metrics.amplitude + metrics.padX);
-
-        // center the quarter label on the line
-        const label = `Quarter ${String(lastQ)}`;
-        const labelW = Math.min(160, Math.max(80, label.length * 8));
-        const labelH = 22;
-        const labelX = metrics.centerX - labelW / 2;
-        const labelY = yLine - labelH / 2;
-
-        items.push(
-          <React.Fragment key={`q-${lastQ}-${idx}`}>
-            {/* dashed separator line */}
-            <Line x1={leftX} y1={yLine} x2={labelX - 8} y2={yLine} stroke={accentColor} strokeWidth={1.2} strokeDasharray={[8, 6]} opacity={0.9} />
-            <Line x1={labelX + labelW + 8} y1={yLine} x2={rightX} y2={yLine} stroke={accentColor} strokeWidth={1.2} strokeDasharray={[8, 6]} opacity={0.9} />
-            {/* label box centered on the line */}
-            <Rect x={labelX} y={labelY} rx={10} ry={10} width={labelW} height={labelH} fill={theme.background} stroke={accentColor} strokeWidth={1} />
-            <SvgText x={labelX + labelW / 2} y={labelY + labelH / 2 + 4} fontSize={12} fill={accentColor} fontWeight="700" textAnchor="middle">{label}</SvgText>
-          </React.Fragment>
-        );
-      }
-    });
-    return items;
-  };
+  // Quarter separators removed — quarter nodes are inserted into the nodesSequence
 
   // Optionally scroll to the bottom (start) once measured, so the trail starts in view
   useEffect(() => {
@@ -346,8 +354,6 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
               {renderMarker()}
 
               {/* Nodes */}
-              {/* Quarter badges (start of quarters) */}
-              {renderQuarterStarts()}
               {renderNodes()}
             </Svg>
           </ScrollView>
