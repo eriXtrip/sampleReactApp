@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Confetti from "./Confetti"; // ✅ import new component
+import { lightenColor } from '../utils/colorUtils';
 
 const BadgeReward = ({ visible, badge, onClose }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +55,7 @@ const BadgeReward = ({ visible, badge, onClose }) => {
           style={[
             styles.container,
             { borderColor: badge.color },
+            { backgroundColor: badge.color ? lightenColor(badge.color, 0.85) : styles.container.backgroundColor },
             { transform: [{ scale: scaleAnim }, { translateY: translateYAnim }] },
           ]}
         >
