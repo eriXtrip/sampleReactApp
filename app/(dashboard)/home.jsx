@@ -281,7 +281,6 @@ const Home = () => {
           style={{
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: lightenColor(achievements[currentIndex]?.color ?? '#FFD700', 0.4), // match current card
             borderRadius: 18,
           }}
         >
@@ -310,7 +309,7 @@ const Home = () => {
               />
             </Animated.View>
           ) : (
-            <ThemedText>No achievements yet.</ThemedText>
+            <ThemedText style={{ opacity: 0.6, textAlign: 'center', paddingVertical: 20 }}>No achievements yet.</ThemedText>
           )}
         </View>
 
@@ -339,7 +338,7 @@ const Home = () => {
               />
             ))
           ) : (
-            <ThemedText>
+            <ThemedText style={{ opacity: 0.6, textAlign: 'center', paddingVertical: 20 }}>
               No recent activity yet.
             </ThemedText>
           )}

@@ -560,7 +560,7 @@ const SubjectPage = () => {
           </Animated.View>
 
         {/* Map tab */}
-        <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:25 }} resizeMode="cover">
+        <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:0 }} resizeMode="cover">
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
             <Map stops={lessons.length} cols={5} progress={progress} accentColor={accentColor} />
           </View>

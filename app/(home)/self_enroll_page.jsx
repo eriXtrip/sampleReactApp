@@ -123,7 +123,7 @@ const SelfEnrollPage = () => {
 
   const navigateToSectionPage = () => {
     router.push({
-      pathname: '/section_page', // or '/classroom', '/section_home', etc.
+      pathname: '/subjectlist', // or '/classroom', '/section_home', etc.
       params: {
         sectionId: sectionId,
         sectionName: name,

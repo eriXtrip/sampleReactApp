@@ -187,10 +187,16 @@ export async function syncNotifications(db) {
         read_at,
         is_synced
       FROM notifications
-      WHERE is_synced = 0 AND server_notification_id IS NULL                     -- new notifications
+      WHERE is_synced = 0                   -- new notifications
     `);
 
-    if (!localChanges.length) return true;
+    console.log('📋 Found notifications to sync:', localChanges.length);
+    console.log('📝 Notification details:', JSON.stringify(localChanges, null, 2));
+
+    if (!localChanges.length) {
+      console.log('✅ No notifications to sync');
+      return true;
+    }
 
     const res = await fetch(`${API_URL}/user/sync-up-notifications`, {
       method: 'POST',
@@ -204,7 +210,7 @@ export async function syncNotifications(db) {
           type: n.type,
           title: n.title,
           message: n.message,
-          is_read: TRUE,
+          is_read: true,
           created_at: n.created_at,
           read_at: n.read_at,
           is_synced: n.is_synced === 1
@@ -224,14 +230,14 @@ export async function syncNotifications(db) {
         const newServerId = inserted_notification_ids[insertIdIndex++] || null;
         await db.runAsync(`
           UPDATE notifications
-          SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now')
+          SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now'), is_read = 1
           WHERE notification_id = ?
         `, [newServerId, change.notification_id]);
       } else {
         // Already existed → just mark as synced (read status already sent)
         await db.runAsync(`
           UPDATE notifications
-          SET is_synced = 1, synced_at = datetime('now')
+          SET is_synced = 1, synced_at = datetime('now'), is_read = 1
           WHERE notification_id = ?
         `, [change.notification_id]);
       }
@@ -514,57 +520,6 @@ export function setupNetworkSyncListener() {
     console.log('Back online → waiting for screen to provide DB');
     // Sync will be triggered when ResultScreen or SplashScreen calls triggerSyncIfOnline(db)
   });
-}
-
-// =====================================
-// 🔄 Background interval sync (30 sec)
-// =====================================
-let intervalSyncStarted = false;
-let syncIntervalId = null;
-
-export function startIntervalSync(db, flagsProvider) {
-  // Prevent multiple intervals
-  if (intervalSyncStarted) {
-    console.log("🔄 Interval sync already running");
-    return null; // Return null if already running
-  }
-  
-  intervalSyncStarted = true;
-
-  console.log("⏱ Background sync every 30s started");
-
-  syncIntervalId = setInterval(async () => {
-    try {
-      const flags = flagsProvider();
-      console.log("🔄 Interval sync check - flags:", {
-        isOffline: flags.isOffline,
-        isReachable: flags.isReachable, 
-        isApiLoaded: flags.isApiLoaded
-      });
-      await triggerSyncIfOnline(db, flags);
-    } catch (error) {
-      console.error("Interval sync error:", error);
-    }
-  }, 300000); // 5 minutes = 300,000 milliseconds
-
-  // Return cleanup function
-  return () => {
-    if (syncIntervalId) {
-      clearInterval(syncIntervalId);
-      syncIntervalId = null;
-    }
-    intervalSyncStarted = false;
-    console.log("🛑 Background sync stopped via cleanup function");
-  };
-}
-
-export function stopIntervalSync() {
-  if (syncIntervalId) {
-    clearInterval(syncIntervalId);
-    syncIntervalId = null;
-  }
-  intervalSyncStarted = false;
-  console.log("🛑 Background sync stopped via direct call");
 }
 
 async function getAuthToken() {

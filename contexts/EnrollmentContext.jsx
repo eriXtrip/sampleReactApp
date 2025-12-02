@@ -93,7 +93,7 @@ export function EnrollmentProvider({ children }) {
       
       return { success: true, message: data.message };
     } catch (err) {
-      console.error('❌ Section enrollment error:', err);
+      //console.error('❌ Section enrollment error:', err);
       setError(err.message || 'Enrollment failed');
       throw err;
     } finally {
@@ -122,7 +122,7 @@ export function EnrollmentProvider({ children }) {
       
       return { success: true, message: data.message };
     } catch (err) {
-      console.error('❌ Section enrollment error:', err);
+      // console.error('❌ Section enrollment error:', err);
       setError(err.message || 'Enrollment failed');
       throw err;
     } finally {
