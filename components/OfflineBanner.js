@@ -1,61 +1,57 @@
-// components/OfflineBanner.js
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { useSQLiteContext } from 'expo-sqlite';
 
 const OfflineBanner = () => {
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const db = useSQLiteContext(); // <-- get DB instance from expo-sqlite
-  const cleanupRef = useRef(null);
+  const [heightAnim] = useState(new Animated.Value(0)); // height animation
+  const db = useSQLiteContext();
 
   useEffect(() => {
-     if (!db) {
+    if (!db) {
       console.log("⏱ No DB available for sync");
       return;
     }
+  }, [db]);
 
-    
-  }, [db, isOffline, isReachable, isApiLoaded]);
-
-  // Animate offline banner
+  // Animate offline banner height
   useEffect(() => {
     const show = isOffline || !isReachable;
-    Animated.timing(fadeAnim, {
-      toValue: show ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
 
-    console.log('📡 Offline status updated:', { isOffline, isReachable });
+    Animated.timing(heightAnim, {
+      toValue: show ? 19 : 0, // banner height in px
+      duration: 300,
+      useNativeDriver: false, // MUST be false for height
+    }).start();
   }, [isOffline, isReachable]);
 
-  if (!isApiLoaded || (!isOffline && isReachable)) return null;
+  // Don't render if API not loaded
+  if (!isApiLoaded) return null;
 
   return (
-    <Animated.View style={[styles.banner, { opacity: fadeAnim }]}>
+    <Animated.View
+      style={{
+        width: '100%',
+        backgroundColor: '#898989ff',
+        alignItems: 'center',
+        overflow: 'hidden',
+        height: heightAnim,
+      }}
+    >
       <Text style={styles.text}>
-        {isOffline ? 'OFF LINE MODE' : 'Connecting...'}
+        {isOffline ? 'Offline mode' : 'Connecting...'}
       </Text>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  banner: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    right: 0,
-    backgroundColor: '#8989898e',
-    paddingVertical: 3,
-    alignItems: 'center',
-  },
   text: {
     color: 'white',
     fontSize: 11,
     fontWeight: 'bold',
+    paddingVertical: 2,
   },
 });
 
