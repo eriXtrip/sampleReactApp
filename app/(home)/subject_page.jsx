@@ -19,6 +19,8 @@ import Map from '../../components/Map';
 import ThemedActionBar from '../../components/ThemedActionBar';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { UserContext } from '../../contexts/UserContext';
+import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { ensureLessonFile } from '../../utils/fileHelper';
 import { SUBJECT_ICON_MAP } from '../../data/lessonData';
 import { lightenColor } from '../../utils/colorUtils';
@@ -382,7 +384,12 @@ const SubjectPage = () => {
   };
 
   
+  const { user } = useContext(UserContext);
+
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
+
+  // local avatar path for current user (if any)
+  const currentAvatarPath = user?.avatar_file_name ? getLocalAvatarPath(user.avatar_file_name) : user?.avatar_url || null;
 
   const renderLessonCard = ({ item, index }) => {
     const isSelected = selectedIds.has(item.lesson_number);
@@ -598,7 +605,14 @@ const SubjectPage = () => {
         {/* Map tab */}
         <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:0 }} resizeMode="cover">
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
-            <Map stops={lessons.length} cols={5} progress={progress} accentColor={accentColor} />
+            <Map
+              lessons={lessons}
+              cols={5}
+              progress={progress}
+              accentColor={accentColor}
+              currentAvatar={currentAvatarPath}
+              currentUserName={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : null}
+            />
             </View>
         </ImageBackground>
 
