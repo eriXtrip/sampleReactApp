@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Confetti from './Confetti';
 
@@ -34,7 +35,12 @@ const SummaryBox = ({ passed = false, score = 0, maxScore = 100, children }) => 
         <View style={styles.rightColumn}>
           {/* show a simple badge */}
           <View style={[styles.badge, passed ? styles.badgePass : styles.badgeFail]}>
-            <Text style={styles.badgeText}>{passed ? '✓' : '✕'}</Text>
+            <Ionicons
+              name={passed ? 'checkmark-circle' : 'close-circle'}
+              size={28}
+              color={passed ? '#10B981' : '#6B7280'}
+              accessibilityLabel={passed ? 'Passed' : 'Failed'}
+            />
           </View>
         </View>
       </View>
