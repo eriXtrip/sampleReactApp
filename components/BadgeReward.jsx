@@ -55,7 +55,7 @@ const BadgeReward = ({ visible, badge, onClose }) => {
           style={[
             styles.container,
             { borderColor: badge.color },
-            { backgroundColor: badge.color ? lightenColor(badge.color, 0.85) : styles.container.backgroundColor },
+            { backgroundColor: badge.color ? lightenColor(badge.color) : styles.container.backgroundColor },
             { transform: [{ scale: scaleAnim }, { translateY: translateYAnim }] },
           ]}
         >
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffffc6"
+    backgroundColor: "#ffffffdf"
   },
   container: {
     width: "85%",
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   achievementBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 1)",
     width: 80,
     height: 80,
     borderRadius: 40,
