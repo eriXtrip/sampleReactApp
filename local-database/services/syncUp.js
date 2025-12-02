@@ -294,6 +294,9 @@ export async function syncProgressToServer(db) {
     `);
     console.log(`📗 Unsynced content progress: ${unsyncedContentProgress.length} rows`);
 
+    console.log("Lesson Progress Data:", JSON.stringify(unsyncedLessonProgress, null, 2));
+    console.log("Content Progress Data:", JSON.stringify(unsyncedContentProgress, null, 2));
+
     if (!unsyncedLessonProgress.length && !unsyncedContentProgress.length) {
       console.log('✅ No unsynced progress found');
       return true;
