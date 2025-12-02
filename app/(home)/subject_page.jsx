@@ -571,7 +571,7 @@ const SubjectPage = () => {
         >
           {/* Lesson tab */}
           <Animated.View style={{ width: screenWidth }}>
-            <View style={[styles.tabContent, { paddingBottom: selectionMode ? 90 : 25 }]}>
+            <View style={[styles.tabContent, { paddingBottom: selectionMode ? 70 : 0 }]}>
           <AnimatedSectionList
             sections={groupedSections}
             keyExtractor={(item) => String(item.lesson_id)}
