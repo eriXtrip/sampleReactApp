@@ -2,7 +2,7 @@
   "expo": {
     "scheme": "MQuest",
     "name": "MQuest",
-    "slug": "mquest",
+    "slug": "MQuest",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/img/Login_Logo.png",

@@ -31,7 +31,6 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="MQuest"/>
         <data android:scheme="exp+mquest"/>
-        <data android:scheme="exp+samplereactapp"/>
       </intent-filter>
     </activity>
   </application>
