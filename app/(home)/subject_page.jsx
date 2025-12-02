@@ -2,7 +2,7 @@
 
 import React, { useContext, useLayoutEffect, useMemo, useRef, useState, useEffect } from 'react';
 import { useIsFocused } from "@react-navigation/native";
-import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageBackground, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Animated, ImageBackground, Platform, SectionList } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -389,7 +389,9 @@ const SubjectPage = () => {
     const isDone = item.status === 1 || item.status === true;
 
     // Lock if previous lesson is not done (except first lesson)
-    const isLocked = index > 0 && !(lessons[index - 1].status === 1 || lessons[index - 1].status === true);
+    // Since we now render from sections, find the absolute position in the `lessons` array.
+    const globalIndex = lessons.findIndex(l => l.lesson_id === item.lesson_id);
+    const isLocked = globalIndex > 0 && !(lessons[globalIndex - 1].status === 1 || lessons[globalIndex - 1].status === true);
 
     return (
       <TouchableOpacity
@@ -460,6 +462,38 @@ const SubjectPage = () => {
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: true }
   );
+
+  // create an Animated SectionList for quarter grouping
+  const AnimatedSectionList = Animated.createAnimatedComponent(SectionList);
+
+  // Group lessons by quarter and sort them
+  const groupedSections = useMemo(() => {
+    if (!lessons || lessons.length === 0) return [];
+
+    const map = {};
+    lessons.forEach((l) => {
+      const q = l.Quarter ?? '1';
+      if (!map[q]) map[q] = [];
+      map[q].push(l);
+    });
+
+    return Object.keys(map)
+      .map((q) => ({ quarter: q, data: map[q].sort((a, b) => a.lesson_number - b.lesson_number) }))
+      .sort((a, b) => Number(a.quarter) - Number(b.quarter));
+  }, [lessons]);
+
+  const renderQuarterHeader = ({ section }) => {
+    const q = section.quarter;
+    return (
+      <View style={styles.quarterHeader}>
+        <View style={[styles.quarterLine, { backgroundColor: theme.cardBorder }]} />
+        <View style={[styles.quarterBadge, { borderColor: accentColor }]}>
+          <ThemedText style={[styles.quarterTextHeader, { color: accentColor }]}>Quarter {q}</ThemedText>
+        </View>
+        <View style={[styles.quarterLine, { backgroundColor: theme.cardBorder }]} />
+      </View>
+    );
+  };
 
   return (
     <ThemedView style={styles.container} safe={true}>
@@ -538,10 +572,11 @@ const SubjectPage = () => {
           {/* Lesson tab */}
           <Animated.View style={{ width: screenWidth }}>
             <View style={[styles.tabContent, { paddingBottom: selectionMode ? 90 : 25 }]}>
-          <Animated.FlatList
-            data={lessons}
+          <AnimatedSectionList
+            sections={groupedSections}
             keyExtractor={(item) => String(item.lesson_id)}
-            renderItem={({ item, index }) => renderLessonCard({ item, index })}
+            renderItem={({ item, index, section }) => renderLessonCard({ item, index })}
+            renderSectionHeader={renderQuarterHeader}
             contentContainerStyle={{ paddingBottom: 0 }}
             showsVerticalScrollIndicator={false}
             onScroll={animatedOnScroll}
@@ -564,7 +599,7 @@ const SubjectPage = () => {
         <ImageBackground source={require('../../assets/img/download (1).jpg')} style={{ width: screenWidth, marginBottom:0 }} resizeMode="cover">
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
             <Map stops={lessons.length} cols={5} progress={progress} accentColor={accentColor} />
-          </View>
+            </View>
         </ImageBackground>
 
         {/* Achievement tab */}
@@ -753,5 +788,29 @@ const styles = StyleSheet.create({
     color: '#888a94',
     marginTop: 1,
     marginLeft: 10,
+  },
+  quarterHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  quarterLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#ddd',
+  },
+  quarterBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginHorizontal: 10,
+    backgroundColor: 'rgba(255,255,255,0.92)'
+  },
+  quarterTextHeader: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
