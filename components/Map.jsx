@@ -7,7 +7,7 @@ import { lightenColor } from '../utils/colorUtils';
 import Svg, { Circle, Path, Text as SvgText, Image as SvgImage, Rect, Defs, ClipPath, Line } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system';
 
-function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style, lessons = null, groupedLessons = null, currentAvatar = null, currentUserName = null }) {
+function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style, lessons = null, groupedLessons = null, currentAvatar = null, currentUserName = null, activeLessonId = null }) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -68,11 +68,35 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
 
   const totalStops = nodesSequence.length;
 
+  // Determine which node should be considered "current".
+  // We want progress to map to lessons (and final Goal) only so quarter nodes don't move the highlight.
   const currentIndex = useMemo(() => {
-    const total = totalStops;
+    // If explicit activeLessonId is provided prefer that
+    if (activeLessonId) {
+      const idx = nodesSequence.findIndex(n => n.type === 'lesson' && n.lesson?.lesson_id === activeLessonId);
+      if (idx !== -1) return idx;
+    }
+
+    // Build a list of indices used for progress mapping: all lesson nodes, then goal node index (if exists)
+    const lessonIndices = nodesSequence
+      .map((n, i) => n.type === 'lesson' ? i : -1)
+      .filter(i => i >= 0);
+
+    const goalIndex = nodesSequence.findIndex(n => n.type === 'goal');
+    const progressIndexList = [...lessonIndices];
+    if (goalIndex >= 0) progressIndexList.push(goalIndex);
+
+    if (progressIndexList.length === 0) {
+      // fallback to basic mapping across all nodes
+      const total = Math.max(1, totalStops);
+      const clamped = Math.max(0, Math.min(100, Number(progress)));
+      return Math.round((clamped / 100) * (total - 1));
+    }
+
     const clamped = Math.max(0, Math.min(100, Number(progress)));
-    return Math.round((clamped / 100) * (total - 1));
-  }, [totalStops, progress]);
+    const pos = Math.round((clamped / 100) * (progressIndexList.length - 1));
+    return Math.max(0, Math.min(totalStops - 1, progressIndexList[pos]));
+  }, [nodesSequence, totalStops, progress, activeLessonId]);
 
   // Metrics driven primarily by width for consistent look across devices
   const metrics = useMemo(() => {
