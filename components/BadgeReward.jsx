@@ -59,6 +59,9 @@ const BadgeReward = ({ visible, badge, onClose }) => {
             { transform: [{ scale: scaleAnim }, { translateY: translateYAnim }] },
           ]}
         >
+
+          <View style={styles.solidBackground} />
+
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
@@ -108,6 +111,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
     borderWidth: 2,
+  },
+  solidBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#FFFFFFFF", // fully solid white
+    borderRadius: 20,
+    zIndex: -1, // behind content
   },
   title: {
     fontSize: 22,
