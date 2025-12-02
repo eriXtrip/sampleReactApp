@@ -7,7 +7,7 @@ import { lightenColor } from '../utils/colorUtils';
 import Svg, { Circle, Path, Text as SvgText, Image as SvgImage, Rect, Defs, ClipPath, Line } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system';
 
-function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style, lessons = null, currentAvatar = null, currentUserName = null }) {
+function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4', style, lessons = null, groupedLessons = null, currentAvatar = null, currentUserName = null }) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -26,8 +26,23 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
 
   // Build a sequence of nodes: Quarter nodes, lesson nodes, then a final Goal node
   const nodesSequence = useMemo(() => {
+    // If pre-grouped sections are provided (preferred), use them directly
+    if (Array.isArray(groupedLessons) && groupedLessons.length > 0) {
+      const seq = [];
+      for (const section of groupedLessons) {
+        const q = section.quarter ?? section.Quarter ?? null;
+        seq.push({ type: 'quarter', quarter: q });
+        // ensure section.data is an array of lessons sorted by lesson_number
+        const lessonsInSection = Array.isArray(section.data) ? [...section.data].sort((a, b) => (a.lesson_number || 0) - (b.lesson_number || 0)) : [];
+        for (const lesson of lessonsInSection) seq.push({ type: 'lesson', lesson });
+      }
+      // final goal
+      seq.push({ type: 'goal' });
+      return seq;
+    }
+
+    // fallback when groupedLessons not passed — use flat lessons array
     if (!Array.isArray(lessons) || lessons.length === 0) {
-      // fallback to simple sequence of empty lessons if lessons not given
       const total = Math.max(1, stops);
       return new Array(total).fill(null).map((_, idx) => ({ type: 'lesson', index: idx, label: idx + 1 }));
     }
@@ -47,11 +62,9 @@ function CandyMap({ stops = 20, cols = 5, progress = 0, accentColor = '#48cae4',
       seq.push({ type: 'lesson', lesson });
     }
 
-    // Add final goal node
     seq.push({ type: 'goal' });
-
     return seq;
-  }, [lessons, stops]);
+  }, [groupedLessons, lessons, stops]);
 
   const totalStops = nodesSequence.length;
 

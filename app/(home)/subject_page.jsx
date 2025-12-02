@@ -607,6 +607,7 @@ const SubjectPage = () => {
           <View style={[styles.tabContent, { paddingBottom: 0, paddingHorizontal: 0 }] }>
             <Map
               lessons={lessons}
+              groupedLessons={groupedSections}
               cols={5}
               progress={progress}
               accentColor={accentColor}
