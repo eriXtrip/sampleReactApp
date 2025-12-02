@@ -3,6 +3,7 @@ import React, { useEffect, useState, useContext  } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
+import SummaryBox from './SummaryBox';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 
 
@@ -234,17 +235,12 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
       <Text style={styles.title}>Quiz Results</Text>
 
       {/* Summary Info */}
-      <View style={styles.summaryBox}>
-        <Text>Status: {passed ? "Passed" : "Failed"}</Text>
-        <Text>Started: {new Date(startedAt).toLocaleString()}</Text>
+      <SummaryBox passed={passed} score={score} maxScore={quizData.settings.maxScore}>
+        <Text style={{ marginTop: 8 }}>Started: {new Date(startedAt).toLocaleString()}</Text>
         <Text>Completed: {new Date(completedAt).toLocaleString()}</Text>
         <Text>Duration: {duration} </Text>
-        <Text>Points: {score} / {quizData.settings.maxScore}</Text>
-        <Text>
-          Grade: {score} out of {quizData.settings.maxScore} (
-          {Math.round((score / quizData.settings.maxScore) * 100)}%)
-        </Text>
-      </View>
+        <Text style={{ marginTop: 6 }}>Grade: {score} out of {quizData.settings.maxScore} ({Math.round((score / quizData.settings.maxScore) * 100)}%)</Text>
+      </SummaryBox>
 
       {quizData.settings.review && (
         <FlatList

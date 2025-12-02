@@ -3,7 +3,8 @@ import { Dimensions, StyleSheet } from "react-native";
 import LottieView from "lottie-react-native";
 
 // forwardRef lets BadgeReward control play/reset from outside
-const Confetti = forwardRef((props, ref) => {
+const Confetti = forwardRef(({ style, ...props }, ref) => {
+  // allow overriding style and pass-through props (e.g., loop/autoPlay)
   return (
     <LottieView
       ref={ref}
@@ -12,7 +13,8 @@ const Confetti = forwardRef((props, ref) => {
       autoPlay={false}
       resizeMode="cover"
       pointerEvents="none"
-      style={styles.confetti}
+      style={[styles.confetti, style]}
+      {...props}
     />
   );
 });
