@@ -1,4 +1,3 @@
-import { triggerSyncIfOnline } from "../local-database/services/syncUp"
 export async function saveAchievementAndUpdateContent(db, gameBadge, content_id) {
     console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
   try {
@@ -47,7 +46,6 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
 
     console.log("✅ Achievement saved and subject_contents updated.");
 
-    await triggerSyncIfOnline(db);
   } catch (err) {
     console.error("❌ Failed to save achievement/update content:", err);
   }
