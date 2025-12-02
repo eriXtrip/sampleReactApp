@@ -183,7 +183,7 @@ const LessonPage = () => {
                   <ThemedText style={[styles.lessonNumber, {color: decodedColor}]}>{lesson_number}</ThemedText>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.lessonTitle} numberOfLines={1} ellipsizeMode="tail">{title}</ThemedText>
+                  <ThemedText style={styles.lessonTitle} numberOfLines={3} ellipsizeMode="tail">{title}</ThemedText>
                   <ThemedText style={styles.quarterText}>Quarter: {Quarter}</ThemedText>
                 </View>
               </View>

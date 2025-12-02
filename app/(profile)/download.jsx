@@ -8,6 +8,7 @@ import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import { useDownloadQueue  } from '../../contexts/DownloadContext';
+import { triggerLocalNotification } from '../../utils/notificationUtils';
 
 const DownloadPage = () => {
   const colorScheme = useColorScheme();
