@@ -401,7 +401,8 @@ const SubjectPage = () => {
             router.push({
               pathname: '/lesson_page',
               params: {
-                id: item.lesson_number,
+                id: item.lesson_id,
+                lesson_number: item.lesson_number,
                 accentColor: encodeURIComponent(accentColor),
                 title: item.title,
                 description: item.description,

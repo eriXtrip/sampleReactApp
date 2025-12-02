@@ -18,7 +18,7 @@ const LessonPage = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const router = useRouter();
 
-  const { id = '', title = '', Quarter = '', description = '', accentColor } = useLocalSearchParams();
+  const { id = '', lesson_number = '', title = '', Quarter = '', description = '', accentColor } = useLocalSearchParams();
   const decodedColor = accentColor ? decodeURIComponent(accentColor) : '#48cae4';
   console.log('Lesson Params:', { id, title, Quarter, description, decodedColor });
 
@@ -180,7 +180,7 @@ const LessonPage = () => {
             <View style={[styles.cardContainer, { backgroundColor: accentColor }]}>
               <View style={styles.cardContent}>
                 <View style={styles.numberBox}>
-                  <ThemedText style={[styles.lessonNumber, {color: decodedColor}]}>{id}</ThemedText>
+                  <ThemedText style={[styles.lessonNumber, {color: decodedColor}]}>{lesson_number}</ThemedText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <ThemedText style={styles.lessonTitle}>{title}</ThemedText>
