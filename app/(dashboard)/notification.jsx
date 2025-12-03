@@ -61,7 +61,6 @@ const Notification = () => {
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      <Spacer height={20} />
 
       {notifications.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -80,7 +79,7 @@ const Notification = () => {
         />
       )}
 
-      <Spacer height={100} />
+      <Spacer height={90} />
     </ThemedView>
   );
 };
@@ -91,9 +90,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    paddingBottom: 0,
+    paddingTop: 0,
   },
   list: {
-    paddingVertical: 10,
+    paddingVertical: 20,
   },
   emptyContainer: {
     flex: 1,
