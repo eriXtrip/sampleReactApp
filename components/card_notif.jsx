@@ -1,6 +1,31 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ThemedText from './ThemedText';
+
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+const MessageWithLinks = ({ message, theme }) => {
+  const parts = message.split(urlRegex);
+
+  return (
+    <Text style={[styles.cardMessage, { color: theme.textColor }]}>
+      {parts.map((part, index) => {
+        if (urlRegex.test(part)) {
+          return (
+            <Text
+              key={index}
+              style={styles.link}
+              onPress={() => Linking.openURL(part)}
+            >
+              {part}
+            </Text>
+          );
+        }
+        return part;
+      })}
+    </Text>
+  );
+};
 
 const card_notif = ({ color, icon, title, message, theme }) => {
   return (
@@ -23,7 +48,9 @@ const card_notif = ({ color, icon, title, message, theme }) => {
       <Ionicons name={icon} size={30} style={[styles.icon, { color: theme.notifColor }]} />
       <View style={styles.textContainer}>
         <ThemedText style={styles.cardTitle}>{title}</ThemedText>
-        <ThemedText style={styles.cardMessage}>{message}</ThemedText>
+
+        {/* Replace plain message with link-detecting text */}
+        <MessageWithLinks message={message} theme={theme} />
       </View>
     </View>
   );
@@ -56,5 +83,10 @@ const styles = StyleSheet.create({
   cardMessage: {
     fontSize: 14,
     marginTop: 4,
+  },
+
+  link: {
+    color: '#2e89ff',
+    textDecorationLine: 'underline',
   },
 });
