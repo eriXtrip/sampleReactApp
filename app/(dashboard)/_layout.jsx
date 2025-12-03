@@ -1,28 +1,30 @@
 // app/(dashboard)/_layout.jsx
 import { UserProvider } from "../../contexts/UserContext";
-import { ProfileProvider } from '../../contexts/ProfileContext';
-import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
-import ThemedTabs from '../../components/ThemedTabs';
-import { ScrollView, RefreshControl } from 'react-native';
-import usePullToRefresh from '../../hooks/usePullToRefresh';
+import { ProfileProvider } from "../../contexts/ProfileContext";
+import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { ScrollView, RefreshControl, View } from "react-native";
+import ThemedTabs from "../../components/ThemedTabs";
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
-// Inner component that can access SQLite context
 function DashboardContent() {
-  const db = useSQLiteContext(); // Get database from SQLiteProvider
-  const { refreshing, onRefresh, refreshControlProps } = usePullToRefresh(db);
+  const db = useSQLiteContext();
+  const { refreshControlProps } = usePullToRefresh(db);
 
   return (
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={
-        <RefreshControl {...refreshControlProps} />
-      }
+      refreshControl={<RefreshControl {...refreshControlProps} />}
+      // Pull-to-refresh only triggers when scroll is at the very top
+      scrollEventThrottle={16}
     >
+      {/* Main content */}
       <ThemedTabs />
     </ScrollView>
   );
 }
+
+
 
 export default function DashboardLayout() {
   return (
