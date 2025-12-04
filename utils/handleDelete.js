@@ -57,7 +57,7 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
 
         await db.runAsync(
           `UPDATE subject_contents
-          SET downloaded = 0,
+          SET downloaded = 0
           WHERE file_name = ?`,
           [file]
         );

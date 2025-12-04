@@ -70,7 +70,7 @@ const RecentActivityPage = () => {
           WHERE pa.earned_at IS NOT NULL
 
           ORDER BY timestamp DESC
-          LIMIT 50  -- More than enough for full page
+          LIMIT 50
         `);
 
         const now = Date.now();
@@ -87,7 +87,7 @@ const RecentActivityPage = () => {
           else if (diffDay >= 7) timeAgo = '1w+ ago';
 
           return {
-            id: `${act.type}-${act.source_id}-${index}`, // 100% unique key
+            id: `${act.type}-${act.source_id}-${index}`,
             title: act.title,
             status: act.status,
             time: timeAgo,
@@ -108,26 +108,33 @@ const RecentActivityPage = () => {
 
   return (
     <ThemedView style={styles.container} safe={true}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+      >
         <Spacer height={8} />
 
         {activities.length === 0 ? (
-          <ThemedText style={{ textAlign: 'center', padding: 40, opacity: 0.6 }}>
-            No activity yet. Start learning to see your progress!
-          </ThemedText>
+          <View style={styles.emptyState}>
+            <ThemedText style={styles.emptyText}>
+              No activity yet. Start learning to see your progress!
+            </ThemedText>
+          </View>
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <View style={styles.listContainer}>
             {activities.map((a) => (
-              <View key={a.id} style={[styles.itemWrap, { width: '48%' }]}>
+              <View key={a.id} style={styles.activityItem}>
                 <ThemedActivity
                   title={a.title}
                   status={a.status}
                   time={a.time}
-                  cardStyle={{
-                    width: '100%',
-                    backgroundColor: theme.navBackground,
-                    borderColor: theme.cardBorder,
-                  }}
+                  cardStyle={[
+                    styles.activityCard,
+                    {
+                      backgroundColor: theme.navBackground,
+                      borderColor: theme.cardBorder,
+                    }
+                  ]}
                   titleStyle={{ color: theme.text }}
                   statusStyle={{ color: theme.text, opacity: 0.9 }}
                   timeStyle={{ color: theme.text, opacity: 0.7 }}
@@ -154,7 +161,27 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
   },
-  itemWrap: {
+  listContainer: {
+    flexDirection: 'column',
+  },
+  activityItem: {
     marginBottom: 14,
+    width: '100%',
+  },
+  activityCard: {
+    width: '100%',
+    borderRadius: 12,
+    padding: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    textAlign: 'center',
+    opacity: 0.6,
+    fontSize: 16,
   },
 });

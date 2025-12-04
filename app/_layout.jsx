@@ -23,8 +23,6 @@ import UserService from '../local-database/services/userService';
 import ThemedStatusBar from '../components/ThemedStatusBar';
 import { useNotificationListener } from '../utils/notificationListener';
 import OfflineBanner from '../components/OfflineBanner';
-
-// ADD THIS IMPORT
 import * as NavigationBar from 'expo-navigation-bar';
 
 // Notification handler

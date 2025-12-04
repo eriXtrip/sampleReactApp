@@ -20,6 +20,7 @@ import { getApiUrl } from '../../utils/apiManager.js';
 import { triggerSyncIfOnline } from '../../local-database/services/syncUp';
 import {  saveSyncDataToSQLite } from '../../local-database/services/syncService';
 import { useSQLiteContext } from 'expo-sqlite';
+import { showWarringToast, showSuccessToast, showErrorToast } from '../../utils/notificationUtils.js';
 
 
 const typeToAccent = {
@@ -147,7 +148,8 @@ const SelfEnrollPage = () => {
   // ✅ NEW: Handle enrollment based on type
   const handlePressEnroll = async () => {
     if (!user?.server_id || !db) {
-      Alert.alert('Error', 'User not ready');
+      //Alert.alert('Error', 'User not ready');
+      showErrorToast('Error', 'User not ready');
       return;
     }
 
@@ -196,7 +198,9 @@ const SelfEnrollPage = () => {
 
     } catch (error) {
       console.error('Enrollment failed:', error);
-      Alert.alert('Failed', error.message || 'Please try again');
+      //Alert.alert('Failed', error.message || 'Please try again');
+      showWarringToast('Failed', 'Please try again');
+
     } finally {
       setEnrolling(false);
     }
@@ -217,7 +221,8 @@ const SelfEnrollPage = () => {
       setShowEnroll(false);
       navigateToSectionPage();
     } catch (error) {
-      Alert.alert('Failed', error.message || 'Invalid key');
+      //Alert.alert('Failed', error.message || 'Invalid key');
+      showErrorToast('Failed', 'Invalid key');
     }
   };
 

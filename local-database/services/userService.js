@@ -207,8 +207,8 @@ export default class UserService {
       // 'sections',
       // 'subjects',
       // 'subjects_in_section',
-      'lessons',
-      'subject_contents',
+      // 'lessons',
+      // 'subject_contents',
       // 'games',
       // 'game_types',
       //'notifications'

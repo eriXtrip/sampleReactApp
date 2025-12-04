@@ -26,7 +26,7 @@ const ThemedStatusBar = ({ themeColors }) => {
   return (
     <View>
       {/* Status Bar */}
-      <View style={{ height: 40, backgroundColor: theme.statusbarBackground }}>
+      <View style={{ height: 40, backgroundColor: theme.statusbarBackground, }}>
         <StatusBar
           translucent
           backgroundColor="transparent"

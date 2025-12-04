@@ -139,7 +139,7 @@ const Profile = () => {
         <Spacer height={5} />
 
         {/* Download Card */}
-        <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
+        {/* <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>
           <ThemedText style={styles.cardTitle}>Download Queue</ThemedText>
           <TouchableOpacity
             style={[styles.cardItem, { borderBottomWidth: 0 }]}
@@ -150,7 +150,7 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
 
-        <Spacer height={5} />
+        <Spacer height={5} /> */}
 
         {/* ABOUT MQUEST Card */}
         <View style={[styles.card , { backgroundColor: theme.navBackground, borderColor: theme.cardBorder, borderWidth: 1,}]}>

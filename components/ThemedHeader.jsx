@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { ProfileContext } from '../contexts/ProfileContext';
 import { Colors } from '../constants/Colors';
 import { useDownloadQueue } from '../contexts/DownloadContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 const ThemedHeader = ({ options, navigation }) => {

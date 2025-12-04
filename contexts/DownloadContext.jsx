@@ -6,6 +6,7 @@ export const useDownloadQueue = () => useContext(DownloadContext);
 
 export const DownloadProvider = ({ children }) => {
   const [queue, setQueue] = useState([]); // [{id, title, status, progress}]
+  const [resumables, setResumables] = useState({}); // {id: resumableDownloadObject}
 
   const addDownload = (item) => setQueue((q) => [...q, item]);
 

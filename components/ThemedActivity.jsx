@@ -23,12 +23,12 @@ const ThemedActivity = ({
     <View style={[
       styles.activityCard,
       { 
-        backgroundColor: theme.Background,
+        backgroundColor: theme.navBackground,
         borderColor: theme.cardBorder || '#e0e0e0'
       },
       cardStyle
     ]}>
-      <ThemedText style={[styles.activityTitle, titleStyle]}>
+      <ThemedText style={[styles.activityTitle, titleStyle, { color: theme.text }]}>
         {title}
       </ThemedText>
       <ThemedText style={[

@@ -24,6 +24,13 @@ import { handleDownload } from '../../utils/handleDownload';
 import { handleDelete } from '../../utils/handleDelete';
 import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
 import { useDownloadQueue } from '../../contexts/DownloadContext';
+import { 
+  showLoadingToast, 
+  dismissLoadingToast,
+  triggerLocalNotification,
+  showSuccessToast,
+  showErrorToast 
+} from '../../utils/notificationUtils';
 
 const ContentDetails = () => {
   const { id, title, type, shortdescription, content, file, status} = useLocalSearchParams();
@@ -222,7 +229,6 @@ const ContentDetails = () => {
         });
 
         const fileUri = await handleDownload(
-          item.content_id,
           item.file_name,
           item.title,
           item.url,
@@ -313,7 +319,8 @@ const ContentDetails = () => {
         console.log(`Loaded ${content_type} at ${actualUri}`);
       } catch (err) {
         console.error(`${content_type} load error:`, err);
-        Alert.alert("Error", `Unable to open ${content_type}.`);
+        // Alert.alert("Error", `Unable to open ${content_type}.`);
+        showErrorToast(`Unable to open ${content_type}.`, 'Please try again');
       }
     }
   };
@@ -331,12 +338,15 @@ const ContentDetails = () => {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, { mimeType, dialogTitle: title, UTI: mimeType });
         } else {
-          Alert.alert('Not supported', 'Opening files is not available on this device.');
+          //Alert.alert('Not supported', 'Opening files is not available on this device.');
+          showErrorToast(`Not supported`, 'Opening files is not available on this device.');
         }
       }
     } catch (err) {
       console.error('Open file error:', err);
-      Alert.alert('Error', 'No app found to open this file. Please install a compatible app.');
+      // Alert.alert('Error', 'No app found to open this file. Please install a compatible app.');
+      showErrorToast(`No app found to open this file.`, 'Please install a compatible app.');
+      
     }
   };
 

@@ -1,57 +1,114 @@
-import React, { useEffect, useState, useContext } from 'react';
+// components/OfflineBanner.jsx
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
-import { useSQLiteContext } from 'expo-sqlite';
+import { triggerLocalNotification } from '../utils/notificationUtils';
 
 const OfflineBanner = () => {
-  const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
-  const [heightAnim] = useState(new Animated.Value(0)); // height animation
-  const db = useSQLiteContext();
+  const { 
+    isOffline, 
+    isReachable, 
+    isApiLoaded, 
+    networkType,
+    refreshApiUrl 
+  } = useContext(ApiUrlContext);
+  
+  const [heightAnim] = useState(new Animated.Value(0));
+  const [message, setMessage] = useState('');
+  const prevReachableRef = useRef(null);
 
+  // Show toast notifications on connection changes
   useEffect(() => {
-    if (!db) {
-      console.log("⏱ No DB available for sync");
-      return;
+    if (prevReachableRef.current === false && isReachable === true) {
+      // Went from unreachable to reachable
+      triggerLocalNotification('Connected', 'Server connection restored', 'success', {
+        duration: 3000,
+      });
+    } else if (prevReachableRef.current === true && isReachable === false && !isOffline) {
+      // Went from reachable to unreachable (but still have internet)
+      triggerLocalNotification('Server Unavailable', 'Cannot connect to server', 'warning', {
+        duration: 4000,
+      });
     }
-  }, [db]);
+    
+    prevReachableRef.current = isReachable;
+  }, [isReachable, isOffline]);
 
-  // Animate offline banner height
+  // Update banner message based on state
+  useEffect(() => {
+    if (isOffline) {
+      setMessage(`Offline (${networkType || 'No connection'})`);
+    } else if (!isReachable) {
+      setMessage('Connecting to server...');
+    } else {
+      setMessage('Online ✓');
+    }
+  }, [isOffline, isReachable, networkType]);
+
+  // Animate banner height
   useEffect(() => {
     const show = isOffline || !isReachable;
-
+    const targetHeight = show ? 28 : 0;
+    
     Animated.timing(heightAnim, {
-      toValue: show ? 19 : 0, // banner height in px
+      toValue: targetHeight,
       duration: 300,
-      useNativeDriver: false, // MUST be false for height
+      useNativeDriver: false,
     }).start();
   }, [isOffline, isReachable]);
 
-  // Don't render if API not loaded
   if (!isApiLoaded) return null;
 
   return (
     <Animated.View
-      style={{
-        width: '100%',
-        backgroundColor: '#898989ff',
-        alignItems: 'center',
-        overflow: 'hidden',
-        height: heightAnim,
-      }}
+      style={[
+        styles.banner,
+        {
+          height: heightAnim,
+          backgroundColor: isOffline ? '#FF6B6B' : !isReachable ? '#FFD93D' : '#6BCF7F',
+        }
+      ]}
     >
-      <Text style={styles.text}>
-        {isOffline ? 'Offline mode' : 'Connecting...'}
-      </Text>
+      <Text style={styles.text}>{message}</Text>
+      
+      {/* Refresh button when offline but has connection */}
+      {isOffline && networkType && networkType !== 'none' && (
+        <Text 
+          style={styles.refreshText}
+          onPress={refreshApiUrl}
+        >
+          Retry
+        </Text>
+      )}
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  banner: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
   text: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  refreshText: {
     color: 'white',
     fontSize: 11,
     fontWeight: 'bold',
+    marginLeft: 8,
+    paddingHorizontal: 8,
     paddingVertical: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 4,
   },
 });
 

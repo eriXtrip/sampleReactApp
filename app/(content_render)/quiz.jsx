@@ -1,10 +1,11 @@
 // samplereactnative/app/(content_render)/quiz.jsx
 
-import React, { useState, useEffect, useLayoutEffect } from "react";
-import { View, Text, TouchableOpacity, Alert, TextInput, StyleSheet, Modal, FlatList, Dimensions } from "react-native";
+import React, { useState, useEffect, useLayoutEffect, useCallback  } from "react";
+import { View, Text, TouchableOpacity, Alert, TextInput, StyleSheet, Modal, FlatList, Dimensions, BackHandler  } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams, useRouter, useNavigation, lockVisible } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import Spacer from "../../components/Spacer";
 import ThemedAlert from "../../components/ThemedAlert";
@@ -48,6 +49,23 @@ export default function QuizScreen() {
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
 
   const db = useSQLiteContext();
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!exitAlertVisible) {
+        setExitAlertVisible(true);
+        return true; // Prevent default
+      }
+      return false; // Allow default
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [exitAlertVisible]);
 
   const getCurrentUserId = async () => {
     try {
@@ -632,7 +650,7 @@ export default function QuizScreen() {
 
       <DangerAlert
         visible={exitAlertVisible}
-        message="Are you sure you want to quit the quiz?"
+        message="Are you sure you want to quit the test?"
         onCancel={() => setExitAlertVisible(false)}
         onConfirm={() => {
           setExitAlertVisible(false);

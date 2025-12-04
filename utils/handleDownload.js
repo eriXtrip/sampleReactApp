@@ -2,12 +2,23 @@
 
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath, ensureLessonsDir } from './resolveLocalPath';
-import { triggerLocalNotification } from './notificationUtils';
+import { 
+  showLoadingToast, 
+  dismissLoadingToast,
+  triggerLocalNotification,
+  showSuccessToast,
+  showErrorToast 
+} from './notificationUtils';
 
 // Download the main file and associated images for JSON-based content
-export const handleDownload = async (id, file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
+export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
+   let loadingToastId = null;
+
   try {
     setDownloading(true);
+
+    // Show loading toast initially
+    loadingToastId = showLoadingToast('Downloading', `${title} is being downloaded...`);
 
     const targetFolder = await ensureLessonsDir();
     if (!targetFolder) return null;
@@ -18,7 +29,11 @@ export const handleDownload = async (id, file, title, content, type, setFileExis
       setFileExists(true);
       setDownloading(false);
       console.log("Already exists ✅:", localPath);
-       triggerLocalNotification('Already downloaded', title);
+      
+      // Dismiss loading and show info
+      if (loadingToastId) dismissLoadingToast(loadingToastId);
+      triggerLocalNotification('Already downloaded', title, 'info');
+
       return localPath;
     }
 
@@ -26,7 +41,7 @@ export const handleDownload = async (id, file, title, content, type, setFileExis
     const tempUri = FileSystem.cacheDirectory + file;
     const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
     console.log("Downloaded main file ✅:", file);
-     triggerLocalNotification('Downloading...', title);
+    
 
     // Step 2: Handle JSON or normal file
     if (['quiz', 'game_match', 'game_flash', 'game_speak', 'game_comp', 'game_img'].includes(type)) {
@@ -145,7 +160,9 @@ export const handleDownload = async (id, file, title, content, type, setFileExis
       }
     }
 
-    triggerLocalNotification('Download complete', title);
+    // When download is complete
+    if (loadingToastId) dismissLoadingToast(loadingToastId);
+    showSuccessToast('Success!', `${title} downloaded successfully!`);
 
     setFileExists(true);
     setDownloading(false);
@@ -154,7 +171,11 @@ export const handleDownload = async (id, file, title, content, type, setFileExis
   } catch (err) {
     setDownloading(false);
     console.error("Download error:", err);
-    triggerLocalNotification('Download Failed', title);
+    
+    // Dismiss loading and show error
+    if (loadingToastId) dismissLoadingToast(loadingToastId);
+    showErrorToast('Download Failed', 'Please try again');
+
     return null;
   }
 };

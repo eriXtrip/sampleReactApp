@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
-import * as Network from 'expo-network';
+// context/ApiUrlContext.js
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import { getApiUrl } from '../utils/apiManager';
 import { testServerConnection } from '../local-database/services/testServerConnection';
 
@@ -9,6 +10,9 @@ export const ApiUrlContext = createContext({
   isReachable: false,
   isOffline: false,
   isApiLoaded: false,
+  networkType: null,
+  isConnected: false,
+  connectionDetails: {},
 });
 
 export const ApiUrlProvider = ({ children }) => {
@@ -16,52 +20,150 @@ export const ApiUrlProvider = ({ children }) => {
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const [isReachable, setIsReachable] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [networkType, setNetworkType] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionDetails, setConnectionDetails] = useState({});
+  
+  const isMounted = useRef(true);
+  const prevConnectionRef = useRef(null);
 
-  const refreshApiUrl = useCallback(async () => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Manual refresh function
+  const refreshApiUrl = useCallback(async (force = false) => {
     try {
-      console.log('🔄 Refreshing API URL and network status...');
-      // Check network status
-      const networkState = await Network.getNetworkStateAsync();
-      const isConnected = networkState.isConnected;
-      //const isConnected = true;
-      console.log('📶 Network state:', isConnected);
-      setIsOffline(!isConnected);
+      console.log('🔄 Refreshing API URL...');
+      
+      // Get current network state
+      const netState = await NetInfo.fetch();
+      const nowConnected = netState.isConnected;
+      
+      console.log('📶 Current network:', {
+        connected: nowConnected,
+        type: netState.type,
+        reachable: netState.isInternetReachable,
+      });
 
-      // If offline, skip server check
-      if (!isConnected) {
-        console.log('🚫 No internet connection, skipping server check');
-        setApiUrl(null);
-        setIsReachable(false);
-        setIsApiLoaded(true);
+      // Update states
+      if (isMounted.current) {
+        setIsConnected(nowConnected);
+        setIsOffline(!nowConnected);
+        setNetworkType(netState.type);
+        setConnectionDetails(netState.details || {});
+      }
+
+      // If offline, set states and return
+      if (!nowConnected) {
+        console.log('🚫 No internet connection');
+        if (isMounted.current) {
+          setApiUrl(null);
+          setIsReachable(false);
+          setIsApiLoaded(true);
+        }
         return null;
       }
 
-      // Get API URL and check server
+      // Get API URL
       const url = await getApiUrl();
       console.log('🌐 Retrieved API URL:', url);
-      setApiUrl(url);
-      setIsApiLoaded(true);
+      
+      if (isMounted.current) {
+        setApiUrl(url);
+        setIsApiLoaded(true);
+      }
+
+      // Test server connection (with timeout to prevent hanging)
       const reachable = await testServerConnection(url);
-      //const reachable = false;
-      setIsReachable(reachable);
       console.log('🔎 Server reachable?', reachable);
+      
+      if (isMounted.current) {
+        setIsReachable(reachable);
+      }
+      
       return url;
     } catch (error) {
-      console.error('❌ Failed to refresh API URL or network status:', error.message);
-      setApiUrl(null);
-      setIsApiLoaded(true);
-      setIsReachable(false);
-      setIsOffline(true); // Assume offline on error
+      console.error('❌ Failed to refresh API:', error.message);
+      if (isMounted.current) {
+        setApiUrl(null);
+        setIsApiLoaded(true);
+        setIsReachable(false);
+        setIsOffline(true);
+      }
       return null;
     }
   }, []);
 
+  // Real-time network listener
   useEffect(() => {
-    refreshApiUrl();
-  }, [refreshApiUrl]);
+    let unsubscribe;
+
+    const handleNetworkChange = (state) => {
+      console.log('📡 Network change detected:', {
+        connected: state.isConnected,
+        type: state.type,
+        reachable: state.isInternetReachable,
+      });
+
+      const prevConnected = prevConnectionRef.current;
+      const nowConnected = state.isConnected;
+
+      // Update state
+      if (isMounted.current) {
+        setIsConnected(nowConnected);
+        setIsOffline(!nowConnected);
+        setNetworkType(state.type);
+        setConnectionDetails(state.details || {});
+      }
+
+      // Only refresh API if connection state changed
+      if (prevConnected !== nowConnected) {
+        console.log('🔁 Connection state changed, refreshing API...');
+        refreshApiUrl();
+      }
+
+      // Update previous state
+      prevConnectionRef.current = nowConnected;
+    };
+
+    // Setup listener
+    unsubscribe = NetInfo.addEventListener(handleNetworkChange);
+
+    // Get initial state
+    NetInfo.fetch().then(initialState => {
+      prevConnectionRef.current = initialState.isConnected;
+      handleNetworkChange(initialState);
+      
+      // Initial API refresh
+      if (initialState.isConnected) {
+        refreshApiUrl();
+      }
+    });
+
+    // Cleanup
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [refreshApiUrl]); // Add refreshApiUrl as dependency
+
+  // Provide context value
+  const contextValue = {
+    API_URL,
+    refreshApiUrl,
+    isReachable,
+    isOffline,
+    isApiLoaded,
+    networkType,
+    isConnected,
+    connectionDetails,
+  };
 
   return (
-    <ApiUrlContext.Provider value={{ API_URL, refreshApiUrl, isReachable, isOffline, isApiLoaded }}>
+    <ApiUrlContext.Provider value={contextValue}>
       {children}
     </ApiUrlContext.Provider>
   );

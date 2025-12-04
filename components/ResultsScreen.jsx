@@ -254,7 +254,6 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
         <Text style={styles.closeText}>Close</Text>
       </TouchableOpacity>
 
-      <Spacer height={40} />
     </View>
   );
 };
