@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image, FlatList, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, FlatList, TouchableOpacity, RefreshControl} from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useContext, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import ThemedText from '../../components/ThemedText';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ASSETS_ICONS } from '../../data/assets_icon';
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
 const SubjectList = () => {
   const colorScheme = useColorScheme();
@@ -18,6 +19,7 @@ const SubjectList = () => {
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const router = useRouter();
   const db = useSQLiteContext();
+  const { refreshing, onRefresh } = usePullToRefresh(db);
 
   const [expandedSections, setExpandedSections] = useState({});
   const [combinedData, setCombinedData] = useState([]);
@@ -126,8 +128,10 @@ const SubjectList = () => {
         </TouchableOpacity>
       );
   };
+  
   const renderSection = (item) => {
-    //console.log("Rendering section:", item);
+    const isExpanded = expandedSections[item.id];
+    
     return (
       <View>
         <TouchableOpacity
@@ -142,25 +146,31 @@ const SubjectList = () => {
               },
             })
           }
-          style={[styles.subjectBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+          style={[styles.sectionContainer, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}
         >
           <Image source={require('../../assets/icons/section_.png')} style={styles.icon} />
           <View style={styles.textContainer}>
             <ThemedText style={[styles.subjectTitle, { color: theme.text }]}>{item.name}</ThemedText>
             <ThemedText style={[styles.subjectGrade, { color: theme.text }]}>{`Adviser: ${item.adviser}`}</ThemedText>
           </View>
-          <Ionicons
-            name="chevron-down-circle-outline"
-            size={40}
-            color={theme.text}
+          {/* Chevron icon with rotation */}
+          <TouchableOpacity 
             onPress={() => toggleSection(item.id)}
-          />
+            style={styles.chevronButton}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
+            <Ionicons
+              name={isExpanded ? "chevron-up-circle-outline" : "chevron-down-circle-outline"}
+              size={40}
+              color={theme.text}
+            />
+          </TouchableOpacity>
         </TouchableOpacity>
 
-        {expandedSections[item.id] && (
-          <View style={{ marginLeft: 20, marginTop: 10 }}>
+        {isExpanded && (
+          <View style={styles.subjectsContainer}>
             {item.subjects.map(sub => (
-              <View key={`sub-${sub.id}`}>
+              <View key={`sub-${sub.id}`} style={styles.subjectItem}>
                 {renderSubject(sub)}
               </View>
             ))}
@@ -191,6 +201,13 @@ const SubjectList = () => {
           keyExtractor={item => String(item.id)}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
         />
       )}
     </ThemedView>
@@ -200,8 +217,21 @@ const SubjectList = () => {
 export default SubjectList;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  listContainer: { paddingBottom: 20 },
+  container: { 
+    flex: 1, 
+    padding: 16 
+  },
+  listContainer: { 
+    paddingBottom: 20 
+  },
+  sectionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 2,
+  },
   subjectBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,10 +240,34 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 2,
   },
-  icon: { width: 50, height: 50, marginRight: 16, resizeMode: 'contain' },
-  textContainer: { flex: 1 },
-  subjectTitle: { fontSize: 25, fontWeight: 'bold' },
-  subjectGrade: { fontSize: 14, opacity: 0.6 },
+  icon: { 
+    width: 50, 
+    height: 50, 
+    marginRight: 16, 
+    resizeMode: 'contain' 
+  },
+  textContainer: { 
+    flex: 1 
+  },
+  subjectTitle: { 
+    fontSize: 25, 
+    fontWeight: 'bold' 
+  },
+  subjectGrade: { 
+    fontSize: 14, 
+    opacity: 0.6 
+  },
+  chevronButton: {
+    padding: 8,
+  },
+  subjectsContainer: {
+    marginLeft: 20,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  subjectItem: {
+    marginBottom: 10,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -225,5 +279,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-
 });

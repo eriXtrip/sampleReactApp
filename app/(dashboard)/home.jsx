@@ -1,7 +1,7 @@
 // samplereactnative/app/(dashboard)/home
 
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Image, ScrollView, TouchableOpacity, Animated  } from 'react-native';
+import { StyleSheet, View, Image, ScrollView, TouchableOpacity, Animated, RefreshControl  } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { StatusBar } from 'expo-status-bar';
@@ -20,6 +20,7 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import { useContext } from 'react';
 import { ASSETS_ICONS } from '../../data/assets_icon';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
 
 const Home = () => {
@@ -40,6 +41,7 @@ const Home = () => {
 
   const [achievements, setAchievements] = useState([]);
   const db = useSQLiteContext();
+  const { refreshControlProps } = usePullToRefresh(db);
 
   useEffect(() => {
     const fetchAchievements = async () => {
@@ -228,6 +230,7 @@ const Home = () => {
     <ThemedView style={styles.container} safe={true}>
       <ScrollView contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl {...refreshControlProps} />}
       >
         
         {/* Header with Search and Avatar */}

@@ -14,9 +14,9 @@ function DashboardContent() {
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={<RefreshControl {...refreshControlProps} />}
+      //refreshControl={<RefreshControl {...refreshControlProps} />}
       // Pull-to-refresh only triggers when scroll is at the very top
-      scrollEventThrottle={16}
+      //scrollEventThrottle={16}
     >
       {/* Main content */}
       <ThemedTabs />
@@ -31,7 +31,8 @@ export default function DashboardLayout() {
     <SQLiteProvider databaseName="mquest.db">
       <ProfileProvider>
         <UserProvider>
-          <DashboardContent />
+          {/* <DashboardContent /> */}
+          <ThemedTabs />
         </UserProvider>
       </ProfileProvider>
     </SQLiteProvider>

@@ -2,7 +2,7 @@
   "expo": {
     "scheme": "MQuest",
     "name": "MQuest",
-    "slug": "MQuest",
+    "slug": "matatag-quest",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/img/Login_Logo.png",
@@ -53,8 +53,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b1f0b199-c155-40f0-8d85-755134b470a0"
+        "projectId": "f31dfad6-a100-483d-bcbe-66d422ef7af0"
       }
-    }
+    },
+    "owner": "jedt2022s-organization"
   }
 }

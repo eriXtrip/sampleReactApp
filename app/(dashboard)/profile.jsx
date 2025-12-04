@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/(dashboard)/profile.jsx
 
-import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { useContext, useState, useEffect } from 'react';
 import { UserContext } from '../../contexts/UserContext';
@@ -17,12 +17,14 @@ import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
+import { useSQLiteContext } from 'expo-sqlite';
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
 const Profile = () => {
   const router = useRouter();
   // Destructure both user and logout from context
   const { user, logout } = useContext(UserContext);
-
+  const db = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -32,6 +34,7 @@ const Profile = () => {
   const [alertMessage, setAlertMessage] = useState("");
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false); // Add loading state
+  const { refreshing, onRefresh } = usePullToRefresh(db);
 
   // Safely access user data with fallbacks
   const displayName = user 
@@ -101,6 +104,13 @@ const Profile = () => {
     <ThemedView style={styles.container} safe={true}>
       <ScrollView contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
+
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
       >
         {/* Profile Header */}
         <View style={styles.profileHeader}>

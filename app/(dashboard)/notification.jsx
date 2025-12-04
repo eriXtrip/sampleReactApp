@@ -1,4 +1,4 @@
-import { StyleSheet, FlatList, View  } from 'react-native';
+import { StyleSheet, FlatList, View, RefreshControl  } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useContext, useEffect, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -10,11 +10,13 @@ import CardNotif from '../../components/card_notif';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { NOTIF_MAP } from '../../data/notif_map';
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
 const Notification = () => {
   const db = useSQLiteContext(); // ✅ access to db
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
+  const { refreshing, onRefresh } = usePullToRefresh(db);
   const theme =
     Colors[
       themeColors === 'system'
@@ -76,6 +78,13 @@ const Notification = () => {
           keyExtractor={(item) => String(item.notification_id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
         />
       )}
 
