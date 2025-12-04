@@ -1,4 +1,4 @@
-package com.tripulcaeric.samplereactapp
+package com.anonymous.MQuest
 
 import android.os.Build
 import android.os.Bundle

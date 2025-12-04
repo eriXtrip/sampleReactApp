@@ -5,7 +5,7 @@ import { resolveLocalPath, ensureLessonsDir } from './resolveLocalPath';
 import { triggerLocalNotification } from './notificationUtils';
 
 // Download the main file and associated images for JSON-based content
-export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
+export const handleDownload = async (id, file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
   try {
     setDownloading(true);
 
@@ -126,6 +126,22 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
         console.log(`✅ Incremented no_of_contents for lesson_id=${lesson_bellonId}`);
       } catch (err) {
         console.warn('Failed to update lesson no_of_contents:', err);
+      }
+    }
+
+    if(file){
+      try{
+        const now = new Date().toISOString();
+
+        await db.runAsync(
+          `UPDATE subject_contents
+          SET downloaded = 1, downloaded_at = ?
+          WHERE file_name = ?`,
+          [now, file]
+        );
+        console.log("Success updating subject_contents.");
+      } catch (err){
+        console.warn('Failed to update subject_contents:', err);
       }
     }
 

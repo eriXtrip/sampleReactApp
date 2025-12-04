@@ -26,18 +26,19 @@ export const LESSON_CARDS = [
 ];
 
 export const LESSON_TYPE_ICON_MAP = {
-  general: 'information-circle-outline',
-  ppt: 'easel-outline',
-  pdf: 'document-attach-outline',
-  video: 'videocam-outline',
-  url: 'link-outline',
-  quiz: 'document-text-outline',
-  game_match: 'game-controller-outline',
-  game_flash: 'copy-outline',
-  game_speak: 'mic-outline',
-  game_comp: 'extension-puzzle-outline',
-  game_img: 'dice-outline',
+  general: { icon: 'information-circle-outline', color: '#007bff' },
+  ppt:     { icon: 'easel-outline',              color: '#e67e22' },
+  pdf:     { icon: 'document-attach-outline',    color: '#e74c3c' },
+  video:   { icon: 'videocam-outline',           color: '#9b59b6' },
+  url:     { icon: 'link-outline',               color: '#16a085' },
+  quiz:    { icon: 'document-text-outline',      color: '#2980b9' },
+  game_match: { icon: 'game-controller-outline', color: '#f1c40f' },
+  game_flash: { icon: 'copy-outline',            color: '#d35400' },
+  game_speak: { icon: 'mic-outline',             color: '#8e44ad' },
+  game_comp:  { icon: 'extension-puzzle-outline', color: '#2ecc71' },
+  game_img:   { icon: 'dice-outline',            color: '#c0392b' },
 };
+
 
 export const SUBJECT_ICON_MAP = {
   Mathematics: require('../assets/icons/1.png'),

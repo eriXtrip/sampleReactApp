@@ -52,6 +52,21 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
       }
     }
 
+    if(file){
+      try{
+
+        await db.runAsync(
+          `UPDATE subject_contents
+          SET downloaded = 0,
+          WHERE file_name = ?`,
+          [file]
+        );
+        console.log("Success updating subject_contents.");
+      } catch (err){
+        console.warn('Failed to update subject_contents:', err);
+      }
+    }
+
     // Delete the JSON file
     await FileSystem.deleteAsync(localPath, { idempotent: true });
     console.log(`Successfully deleted JSON file: ${localPath}`);

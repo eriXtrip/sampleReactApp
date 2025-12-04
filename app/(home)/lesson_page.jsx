@@ -41,7 +41,7 @@ const LessonPage = () => {
         if (!id) return;
 
         const contents = await db.getAllAsync(
-          `SELECT content_id, title, content_type, done, description
+          `SELECT content_id, title, content_type, done, description, downloaded
           FROM subject_contents
           WHERE lesson_belong = ?`,
           [id]
@@ -94,7 +94,8 @@ const LessonPage = () => {
   const toggleExpand = () => setExpanded(prev => !prev);
 
   const renderLessonContent = ({ item, index }) => {
-    const iconName = LESSON_TYPE_ICON_MAP[item.content_type] || 'book-outline';
+    const iconName = LESSON_TYPE_ICON_MAP[item.content_type].icon || 'book-outline';
+    const iconColor = LESSON_TYPE_ICON_MAP[item.content_type].color || '#999';
     const isDone = item.done === 1;
 
     const isPretest = item.title.toLowerCase().includes("pretest");
@@ -138,12 +139,27 @@ const LessonPage = () => {
             index === lessonContents.length - 1 && styles.lastCardBox,
           ]}
         >
-          <Ionicons
-            name={iconName}
-            size={28}
-            color={locked ? "#999" : theme.text}
-            style={{ marginRight: 12 }}
-          />
+
+          {/* LEFT SIDE ICONS */}
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/* Main lesson icon */}
+            <Ionicons
+              name={iconName}
+              size={28}
+              color={iconColor}
+              style={{ position: 'absolute'  }}
+            />
+
+            {/* NEW: Cloud icon */}
+            <Ionicons
+              name="cloud-done"
+              size={20}
+              color={item.downloaded ? "#1486DE" : "#aaa"}
+              style={{ marginTop: 25,marginLeft: 18, marginRight: 15, zIndex: 2}}
+            />
+          </View>
+
+          {/* TITLE */}
           <View style={styles.textContainer}>
             <ThemedText
               style={[styles.cardTitle, { color: locked ? "#999" : theme.text }]}
@@ -152,6 +168,7 @@ const LessonPage = () => {
             </ThemedText>
           </View>
 
+          {/* LOCK ICON */}
           {locked && (
             <Ionicons
               name="lock-closed-outline"
@@ -217,7 +234,7 @@ const styles = StyleSheet.create({
   cardContent: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   numberBox: { width: 70, height: 70, borderRadius: 15, backgroundColor: '#ffffffff', justifyContent: 'center', alignItems: 'center', marginRight: 12, marginHorizontal: 10 },
   lessonNumber: { fontSize: 40, fontWeight: 'bold'},
-  lessonTitle: { fontSize: 30, fontWeight: '600', flexShrink: 1, color: '#fff', marginLeft: 10 },
+  lessonTitle: { fontSize: 27, fontWeight: '600', flexShrink: 1, color: '#fff', marginLeft: 10 },
   quarterText: { fontSize: 16, color: '#fff', marginTop: 4, marginLeft: 10 },
   aboutText: { fontSize: 20, fontWeight: '600', marginBottom: 5 },
   lessonDescription: { fontSize: 16, color: '#888a94' },

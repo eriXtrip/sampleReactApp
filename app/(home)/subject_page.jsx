@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
     right: -10,    // move to the corner
   },
   lessonTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     flexShrink: 1,
     color: '#112954',

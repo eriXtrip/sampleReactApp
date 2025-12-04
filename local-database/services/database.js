@@ -105,6 +105,7 @@ export async function initializeDatabase(db) {
       title TEXT NOT NULL,
       description TEXT,
       file_name TEXT,
+      downloaded DEFAULT FALSE,          -- download flag
       downloaded_at TEXT,                -- ISO timestamp when downloaded locally
       done BOOLEAN DEFAULT FALSE,          -- whether user marked as done
       last_accessed TEXT,               -- ISO timestamp

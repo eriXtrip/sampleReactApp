@@ -222,6 +222,7 @@ const ContentDetails = () => {
         });
 
         const fileUri = await handleDownload(
+          item.content_id,
           item.file_name,
           item.title,
           item.url,
@@ -514,8 +515,8 @@ const ContentDetails = () => {
     <ThemedView style={styles.container}>
       <View style={styles.topCard}>
         <View style={styles.headerRow}>
-          <Ionicons name={LESSON_TYPE_ICON_MAP[type] || 'book-outline'} size={50} color={theme.text} />
-          <ThemedText style={styles.title}>{title}</ThemedText>
+          <Ionicons name={LESSON_TYPE_ICON_MAP[type].icon || 'book-outline'} size={50} color={LESSON_TYPE_ICON_MAP[type].color} />
+          <ThemedText style={styles.title} numberOfLines={3} ellipsizeMode="tail">{title}</ThemedText>
         </View>
       </View>
 
