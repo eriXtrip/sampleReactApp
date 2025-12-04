@@ -18,21 +18,21 @@ const DownloadPage = () => {
   const notifiedRef = React.useRef(new Set());
 
   // watch downloads and notify when an item reaches completed status
-  React.useEffect(() => {
-    if (!downloads || downloads.length === 0) return;
+  // React.useEffect(() => {
+  //   if (!downloads || downloads.length === 0) return;
 
-    downloads.forEach((d) => {
-      if (d.status === 'completed' && !notifiedRef.current.has(d.id)) {
-        // trigger notification once per completed item
-        try {
-          triggerLocalNotification(d.title || 'Download complete', d.message || 'Your download finished.');
-        } catch (e) {
-          console.warn('Failed to trigger download notification', e);
-        }
-        notifiedRef.current.add(d.id);
-      }
-    });
-  }, [downloads]);
+  //   downloads.forEach((d) => {
+  //     if (d.status === 'completed' && !notifiedRef.current.has(d.id)) {
+  //       // trigger notification once per completed item
+  //       try {
+  //         triggerLocalNotification(d.title || 'Download complete', d.message || 'Your download finished.');
+  //       } catch (e) {
+  //         console.warn('Failed to trigger download notification', e);
+  //       }
+  //       notifiedRef.current.add(d.id);
+  //     }
+  //   });
+  // }, [downloads]);
 
   const removeItem = (id) => {
     removeDownload(id);

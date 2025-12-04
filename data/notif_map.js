@@ -30,3 +30,24 @@ export const NOTIF_MAP = {
   alert: { icon: 'alert', color: '#e63946' },
   inactivity: { icon: 'time', color: '#6c757d' },
 };
+
+
+export const lesson_numberColorMap = {
+  1: '#06d6a0',
+  2: '#4cc9f0',
+  3: '#ef476f',
+  4: '#48cae4',
+  5: '#d62828',
+  6: '#0daadfff',
+  7: '#9d4edd',
+  8: '#adb5bd',
+  9: '#f8961e',
+  10: '#ffb703',
+  11: '#3a86ff',
+  12: '#f9c74f',
+  13: '#06d6a0',
+  14: '#ef476f',
+  15: '#f9844a',
+  16: '#e63946',
+  17: '#6c757d',
+};

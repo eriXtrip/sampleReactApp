@@ -223,10 +223,13 @@ const ContentDetails = () => {
 
         const fileUri = await handleDownload(
           item.file_name,
+          item.title,
           item.url,
           item.content_type,
           setFileExists,
           setDownloading,
+          item.lesson_belong,
+          db,
           addDownload,        // pass to handleDownload
           updateDownload      // pass to handleDownload
         );
@@ -554,9 +557,9 @@ const ContentDetails = () => {
                 </>
               ) : (
                 <>
-                  {fileExists && <Ionicons name="cloud-download" size={20} color="#1486DE" />}
+                  {fileExists && <Ionicons name="cloud-done" size={20} color="#1486DE" />}
                   <ThemedText style={[styles.downloadText, !fileExists && { color: theme.text }]}>
-                    {fileExists ? 'Available' : 'Download for offline use'}
+                    {fileExists ? 'Offline ready' : 'Download for offline use'}
                   </ThemedText>
                 </>
               )}
@@ -631,7 +634,7 @@ const ContentDetails = () => {
         onCancel={() => setShowDeleteAlert(false)}
         onConfirm={async () => {
           setShowDeleteAlert(false);
-          const success = await handleDelete(contents[0]?.file_name, contents[0]?.content_type, setFileExists);
+          const success = await handleDelete(contents[0]?.file_name, contents[0]?.content_type, setFileExists, contents[0]?.lesson_belong, db);
           if (!success) {
             Alert.alert("Error", "Failed to delete the file or associated images. Please try again.");
           }

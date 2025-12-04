@@ -2,9 +2,10 @@
 
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath, ensureLessonsDir } from './resolveLocalPath';
+import { triggerLocalNotification } from './notificationUtils';
 
 // Download the main file and associated images for JSON-based content
-export const handleDownload = async (file, content, type, setFileExists, setDownloading) => {
+export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
   try {
     setDownloading(true);
 
@@ -17,6 +18,7 @@ export const handleDownload = async (file, content, type, setFileExists, setDown
       setFileExists(true);
       setDownloading(false);
       console.log("Already exists ✅:", localPath);
+       triggerLocalNotification('Already downloaded', title);
       return localPath;
     }
 
@@ -24,6 +26,7 @@ export const handleDownload = async (file, content, type, setFileExists, setDown
     const tempUri = FileSystem.cacheDirectory + file;
     const { uri: downloadedUri } = await FileSystem.downloadAsync(content, tempUri);
     console.log("Downloaded main file ✅:", file);
+     triggerLocalNotification('Downloading...', title);
 
     // Step 2: Handle JSON or normal file
     if (['quiz', 'game_match', 'game_flash', 'game_speak', 'game_comp', 'game_img'].includes(type)) {
@@ -109,6 +112,25 @@ export const handleDownload = async (file, content, type, setFileExists, setDown
       console.log("Saved non-JSON file ✅:", file);
     }
 
+    if (db && lesson_bellonId) {
+
+        console.log("Updating lesson no_of_contents for lesson_id=", lesson_bellonId);
+      try {
+        await db.runAsync(
+          `UPDATE lessons
+          SET no_of_contents = COALESCE(no_of_contents, 0) + 1,
+              is_downloaded = 1
+          WHERE lesson_id = ?`,
+          [lesson_bellonId]
+        );
+        console.log(`✅ Incremented no_of_contents for lesson_id=${lesson_bellonId}`);
+      } catch (err) {
+        console.warn('Failed to update lesson no_of_contents:', err);
+      }
+    }
+
+    triggerLocalNotification('Download complete', title);
+
     setFileExists(true);
     setDownloading(false);
     console.log("Final path:", localPath);
@@ -116,6 +138,7 @@ export const handleDownload = async (file, content, type, setFileExists, setDown
   } catch (err) {
     setDownloading(false);
     console.error("Download error:", err);
+    triggerLocalNotification('Download Failed', title);
     return null;
   }
 };

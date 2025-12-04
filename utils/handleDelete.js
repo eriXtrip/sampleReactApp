@@ -3,7 +3,7 @@
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath } from './resolveLocalPath';
 
-export const handleDelete = async (file, type, setFileExists) => {
+export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db) => {
   try {
     if (!file) {
       console.error("File is undefined");
@@ -34,6 +34,21 @@ export const handleDelete = async (file, type, setFileExists) => {
         }
       } catch (err) {
         console.error("Error reading or parsing JSON for image deletion:", err);
+      }
+    }
+
+    // Update the database to decrement no_of_contents
+    if (db && lesson_bellonId) {
+      try {
+        await db.runAsync(
+          `UPDATE lessons
+          SET no_of_contents = COALESCE(no_of_contents, 0) - 1
+          WHERE lesson_id = ?`,
+          [lesson_bellonId]
+        );
+        console.log(`✅ Deccremented no_of_contents for lesson_id=${lesson_bellonId}`);
+      } catch (err) {
+        console.warn('Failed to update lesson no_of_contents:', err);
       }
     }
 

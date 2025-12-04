@@ -89,6 +89,8 @@ export async function initializeDatabase(db) {
       completed_at TEXT,                -- ISO timestamp when marked complete
       is_synced BOOLEAN DEFAULT FALSE,
       synced_at TEXT,
+      is_downloaded BOOLEAN DEFAULT FALSE,
+      no_of_contents INTEGER DEFAULT 0,
       FOREIGN KEY (subject_belong) REFERENCES subjects(subject_id)
     );
 

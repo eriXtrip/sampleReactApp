@@ -23,6 +23,7 @@ import { UserContext } from '../../contexts/UserContext';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { ensureLessonFile } from '../../utils/fileHelper';
 import { SUBJECT_ICON_MAP } from '../../data/lessonData';
+import { lesson_numberColorMap } from '../../data/notif_map';
 import { lightenColor } from '../../utils/colorUtils';
 import { handleDownload } from '../../utils/handleDownload';
 import { handleDelete } from '../../utils/handleDelete';
@@ -88,7 +89,7 @@ const SubjectPage = () => {
     try {
       // 1️⃣ Fetch lessons for this subject
       const lessonsData = await db.getAllAsync(
-        `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number
+        `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number, no_of_contents
         FROM lessons
         WHERE subject_belong = ?
         ORDER BY lesson_number ASC`, // or DESC for descending order
@@ -130,6 +131,13 @@ const SubjectPage = () => {
       console.error("❌ Error fetching lessons/achievements:", err);
     }
   };
+
+  // Sort lessons by quarter first, then lesson_number
+  const sortedLessons = [...lessons].sort((a, b) => {
+    if (a.Quarter === b.Quarter) return a.lesson_number - b.lesson_number;
+    return a.Quarter - b.Quarter;
+  });
+
 
   // no banner overlap in SubjectPage
   const initialOverlap = 0;
@@ -254,12 +262,15 @@ const SubjectPage = () => {
         await handleDelete(
           fileName,
           content.content_type,
-          () => {}  // setFileExists not needed here
+          () => {},  // setFileExists not needed here
+          lesson.lesson_id,
+          db
         );
       }
     }
 
     console.log("🗑️ Deleted all downloaded files for selected lessons.");
+    await fetchLessonsAndAchievements();
     clearSelection();
   };
 
@@ -278,7 +289,7 @@ const SubjectPage = () => {
         const lessonId = lesson_id;
 
         const contents = await db.getAllAsync(
-          `SELECT content_id, title, file_name, url, content_type FROM subject_contents WHERE lesson_belong = ?`,
+          `SELECT content_id, title, file_name, url, content_type, lesson_belong FROM subject_contents WHERE lesson_belong = ?`,
           [lessonId]
         );
 
@@ -306,10 +317,13 @@ const SubjectPage = () => {
 
         const localPath = await handleDownload(
           c.fileName,
+          c.title,
           c.url,
           c.content_type,
           () => {},
-          () => {}
+          () => {},
+          c.lesson_belong,
+          db
         );
 
         if (localPath) {
@@ -336,7 +350,10 @@ const SubjectPage = () => {
       console.error('❌ Download error:', err);
     } finally {
       setDownloading(false);
+      await fetchLessonsAndAchievements();
+      clearSelection();
     }
+   
   };
 
 
@@ -384,6 +401,8 @@ const SubjectPage = () => {
   };
 
   
+
+  
   const { user } = useContext(UserContext);
 
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
@@ -395,10 +414,18 @@ const SubjectPage = () => {
     const isSelected = selectedIds.has(item.lesson_id);
     const isDone = item.status === 1 || item.status === true;
 
-    // Lock if previous lesson is not done (except first lesson)
-    // Since we now render from sections, find the absolute position in the `lessons` array.
-    const globalIndex = lessons.findIndex(l => l.lesson_id === item.lesson_id);
-    const isLocked = globalIndex > 0 && !(lessons[globalIndex - 1].status === 1 || lessons[globalIndex - 1].status === true);
+    // Find the index in the globally sorted list
+    const globalIndex = sortedLessons.findIndex(l => l.lesson_id === item.lesson_id);
+
+    // Locked if previous lesson is not done
+    const isLocked = globalIndex > 0 && !(sortedLessons[globalIndex - 1].status === 1 || sortedLessons[globalIndex - 1].status === true);
+
+    // Get all color values from lesson_numberColorMap
+    const colorValues = Object.values(lesson_numberColorMap);
+
+    // Pick color in sequence based on lesson_number (1-based)
+    const colorIndex = (item.lesson_number - 1) % colorValues.length;
+    const sequenceColor = colorValues[colorIndex];
 
     return (
       <TouchableOpacity
@@ -434,7 +461,13 @@ const SubjectPage = () => {
         ]}
       >
         {/* Lesson Number */}
-        <View style={[styles.numberBox, isDone && { backgroundColor: accentColor }]}>
+         <View
+          style={[
+            styles.numberBox,
+            { backgroundColor: sequenceColor }, // ✅ apply sequence color
+            isDone && { backgroundColor: accentColor }, // done overrides
+          ]}
+        >
           <ThemedText style={styles.lessonNumber}>{item.lesson_number}</ThemedText>
           {isLocked && !selectionMode && (
             <Ionicons
@@ -446,12 +479,35 @@ const SubjectPage = () => {
         </View>
 
         {/* Lesson Title + Quarter */}
-        <View style={{ flex: 1 }}>
-          <ThemedText style={styles.lessonTitle}>
-            {item.title} {isLocked && !selectionMode}
-          </ThemedText>
-          <ThemedText style={styles.quarterText}>Quarter {item.Quarter}</ThemedText>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View>
+            <ThemedText style={styles.lessonTitle}>
+              {item.title} {isLocked && !selectionMode}
+            </ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <ThemedText style={styles.quarterText}>Quarter {item.Quarter}</ThemedText>
+              
+              {/* Offline ready indicator based on no_of_contents */}
+              {item.no_of_contents !== undefined && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                  <Ionicons
+                    name="cloud-done"
+                    size={20}
+                    color={item.no_of_contents > 0 ? '#1486DE' : '#aaa'} // blue if downloaded, gray if not
+                    style={{ marginRight: 4 }}
+                  />
+                  <ThemedText style={[styles.downloadText, item.no_of_contents === 0 && { color: '#aaa' }]}>
+                    {item.no_of_contents > 0 
+                      ? `${item.no_of_contents} Offline ready` 
+                      : ''}
+                  </ThemedText>
+                </View>
+              )}
+
+            </View>
+          </View>
         </View>
+
 
         {selectionMode && (
           <Ionicons
