@@ -148,13 +148,13 @@ const SubjectPage = () => {
     if (index !== activeTab) setActiveTab(index);
   };
 
-  const toggleSelect = (lesson_number) => {
+  const toggleSelect = (lesson_id) => {
     setSelectedIds((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(lesson_number)) {
-        newSet.delete(lesson_number);
+      if (newSet.has(lesson_id)) {
+        newSet.delete(lesson_id);
       } else {
-        newSet.add(lesson_number);
+        newSet.add(lesson_id);
       }
       return newSet;
     });
@@ -170,9 +170,9 @@ const SubjectPage = () => {
     if (selectedIds.size === 0) return;
 
     try {
-      for (const lessonNumber of selectedIds) {
+      for (const lesson_id of selectedIds) {
         // Find lesson object
-        const lesson = lessons.find(l => l.lesson_number === lessonNumber);
+        const lesson = lessons.find(l => l.lesson_id === lesson_id);
         if (!lesson) continue;
 
         // Update all subject_contents for this lesson
@@ -208,8 +208,8 @@ const SubjectPage = () => {
     if (selectedIds.size === 0) return;
 
     try {
-      for (const lessonNumber of selectedIds) {
-        const lesson = lessons.find(l => l.lesson_number === lessonNumber);
+      for (const lesson_id of selectedIds) {
+        const lesson = lessons.find(l => l.lesson_id === lesson_id);
         if (!lesson) continue;
 
         await db.runAsync(
@@ -241,8 +241,8 @@ const SubjectPage = () => {
   const onDelete = async () => {
     if (selectedIds.size === 0) return;
 
-    for (const lesson_number of selectedIds) {
-      const lesson = lessons.find(l => l.lesson_number === lesson_number);
+    for (const lesson_id of selectedIds) {
+      const lesson = lessons.find(l => l.lesson_id === lesson_id);
       if (!lesson) continue;
 
       const contents = await getContentsForLesson(lesson.lesson_id);
@@ -274,8 +274,8 @@ const SubjectPage = () => {
 
       // 1️⃣ Collect all content items first
       let allContents = [];
-      for (const lessonNumberOrId of lessonsToDownload) {
-        const lessonId = lessonNumberOrId;
+      for (const lesson_id of lessonsToDownload) {
+        const lessonId = lesson_id;
 
         const contents = await db.getAllAsync(
           `SELECT content_id, title, file_name, url, content_type FROM subject_contents WHERE lesson_belong = ?`,
@@ -392,7 +392,7 @@ const SubjectPage = () => {
   const currentAvatarPath = user?.avatar_file_name ? getLocalAvatarPath(user.avatar_file_name) : user?.avatar_url || null;
 
   const renderLessonCard = ({ item, index }) => {
-    const isSelected = selectedIds.has(item.lesson_number);
+    const isSelected = selectedIds.has(item.lesson_id);
     const isDone = item.status === 1 || item.status === true;
 
     // Lock if previous lesson is not done (except first lesson)
@@ -405,7 +405,7 @@ const SubjectPage = () => {
         disabled={!selectionMode && isLocked} // ✅ In normal mode, locked is blocked
         onPress={() => {
           if (selectionMode) {
-            toggleSelect(item.lesson_number); // ✅ only toggle this item
+            toggleSelect(item.lesson_id); // ✅ only toggle this item
           } else if (!isLocked) {
             router.push({
               pathname: '/lesson_page',
@@ -423,7 +423,7 @@ const SubjectPage = () => {
         onLongPress={() => {
           if (!selectionMode) {
             setSelectionMode(true);
-            toggleSelect(item.lesson_number); // ✅ start selecting only this one
+            toggleSelect(item.lesson_id); // ✅ start selecting only this one
           }
         }}
         style={[
