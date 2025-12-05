@@ -30,7 +30,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="MQuest"/>
-        <data android:scheme="exp+mquest"/>
+        <data android:scheme="exp+matatag-quest"/>
       </intent-filter>
     </activity>
   </application>

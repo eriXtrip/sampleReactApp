@@ -24,6 +24,7 @@ import ThemedStatusBar from '../components/ThemedStatusBar';
 import { useNotificationListener } from '../utils/notificationListener';
 import OfflineBanner from '../components/OfflineBanner';
 import * as NavigationBar from 'expo-navigation-bar';
+// import 'react-native-gesture-handler';
 
 // Notification handler
 Notifications.setNotificationHandler({

@@ -30,6 +30,8 @@ export default function QuizScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
+  usePreventScreenCapture();
+
   const [quizData, setQuizData] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -515,7 +517,7 @@ export default function QuizScreen() {
     );
   }
   
-  usePreventScreenCapture();
+  
   
   return (
     

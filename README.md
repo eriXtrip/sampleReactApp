@@ -133,6 +133,24 @@ cd android
 ```
 This will create a `android\app\build\outputs\apk\debug\app-debug.apk` directory with the production build files.
 
+## Build a APK (build your APK without launching it.)
+To build a APK build, run the following command:
+```
+npx expo prebuild          #regenerates native code to include it.
+cd android
+./gradlew assembleRelease    # on Windows PowerShell / CMD 
+```
+This will create a `android/app/build/outputs/apk/release/app-release.apk` directory with the app build files.
+
+## Build a ABB (build your ABB to be launch in Playstore.)
+To build a ABB build, run the following command:
+```
+npx expo prebuild          #regenerates native code to include it.
+cd android
+./gradlew bundleRelease    # on Windows PowerShell / CMD 
+```
+This will create a `android/app/build/outputs/bundle/release/app-release.aab` directory with the app build files.
+
 ## Troubleshooting
 - API not reachable
   - Verify the backend is running and reachable at the configured URL
