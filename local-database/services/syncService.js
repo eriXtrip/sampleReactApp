@@ -226,8 +226,8 @@ export async function saveSyncDataToSQLite(data, db) {
       for (const n of data.notifications) {
         await db.runAsync(
           `INSERT INTO notifications (
-            server_notification_id, title, message, type, is_read, created_at, read_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            server_notification_id, title, message, type, is_read, created_at, read_at, is_synced
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
             ON CONFLICT(server_notification_id) DO UPDATE SET
               title=excluded.title,
               message=excluded.message, 
