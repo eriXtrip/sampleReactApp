@@ -11,6 +11,7 @@ import LoginLogo from "../../assets/img/Login_Logo.png";
 import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 
 
@@ -21,6 +22,8 @@ export default function MatchingScreen() {
   const navigation = useNavigation();
 
   const db = useSQLiteContext();
+
+  usePreventScreenCapture();
 
   const [matchingData, setMatchingData] = useState(null);
   const [cards, setCards] = useState([]);

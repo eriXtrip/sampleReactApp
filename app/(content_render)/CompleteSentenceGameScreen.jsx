@@ -19,6 +19,7 @@ import ThemedView from "../../components/ThemedView";
 import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 
 
@@ -31,6 +32,8 @@ export default function CompleteSentenceScreen() {
   console.log("Complete Sentence Params:", { uri, content_id });
   const router = useRouter();
   const navigation = useNavigation();
+
+  usePreventScreenCapture();
 
   const db = useSQLiteContext();
 

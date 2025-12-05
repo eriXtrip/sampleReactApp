@@ -145,7 +145,7 @@ const LessonPage = () => {
             {/* Main lesson icon */}
             <Ionicons
               name={iconName}
-              size={28}
+              size={40}
               color={iconColor}
               style={{ position: 'absolute'  }}
             />
@@ -155,7 +155,7 @@ const LessonPage = () => {
               name="cloud-done"
               size={20}
               color={item.downloaded ? "#1486DE" : "#aaa"}
-              style={{ marginTop: 25,marginLeft: 18, marginRight: 15, zIndex: 2}}
+              style={{ marginTop: 30, marginLeft: 25, marginRight: 15, zIndex: 2}}
             />
           </View>
 

@@ -9,6 +9,7 @@ import BadgeReward from "../../components/BadgeReward";
 import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 export default function SpeakGameScreen() {
   const { uri, content_id } = useLocalSearchParams();
@@ -17,6 +18,8 @@ export default function SpeakGameScreen() {
   const navigation = useNavigation();
 
   const db = useSQLiteContext();
+
+  usePreventScreenCapture();
 
   const [gameData, setGameData] = useState(null);
   const [currentSentence, setCurrentSentence] = useState(0);

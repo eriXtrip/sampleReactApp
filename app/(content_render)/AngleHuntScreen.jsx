@@ -19,11 +19,15 @@ import LoadingAnimation from "../../components/loadingAnimation";
 import { resolveLocalPath } from "../../utils/resolveLocalPath";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
   const { uri, content_id } = useLocalSearchParams();
   console.log("Game with img:", { uri, content_id });
+
+  usePreventScreenCapture();
+  
   const [gameData, setGameData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedChoice, setSelectedChoice] = useState(null);

@@ -5,12 +5,15 @@ import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
 import SummaryBox from './SummaryBox';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt });
   const db = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
+
+  usePreventScreenCapture();
 
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 

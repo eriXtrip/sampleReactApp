@@ -28,7 +28,15 @@ const ThemedActivity = ({
       },
       cardStyle
     ]}>
-      <ThemedText style={[styles.activityTitle, titleStyle, { color: theme.text }]}>
+      <ThemedText
+        style={[
+          styles.activityTitle,
+          titleStyle,
+          { color: theme.text },
+        ]}
+        numberOfLines={2}        // ← Only 2 lines
+        ellipsizeMode="tail"     // ← Shows ... at the end
+      >
         {title}
       </ThemedText>
       <ThemedText style={[
