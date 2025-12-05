@@ -116,7 +116,7 @@ const setupNavigationBar = async () => {
       await NavigationBar.setBehaviorAsync('inset-swipe');
       
       // // // Optional: Set navigation bar button color
-      // await NavigationBar.setButtonStyleAsync('light');
+      await NavigationBar.setButtonStyleAsync('light');
       
       // Optional: Set background color if needed
       // await NavigationBar.setBackgroundColorAsync('#000000');

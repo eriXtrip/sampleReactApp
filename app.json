@@ -52,10 +52,13 @@
       [
         "expo-navigation-bar",
         {
+          "enabled": true,
           "barStyle": "light",
           "visibility": "hidden",
           "behavior": "inset-swipe",
-          "position": "relative"
+          "position": "bottom",
+          "backgroundColor": "#00000000",
+          "borderColor": "#00000000"
         }
       ]
     ],
