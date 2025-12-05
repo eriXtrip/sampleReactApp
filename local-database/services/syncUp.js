@@ -209,10 +209,10 @@ export async function syncNotifications(db) {
           type: n.type,
           title: n.title,
           message: n.message,
-          is_read: n.is_read === 1,
+          is_read: true,
           created_at: n.created_at,
           read_at: n.read_at,
-          is_synced: n.is_synced === 1
+          is_synced: true,
         }))
       })
     });

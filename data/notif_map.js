@@ -19,7 +19,7 @@ export const NOTIF_MAP = {
   // Gamification / Achievements
   achievement_badge: { icon: 'ribbon', color: '#ffb703' },
   achievement_level: { icon: 'rocket', color: '#3a86ff' },
-  leaderboard: { icon: 'trophy', color: '#f9c74f' },
+  leaderboard: { icon: 'trophy', color: '#f5fd00ff' },
 
   // Social / Communication
   announcement: { icon: 'megaphone', color: '#06d6a0' },
