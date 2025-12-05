@@ -21,6 +21,7 @@ import ResultsScreen from "../../components/ResultsScreen";
 import PasswordModal from "../../components/PasswordModal";
 import lessonData from "../../data/lessonData";
 import { useSQLiteContext } from "expo-sqlite";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 
 
@@ -513,7 +514,9 @@ export default function QuizScreen() {
       />
     );
   }
-
+  
+  usePreventScreenCapture();
+  
   return (
     
     <View style={styles.container}>
