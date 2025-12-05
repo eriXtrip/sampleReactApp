@@ -48,7 +48,16 @@
       "expo-sqlite",
       "expo-video",
       "expo-web-browser",
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-navigation-bar",
+        {
+          "barStyle": "light",
+          "visibility": "visible",
+          "behavior": "inset-swipe",
+          "position": "relative"
+        }
+      ]
     ],
     "extra": {
       "router": {},

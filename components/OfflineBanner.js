@@ -37,11 +37,11 @@ const OfflineBanner = () => {
   // Update banner message based on state
   useEffect(() => {
     if (isOffline) {
-      setMessage(`Offline (${networkType || 'No connection'})`);
+      setMessage(`Offline mode`); //${networkType || 'No connection'}
     } else if (!isReachable) {
       setMessage('Connecting to server...');
     } else {
-      setMessage('Online ✓');
+      setMessage('Online');
     }
   }, [isOffline, isReachable, networkType]);
 
@@ -65,7 +65,7 @@ const OfflineBanner = () => {
         styles.banner,
         {
           height: heightAnim,
-          backgroundColor: isOffline ? '#FF6B6B' : !isReachable ? '#FFD93D' : '#6BCF7F',
+          backgroundColor: isOffline ? '#464141ff' : !isReachable ? '#FFD93D' : '#6BCF7F',
         }
       ]}
     >

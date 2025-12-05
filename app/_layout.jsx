@@ -103,18 +103,22 @@ const ensureLessonsDir = async () => {
   }
 };
 
-// ADD THIS FUNCTION TO SETUP NAVIGATION BAR
+// FUNCTION TO SETUP NAVIGATION BAR
 const setupNavigationBar = async () => {
   if (Platform.OS === 'android') {
     try {
-      // Set immersive mode - hides but shows when user swipes
-      await NavigationBar.setVisibilityAsync('immersive');
+      // Use 'hidden' to initially hide the navigation bar
+      // Users can swipe from bottom to reveal it
+      // await NavigationBar.setVisibilityAsync('hidden');
       
-      // // Optional: Set navigation bar background to transparent
-      // await NavigationBar.setBackgroundColorAsync('#00000000');
+      // // Set the behavior to inset-swipe (consistent with app.json)
+      // await NavigationBar.setBehaviorAsync('inset-swipe');
       
-      // // Optional: Set navigation bar button color (back, home, recent apps)
+      // // Optional: Set navigation bar button color
       // await NavigationBar.setButtonStyleAsync('light');
+      
+      // Optional: Set background color if needed
+      // await NavigationBar.setBackgroundColorAsync('#000000');
       
     } catch (error) {
       console.log('NavigationBar setup error:', error);

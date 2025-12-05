@@ -191,7 +191,7 @@ export async function syncNotifications(db) {
     `);
 
     console.log('📋 Found notifications to sync:', localChanges.length);
-    console.log('📝 Notification details:', JSON.stringify(localChanges, null, 2));
+    //console.log('📝 Notification details:', JSON.stringify(localChanges, null, 2));
 
     if (!localChanges.length) {
       console.log('✅ No notifications to sync');

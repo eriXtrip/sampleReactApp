@@ -214,7 +214,7 @@ export default class UserService {
       //'notifications'
       //'pupil_test_scores',
       //'pupil_achievements',
-      // 'classmates'
+      'classmates'
     ];
 
     for (const table of tables) {
