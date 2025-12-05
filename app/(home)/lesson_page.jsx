@@ -155,7 +155,7 @@ const LessonPage = () => {
               name="cloud-done"
               size={20}
               color={item.downloaded ? "#1486DE" : "#aaa"}
-              style={{ marginTop: 30, marginLeft: 25, marginRight: 15, zIndex: 2}}
+              style={{ marginTop: 35, marginLeft: 30, marginRight: 15, zIndex: 2}}
             />
           </View>
 

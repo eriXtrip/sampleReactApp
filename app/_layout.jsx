@@ -24,7 +24,7 @@ import ThemedStatusBar from '../components/ThemedStatusBar';
 import { useNotificationListener } from '../utils/notificationListener';
 import OfflineBanner from '../components/OfflineBanner';
 import * as NavigationBar from 'expo-navigation-bar';
-// import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Notification handler
 Notifications.setNotificationHandler({
@@ -204,21 +204,23 @@ const RootLayout = () => {
   return (
     <SQLiteProvider databaseName="mquest.db">
       <DatabaseBinder />
-      <ApiUrlProvider> 
-        <DownloadProvider>
-          <UserProvider>
-            <ProfileProvider>
-              <SearchProvider>
-                <EnrollmentProvider>
-                  <RankingProvider>
-                    <RootLayoutContent/>
-                  </RankingProvider>
-                </EnrollmentProvider>
-              </SearchProvider>
-            </ProfileProvider>
-          </UserProvider>
-        </DownloadProvider>
-      </ApiUrlProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ApiUrlProvider> 
+          <DownloadProvider>
+            <UserProvider>
+              <ProfileProvider>
+                <SearchProvider>
+                  <EnrollmentProvider>
+                    <RankingProvider>
+                      <RootLayoutContent/>
+                    </RankingProvider>
+                  </EnrollmentProvider>
+                </SearchProvider>
+              </ProfileProvider>
+            </UserProvider>
+          </DownloadProvider>
+        </ApiUrlProvider>
+      </GestureHandlerRootView>
     </SQLiteProvider>
   );
 };

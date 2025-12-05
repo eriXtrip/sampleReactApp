@@ -10,12 +10,15 @@ import FlashCard from "../../components/FlashCard"; // ← Import here
 import Spacer from "../../components/Spacer";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 export default function FlashCardScreen() {
   const { uri, content_id } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
   const db = useSQLiteContext();
+
+  usePreventScreenCapture();
 
   const [flashData, setFlashData] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);

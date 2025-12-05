@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { GestureDetector, Gesture, Directions } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.9;

@@ -12,6 +12,7 @@ import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 import { usePreventScreenCapture } from "expo-screen-capture";
+import { lesson_numberColorMap } from '../../data/notif_map';
 
 
 
@@ -35,6 +36,8 @@ export default function MatchingScreen() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [batchIndex, setBatchIndex] = useState(0);
   const [showNextBatchMessage, setShowNextBatchMessage] = useState(false);
+
+  
 
   const animations = useRef({});
   const timerRef = useRef(null);
@@ -79,6 +82,11 @@ export default function MatchingScreen() {
     return () => clearInterval(timerRef.current);
   }, [uri]);
 
+  function getRandomLessonColor() {
+    const colors = Object.values(lesson_numberColorMap);
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
   useEffect(() => {
     if (!matchingData) return;
 
@@ -89,8 +97,11 @@ export default function MatchingScreen() {
     // Create cards for this batch
     let _cards = [];
     batchItems.forEach(item => {
-      _cards.push({ id: item.id, type: "term", content: item.term, key: `${item.id}-term` });
-      _cards.push({ id: item.id, type: "definition", content: item.definition, key: `${item.id}-definition` });
+      const pairColor1 = getRandomLessonColor();
+      const pairColor2 = getRandomLessonColor();
+  
+      _cards.push({ id: item.id, type: "term", content: item.term, key: `${item.id}-term`, color: pairColor1 });
+      _cards.push( { id: item.id, type: "definition", content: item.definition, key: `${item.id}-definition`, color: pairColor2 });
     });
 
     _cards = shuffleArray(_cards);
@@ -224,7 +235,7 @@ export default function MatchingScreen() {
                   style={{ marginHorizontal: 5, width: cardWidth, height: cardHeight }}
                 >
                   <Animated.View
-                    style={[styles.card, { width: cardWidth, height: cardHeight, opacity, transform: [{ rotateY: frontInterpolate }], backgroundColor: "#b0bcbf5f", borderColor: "#9eb4b8ff" }]}
+                    style={[styles.card, { width: cardWidth, height: cardHeight, opacity, transform: [{ rotateY: frontInterpolate }], backgroundColor: "#ddf6fc91" + "20", borderColor: card.color, }]}
                   >
                       <Image
                       source={LoginLogo} // use the imported local image
@@ -237,7 +248,7 @@ export default function MatchingScreen() {
                     />
                   </Animated.View>
                   <Animated.View
-                    style={[styles.card, { width: cardWidth, height: cardHeight, position: "absolute", top: 0, backfaceVisibility: "hidden", transform: [{ rotateY: backInterpolate }], backgroundColor: "#ddf6fc91", borderColor: "#89d1dfff" }]}
+                    style={[styles.card, { width: cardWidth, height: cardHeight, position: "absolute", top: 0, backfaceVisibility: "hidden", transform: [{ rotateY: backInterpolate }], backgroundColor: "#92cbd6ff" + "22", borderColor: "#92cbd6ff"}]}
                   >
                     <Text style={{ textAlign: "center", fontWeight: "bold" }}>{card.content}</Text>
                   </Animated.View>
