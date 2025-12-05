@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 10,
-    marginBottom: 15,
+    marginBottom: 3,
     borderWidth: 2,
   },
   subjectBox: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 10,
-    marginBottom: 15,
+    marginBottom: 5,
     borderWidth: 2,
   },
   icon: { 
