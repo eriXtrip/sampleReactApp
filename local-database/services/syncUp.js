@@ -176,7 +176,7 @@ export async function syncNotifications(db) {
     `);
     if (!user?.server_id) return false;
 
-    // Get ALL local changes: new notifications OR read status updates
+    // Get notifications that need syncing (both new AND updates)
     const localChanges = await db.getAllAsync(`
       SELECT 
         notification_id,
@@ -187,11 +187,10 @@ export async function syncNotifications(db) {
         read_at,
         is_synced
       FROM notifications
-      WHERE is_synced = 0                   -- new notifications
+      WHERE is_synced = 0                   -- Not yet synced
     `);
 
     console.log('📋 Found notifications to sync:', localChanges.length);
-    //console.log('📝 Notification details:', JSON.stringify(localChanges, null, 2));
 
     if (!localChanges.length) {
       console.log('✅ No notifications to sync');
@@ -206,11 +205,11 @@ export async function syncNotifications(db) {
       },
       body: JSON.stringify({
         notifications: localChanges.map(n => ({
-          notification_id: n.server_notification_id || null,  // null = new
+          server_notification_id: n.server_notification_id || null,  // Include if exists
           type: n.type,
           title: n.title,
           message: n.message,
-          is_read: true,
+          is_read: n.is_read === 1,
           created_at: n.created_at,
           read_at: n.read_at,
           is_synced: n.is_synced === 1
@@ -220,30 +219,64 @@ export async function syncNotifications(db) {
 
     if (!res.ok) throw new Error(await res.text());
 
-    const { inserted_notification_ids = [] } = await res.json();
+    const { inserted_notification_ids = [], updated_notification_ids = [] } = await res.json();
 
-    // Update local DB
-    let insertIdIndex = 0;
+    // Process updates from server
     for (const change of localChanges) {
-      if (!change.server_notification_id) {
-        // This was a new notification → assign server ID
-        const newServerId = inserted_notification_ids[insertIdIndex++] || null;
+      if (change.server_notification_id) {
+        // Already has server ID - this is an update (like read status)
+        // Mark as synced since server acknowledged
         await db.runAsync(`
           UPDATE notifications
-          SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now'), is_read = 1
-          WHERE notification_id = ?
-        `, [newServerId, change.notification_id]);
-      } else {
-        // Already existed → just mark as synced (read status already sent)
-        await db.runAsync(`
-          UPDATE notifications
-          SET is_synced = 1, synced_at = datetime('now'), is_read = 1
+          SET is_synced = 1, synced_at = datetime('now')
           WHERE notification_id = ?
         `, [change.notification_id]);
+      } else {
+        // This is a new notification - get server ID from response
+        const newServerId = inserted_notification_ids.shift();
+        if (newServerId) {
+          // Check if this server ID already exists locally
+          const existing = await db.getFirstAsync(
+            'SELECT notification_id FROM notifications WHERE server_notification_id = ?',
+            [newServerId]
+          );
+          
+          if (existing) {
+            // Server ID already exists - UPDATE the existing record
+            await db.runAsync(`
+              UPDATE notifications
+              SET title = ?, message = ?, type = ?, 
+                  is_read = ?, read_at = ?, created_at = ?,
+                  is_synced = 1, synced_at = datetime('now')
+              WHERE server_notification_id = ?
+            `, [
+              change.title,
+              change.message,
+              change.type,
+              change.is_read,
+              change.read_at,
+              change.created_at,
+              newServerId
+            ]);
+            
+            // Delete the duplicate local entry
+            await db.runAsync(
+              'DELETE FROM notifications WHERE notification_id = ?',
+              [change.notification_id]
+            );
+          } else {
+            // Server ID doesn't exist - UPDATE with server ID
+            await db.runAsync(`
+              UPDATE notifications
+              SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now')
+              WHERE notification_id = ?
+            `, [newServerId, change.notification_id]);
+          }
+        }
       }
     }
 
-    console.log(`Synced ${localChanges.length} notification(s) (creates + reads)`);
+    console.log(`✅ Synced ${localChanges.length} notification(s)`);
     return true;
   } catch (err) {
     console.error('❌ Notifications sync error:', err);

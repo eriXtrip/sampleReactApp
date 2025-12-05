@@ -53,7 +53,7 @@
         "expo-navigation-bar",
         {
           "barStyle": "light",
-          "visibility": "visible",
+          "visibility": "hidden",
           "behavior": "inset-swipe",
           "position": "relative"
         }

@@ -109,12 +109,12 @@ const setupNavigationBar = async () => {
     try {
       // Use 'hidden' to initially hide the navigation bar
       // Users can swipe from bottom to reveal it
-      await NavigationBar.setVisibilityAsync('hidden');
+      // await NavigationBar.setVisibilityAsync('hidden');
       
-      // // Set the behavior to inset-swipe (consistent with app.json)
-      await NavigationBar.setBehaviorAsync('inset-swipe');
+      // // // Set the behavior to inset-swipe (consistent with app.json)
+      // await NavigationBar.setBehaviorAsync('inset-swipe');
       
-      // // Optional: Set navigation bar button color
+      // // // Optional: Set navigation bar button color
       // await NavigationBar.setButtonStyleAsync('light');
       
       // Optional: Set background color if needed
