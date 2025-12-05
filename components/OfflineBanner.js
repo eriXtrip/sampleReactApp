@@ -65,7 +65,7 @@ const OfflineBanner = () => {
         styles.banner,
         {
           height: heightAnim,
-          backgroundColor: isOffline ? '#464141ff' : !isReachable ? '#FFD93D' : '#6BCF7F',
+          backgroundColor: isOffline ? '#8989894b' : !isReachable ? '#FFD93D' : '#6BCF7F',
         }
       ]}
     >

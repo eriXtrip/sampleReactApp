@@ -203,6 +203,7 @@ export async function initializeDatabase(db) {
     CREATE TABLE IF NOT EXISTS classmates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,         -- local user_id
+      avatar TEXT,
       classmate_name TEXT NOT NULL,          -- full name
       section_id INTEGER NOT NULL,       -- local section_id
       FOREIGN KEY (section_id) REFERENCES sections(section_id) ON DELETE CASCADE,

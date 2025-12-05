@@ -342,12 +342,12 @@ export async function saveSyncDataToSQLite(data, db) {
         const sectionId = section?.section_id || null;
 
         await db.runAsync(
-          `INSERT INTO classmates (user_id, classmate_name, section_id) 
-          VALUES (?, ?, ?)
+          `INSERT INTO classmates (user_id, classmate_name, section_id, avatar) 
+          VALUES (?, ?, ?, ?)
           ON CONFLICT(user_id, section_id) DO UPDATE SET
             classmate_name=excluded.classmate_name;
           `,
-          [c.user_id, c.full_name, sectionId]
+          [c.user_id, c.full_name, sectionId, c.thumbnail_url || null]
         );
       }
     }

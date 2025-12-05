@@ -67,7 +67,7 @@ const SectionPage = () => {
 
         // Query classmates
         const classmatesResult = await db.getAllAsync(`
-          SELECT id, classmate_name
+          SELECT id, classmate_name, avatar
           FROM classmates
           WHERE section_id = ?
         `, [section_id]);
@@ -76,6 +76,7 @@ const SectionPage = () => {
         const mappedClassmates = classmatesResult.map(classmate => ({
           id: classmate.id.toString(),
           name: classmate.classmate_name,
+          thumbnail_url: classmate.avatar,
         }));
         setClassmates(mappedClassmates);
       } catch (error) {
@@ -134,11 +135,46 @@ const SectionPage = () => {
     </TouchableOpacity>
   );
 
+  // Create a separate ClassmateItem component outside SectionPage
+  const ClassmateItem = React.memo(({ item, theme }) => {
+    const [avatarFailed, setAvatarFailed] = useState(false);
+    
+    // Check if thumbnail_url exists
+    const hasThumbnail = item.thumbnail_url && item.thumbnail_url.trim() !== '';
+    
+    return (
+      <View style={[styles.classmateRow, { 
+        backgroundColor: theme.background, 
+        borderColor: theme.cardBorder 
+      }]}>
+        {hasThumbnail && !avatarFailed ? (
+          <Image
+            source={{ uri: item.thumbnail_url }}
+            style={{ 
+              width: 42, 
+              height: 42, 
+              borderRadius: 21,
+              marginRight: 12 
+            }}
+            resizeMode="cover"
+            onError={() => setAvatarFailed(true)}
+          />
+        ) : (
+          <Ionicons 
+            name="person-circle-outline" 
+            size={42} 
+            color={theme.text} 
+            style={{ marginRight: 12 }} 
+          />
+        )}
+        <ThemedText style={{ fontSize: 16 }}>{item.name}</ThemedText>
+      </View>
+    );
+  });
+
+  // Then use it in your renderClassmateItem function
   const renderClassmateItem = ({ item }) => (
-    <View style={[styles.classmateRow, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-      <Ionicons name="person-circle-outline" size={42} color={theme.text} style={{ marginRight: 12 }} />
-      <ThemedText style={{ fontSize: 16 }}>{item.name}</ThemedText>
-    </View>
+    <ClassmateItem item={item} theme={theme} />
   );
 
   const animatedOnScroll = Animated.event(
