@@ -34,7 +34,7 @@ export function RankingProvider({ children }) {
         const freshUrl = await getApiUrl();
         setApiUrl(freshUrl);
       } catch (err) {
-        console.error('Failed to load API URL:', err);
+        //console.error("❌ Logout failed:", logoutError);('Failed to load API URL:', err);
         setError('API NOT AVAILABLE');
       }
     };
@@ -51,7 +51,7 @@ export function RankingProvider({ children }) {
         const rows = await db.getAllAsync(`SELECT token FROM users LIMIT 1;`);
         if (rows.length > 0) setToken(rows[0].token);
       } catch (err) {
-        console.error("Failed to load user token:", err);
+        //console.error("❌ Logout failed:", logoutError);("Failed to load user token:", err);
         setError('TOKEN NOT AVAILABLE');
       }
     };
@@ -88,14 +88,14 @@ export function RankingProvider({ children }) {
         if (!res.ok) {
           setError('RANKING NOT AVAILABLE\nCannot reach server');
           setRanking([]);
-          console.error('Ranking fetch failed:', res.status);
+          //console.error("❌ Logout failed:", logoutError);('Ranking fetch failed:', res.status);
           return;
         }
 
         const json = await res.json();
         setRanking(json.ranking || []);
       } catch (err) {
-        console.error('Error fetching ranking:', err);
+        //console.error("❌ Logout failed:", logoutError);('Error fetching ranking:', err);
         setError('RANKING NOT AVAILABLE\nCannot reach server');
         setRanking([]);
       } finally {

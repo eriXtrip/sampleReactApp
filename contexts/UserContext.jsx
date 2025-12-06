@@ -64,7 +64,7 @@ export function UserProvider({ children }) {
           UserService.setDatabase(db);
           console.log("✅ Database initialized successfully (UserContext)");
         } catch (error) {
-          console.error("❌ Database initialization error in UserContext:", error);
+          //console.error("❌ Logout failed:", logoutError);("❌ Database initialization error in UserContext:", error);
         } finally {
           setDbInitialized(true);
         }
@@ -185,6 +185,7 @@ export function UserProvider({ children }) {
         role_id: data.user.role,
         lrn: data.user.lrn || 'N/A',
         teacher_id: data.user.teacherId || 'N/A',
+        total_points: data.user.total_points,
         avatar: data.user.avatar ? {
           id: data.user.avatar.id,
           fileName: data.user.avatar.fileName,
@@ -241,7 +242,7 @@ export function UserProvider({ children }) {
         await SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync));
         console.log('SecureStore write OK');
       } catch (storeErr) {
-        console.error('Failed to save token/userData to SecureStore:', storeErr);
+        //console.error("❌ Logout failed:", logoutError);('Failed to save token/userData to SecureStore:', storeErr);
         // decide whether to continue; here we continue to local DB sync
       }
 
@@ -288,7 +289,7 @@ export function UserProvider({ children }) {
       return { success: true, user: userDataForSync, isWebUser: false };
     } catch (error) {
       // don't swallow the real error — log then rethrow so caller/UI sees it
-      console.error('Login flow error:', error);
+      //console.error("❌ Logout failed:", logoutError);('Login flow error:', error);
       // try best-effort cleanup
       try { await UserService.clearUserData(db); } catch (_) {}
       throw error;
@@ -336,7 +337,7 @@ export function UserProvider({ children }) {
         }
       }
     } catch (error) {
-      console.error('Session load error:', error);
+      //console.error("❌ Logout failed:", logoutError);('Session load error:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -367,7 +368,7 @@ export function UserProvider({ children }) {
         return false;
       }
     } catch (err) {
-      console.error('❌ Error checking server reachability:', err);
+      //console.error("❌ Logout failed:", logoutError);('❌ Error checking server reachability:', err);
       return false;
     }
 
@@ -378,6 +379,28 @@ export function UserProvider({ children }) {
     }
 
     try {
+      // 🔄 **NEW: Get local pupil_points before sync**
+      let localPupilPoints = 0;
+      let userServerId = server_id;
+      
+      if (db) {
+        try {
+          // Get user's local points from SQLite
+          const userResult = await db.getAllAsync(
+            'SELECT pupil_points, server_id FROM users WHERE server_id = ? LIMIT 1',
+            [server_id]
+          );
+          
+          if (userResult && userResult.length > 0) {
+            localPupilPoints = userResult[0].pupil_points || 0;
+            userServerId = userResult[0].server_id;
+            console.log(`📊 Local pupil_points before sync: ${localPupilPoints}`);
+          }
+        } catch (pointsErr) {
+          console.warn('⚠️ Could not fetch local pupil_points:', pointsErr);
+        }
+      }
+
       // 🔄 Trigger offline sync if online
       if (db) {
         try {
@@ -389,6 +412,35 @@ export function UserProvider({ children }) {
         }
       }
 
+      // 🔹 **NEW: Sync pupil_points to server**
+      if (localPupilPoints > 0 && userServerId) {
+        try {
+          console.log(`🔄 Syncing pupil_points to server: ${localPupilPoints}`);
+          const token = await SecureStore.getItemAsync("authToken");
+          
+          const syncResponse = await fetch(`${API_URL}/auth/sync-points`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ 
+              user_id: userServerId, 
+              pupil_points: localPupilPoints 
+            })
+          });
+          
+          if (syncResponse.ok) {
+            console.log("✅ Pupil points synced to server");
+          } else {
+            const errorData = await syncResponse.json();
+            console.warn(`⚠️ Points sync failed: ${errorData.error || 'Unknown error'}`);
+          }
+        } catch (pointsSyncErr) {
+          console.warn("⚠️ Points sync error (non-fatal):", pointsSyncErr);
+        }
+      }
+
       // 🔹 Logout from server
       const token = await SecureStore.getItemAsync("authToken");
       const response = await fetch(`${API_URL}/auth/logout`, {
@@ -397,8 +449,13 @@ export function UserProvider({ children }) {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ user_id: server_id })
+        body: JSON.stringify({ 
+          user_id: server_id,
+          // Optional: Include final points in logout request
+          pupil_points: localPupilPoints 
+        })
       });
+      
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || "Logout failed on server");
@@ -442,7 +499,7 @@ export function UserProvider({ children }) {
       return true;
 
     } catch (logoutError) {
-      console.error("❌ Logout failed:", logoutError);
+      //console.error("❌ Logout failed:", logoutError);("❌ Logout failed:", logoutError);
       return false;
     }
   };
@@ -534,7 +591,7 @@ export function UserProvider({ children }) {
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
-      console.error('Non-JSON response:', { status: response.status, url, text });
+      //console.error("❌ Logout failed:", logoutError);('Non-JSON response:', { status: response.status, url, text });
       throw new Error(`Expected JSON, received ${contentType || 'no content-type'}: ${text.slice(0, 100)}...`);
     }
 
@@ -574,7 +631,7 @@ export function UserProvider({ children }) {
       }
 
     } catch (error) {
-      console.error('❌ Vulnerable test error:', error.message);
+      //console.error("❌ Logout failed:", logoutError);('❌ Vulnerable test error:', error.message);
       return { error: error.message };
     }
   };
@@ -592,7 +649,7 @@ export function UserProvider({ children }) {
       console.log('Secure Function Response:', data);
       return data;
     } catch (error) {
-      console.error('❌ Secure test error:', error.message);
+      //console.error("❌ Logout failed:", logoutError);('❌ Secure test error:', error.message);
       return { error: error.message };
     }
   };

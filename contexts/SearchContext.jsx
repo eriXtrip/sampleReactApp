@@ -22,7 +22,7 @@ export function SearchProvider({ children }) {
           setApiUrl(url);
           console.log('✅ API URL resolved:', url);
         } catch (err) {
-          console.error('❌ Failed to get API URL:', err);
+          //console.error("❌ Logout failed:", logoutError);('❌ Failed to get API URL:', err);
           setError('Configuration error');
         }
       })();
@@ -55,7 +55,7 @@ export function SearchProvider({ children }) {
       console.log('✅ Subjects received:', data.subjects);
       setSubjects(data.subjects || []);
     } catch (err) {
-      console.error('❌ Error fetching public subjects:', err);
+      //console.error("❌ Logout failed:", logoutError);('❌ Error fetching public subjects:', err);
       setError(err.message || 'Unable to load subjects');
       setSubjects([]);
     } finally {
@@ -88,7 +88,7 @@ export function SearchProvider({ children }) {
       console.log('✅ Sections received:', data.sections);
       setSections(data.sections || []);
     } catch (err) {
-      console.error('❌ Error fetching sections:', err);
+      //console.error("❌ Logout failed:", logoutError);('❌ Error fetching sections:', err);
       setError(err.message || 'Unable to load sections');
       setSections([]);
     } finally {

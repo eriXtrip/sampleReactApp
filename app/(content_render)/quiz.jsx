@@ -26,9 +26,10 @@ import { usePreventScreenCapture } from "expo-screen-capture";
 
 
 export default function QuizScreen() {
-  const { uri } = useLocalSearchParams(); 
+  const { uri, practice = 0 } = useLocalSearchParams(); 
   const router = useRouter();
   const navigation = useNavigation();
+  const isPracticeMode = practice === "1" || practice === "true" || practice === true;
 
   //usePreventScreenCapture();
 
@@ -487,8 +488,14 @@ export default function QuizScreen() {
 
       setScore(total);
       setShowResults(true);
-      await saveScore(total, maxScore);
-      await saveAnswers();
+
+      if (!isPracticeMode) {
+        console.log("📊 Saving score to database...");
+        await saveScore(total, maxScore);
+        await saveAnswers();
+      } else {
+        console.log("🎯 Review mode - scores not saved");
+      }
 
     }
   };
@@ -513,6 +520,7 @@ export default function QuizScreen() {
         answers={answers}
         startedAt={startedAt}
         onClose={() => router.back()}
+        isPracticeMode={isPracticeMode}
       />
     );
   }
@@ -530,6 +538,7 @@ export default function QuizScreen() {
         onExit={handleExit} 
         onGrid={() => setGridVisible(true)} 
         theme={theme}
+        subtitle={isPracticeMode ? "Review Mode" : null}
       />
 
       {/* Question card */}

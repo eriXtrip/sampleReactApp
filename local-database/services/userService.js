@@ -44,6 +44,7 @@ export default class UserService {
             avatar_url = ?,
             avatar_file_name = ?,
             avatar_thumbnail = ?
+            pupil_points = ?
           WHERE email = ?`,
           [
             serverUser.server_id,
@@ -62,7 +63,8 @@ export default class UserService {
             serverUser.avatar_url || null,
             serverUser.avatar.avatar_file_name || null,
             serverUser.avatar?.thumbnail || null,
-            serverUser.email
+            serverUser.email,
+            serverUser.total_points,
           ]
         );
 
@@ -73,8 +75,9 @@ export default class UserService {
           `INSERT INTO users (
             server_id, role_id, email, first_name, middle_name, last_name, 
             suffix, gender, birth_date, lrn, teacher_id, token, last_sync,
-            avatar_id, avatar, avatar_url, avatar_file_name, avatar_thumbnail
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?)`,
+            avatar_id, avatar, avatar_url, avatar_file_name, avatar_thumbnail,
+            pupil_points
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
           [
             serverUser.server_id,
             serverUser.role_id,
@@ -93,6 +96,7 @@ export default class UserService {
             serverUser.avatar_url || null,           // ← Local file path
             serverUser.avatar_file_name || null,     // ← Original avatar_file_name
             serverUser.avatar?.thumbnail || null,
+            serverUser.total_points,
           ]
         );
       }
@@ -203,7 +207,7 @@ export default class UserService {
 
     const tables = [
       // 'roles',
-      // 'users',
+      //'users',
       // 'sections',
       // 'subjects',
       // 'subjects_in_section',

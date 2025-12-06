@@ -31,6 +31,7 @@ export async function initializeDatabase(db) {
       avatar_url TEXT,
       avatar_file_name TEXT,
       avatar_thumbnail TEXT,
+      pupil_points INTEGER,
       FOREIGN KEY (role_id) REFERENCES roles(role_id)
     );
 

@@ -8,8 +8,8 @@ import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { usePreventScreenCapture } from "expo-screen-capture";
 
 
-const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
-  console.log("ResultScreen Props:", { score, quizData, answers, startedAt });
+const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode }) => {
+  console.log("ResultScreen Props:", { score, quizData, answers, startedAt, isPracticeMode });
   const db = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
 
@@ -183,7 +183,9 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
 
   // 🔹 save when ResultScreen mounts
   useEffect(() => {
-    saveResults();
+    if(!isPracticeMode){
+      saveResults();
+    }
   }, []);
 
   const renderReviewItem = ({ item }) => {
@@ -235,7 +237,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Quiz Results</Text>
+      <Text style={styles.title}>{isPracticeMode ? "Review Result" : "Test Results"}</Text>
 
       {/* Summary Info */}
       <SummaryBox passed={passed} score={score} maxScore={quizData.settings.maxScore}>

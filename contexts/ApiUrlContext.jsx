@@ -87,7 +87,7 @@ export const ApiUrlProvider = ({ children }) => {
       
       return url;
     } catch (error) {
-      console.error('❌ Failed to refresh API:', error.message);
+      //console.error("❌ Logout failed:", logoutError);('❌ Failed to refresh API:', error.message);
       if (isMounted.current) {
         setApiUrl(null);
         setIsApiLoaded(true);

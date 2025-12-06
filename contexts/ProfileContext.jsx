@@ -21,7 +21,7 @@ export function ProfileProvider({ children }) {
           setTheme(savedTheme);
         }
       } catch (error) {
-        console.error('Failed to load theme:', error);
+        //console.error("❌ Logout failed:", logoutError);('Failed to load theme:', error);
       }
     };
     loadTheme();
@@ -39,7 +39,7 @@ export function ProfileProvider({ children }) {
           console.log("PROFILE CONTEXT: No user found in SQLite.");
         }
       } catch (error) {
-        console.error('Failed to load user:', error);
+        //console.error("❌ Logout failed:", logoutError);('Failed to load user:', error);
       }
     };
 
@@ -65,7 +65,7 @@ export function ProfileProvider({ children }) {
       setTheme(newTheme);
       await AsyncStorage.setItem('theme', newTheme);
     } catch (error) {
-      console.error('Failed to save theme:', error);
+      //console.error("❌ Logout failed:", logoutError);('Failed to save theme:', error);
     }
   };
 

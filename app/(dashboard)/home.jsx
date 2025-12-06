@@ -341,9 +341,11 @@ const Home = () => {
               />
             ))
           ) : (
-            <ThemedText style={{ opacity: 0.6, textAlign: 'center', paddingVertical: 20 }}>
-              No recent activity yet.
-            </ThemedText>
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>
+                No recent activity yet.
+              </ThemedText>
+            </View>
           )}
         </ScrollView>
 
@@ -446,7 +448,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   carousel: {
-    paddingBottom: 10,
+    paddingVertical: 10,
   },
   activityCard: {
     backgroundColor: '#fff',
@@ -468,6 +470,17 @@ const styles = StyleSheet.create({
   activityTime: {
     color: '#999',
     fontSize: 10,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 100,
+    paddingVertical: 20,
+  },
+  emptyStateText: {
+    opacity: 0.6,
+    textAlign: 'center',
   },
   subjectContainer: {
     marginBottom: 10,

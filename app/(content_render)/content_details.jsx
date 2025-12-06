@@ -264,7 +264,7 @@ const ContentDetails = () => {
     }
   };
 
-  const handleOpen = async () => {
+  const handleOpen = async (practice = 0) => {
     if (!contents.length) return;
 
     const { content_id, file_name, url, content_type, title } = contents[0];
@@ -314,7 +314,12 @@ const ContentDetails = () => {
         const actualUri = fileInfo.exists ? localPath : url;
         router.push({
           pathname: jsonRoutes[content_type],
-          params: { uri: actualUri, title, content_id},
+          params: { 
+            uri: actualUri, 
+            title, 
+            content_id,
+            practice,  
+          },
         });
         console.log(`Loaded ${content_type} at ${actualUri}`);
       } catch (err) {
@@ -627,11 +632,33 @@ const ContentDetails = () => {
 
         </ScrollView>
 
-        {['pdf', 'ppt', 'pptx', 'quiz', 'game_match', 'game_flash', 'game_speak', 'game_comp', 'game_img']
-          .includes(contents[0]?.content_type) && (
-          <ThemedButton style={styles.startButton} onPress={handleOpen} disabled={downloading}>
+        {[
+          'pdf', 'ppt', 'pptx', 'quiz',
+          'game_match', 'game_flash', 'game_speak',
+          'game_comp', 'game_img'
+        ].includes(contents[0]?.content_type) && (
+          <ThemedButton
+            style={styles.startButton}
+            disabled={downloading}
+            onPress={() => {
+              // Determine practice mode
+              const practice =
+                contents[0]?.content_type === 'quiz' && (isDone || quizScore)
+                  ? 1   // Practice mode
+                  : 0;  // Normal open
+
+              handleOpen(practice);
+            }}
+          >
             <ThemedText style={styles.startText}>
-              {downloading ? 'Downloading…' : 'Open'}
+              {downloading
+                ? 'Downloading…'
+                : contents[0]?.content_type === 'quiz' && isDone
+                  ? 'Review'
+                  : contents[0]?.content_type === 'quiz' && quizScore
+                    ? 'Review'
+                    : 'Open'
+              }
             </ThemedText>
           </ThemedButton>
         )}

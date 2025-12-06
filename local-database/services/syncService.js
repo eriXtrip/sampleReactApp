@@ -227,7 +227,7 @@ export async function saveSyncDataToSQLite(data, db) {
         await db.runAsync(
           `INSERT INTO notifications (
             server_notification_id, title, message, type, is_read, created_at, read_at, is_synced
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(server_notification_id) DO UPDATE SET
               title=excluded.title,
               message=excluded.message, 
@@ -235,6 +235,7 @@ export async function saveSyncDataToSQLite(data, db) {
               is_read=excluded.is_read, 
               created_at=excluded.created_at, 
               read_at=excluded.read_at;
+              is_synced=excluded.is_synced;
           `,
           [
             n.notification_id,
@@ -244,6 +245,7 @@ export async function saveSyncDataToSQLite(data, db) {
             Boolean(n.is_read),
             n.created_at || new Date().toISOString(),
             n.read_at || null,
+            n.is_synced,
           ]
         );
 
