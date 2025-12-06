@@ -13,7 +13,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt }) => {
   const db = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 

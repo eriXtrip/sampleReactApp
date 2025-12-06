@@ -19,7 +19,7 @@ export default function SpeakGameScreen() {
 
   const db = useSQLiteContext();
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const [gameData, setGameData] = useState(null);
   const [currentSentence, setCurrentSentence] = useState(0);

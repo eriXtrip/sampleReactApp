@@ -33,7 +33,7 @@ export default function CompleteSentenceScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const db = useSQLiteContext();
 

@@ -25,7 +25,7 @@ export default function FlashCardScreen() {
   const navigation = useNavigation();
   const db = useSQLiteContext();
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const [flashcards, setFlashcards] = useState([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);

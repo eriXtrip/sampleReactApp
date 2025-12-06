@@ -56,9 +56,7 @@
           "barStyle": "light",
           "visibility": "hidden",
           "behavior": "inset-swipe",
-          "position": "bottom",
-          "backgroundColor": "#00000000",
-          "borderColor": "#00000000"
+          "position": "bottom"
         }
       ]
     ],

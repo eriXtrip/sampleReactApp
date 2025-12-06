@@ -24,7 +24,7 @@ export default function MatchingScreen() {
 
   const db = useSQLiteContext();
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const [matchingData, setMatchingData] = useState(null);
   const [cards, setCards] = useState([]);

@@ -26,7 +26,7 @@ export default function AngleHuntScreen() {
   const { uri, content_id } = useLocalSearchParams();
   console.log("Game with img:", { uri, content_id });
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
   
   const [gameData, setGameData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);

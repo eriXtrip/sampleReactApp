@@ -30,7 +30,7 @@ export default function QuizScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  usePreventScreenCapture();
+  //usePreventScreenCapture();
 
   const [quizData, setQuizData] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
