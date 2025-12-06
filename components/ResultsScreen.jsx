@@ -1,17 +1,24 @@
 // SAMPLEREACTAPP/components/ResultScreen.jsx
-import React, { useEffect, useState, useContext  } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import Spacer from "./Spacer";
 import SummaryBox from './SummaryBox';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { usePreventScreenCapture } from "expo-screen-capture";
+import Star from './Star';
 
-
-const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode }) => {
+const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode, onShowStar }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt, isPracticeMode });
   const db = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
+  
+  // Debug: Log the dates
+  console.log("📅 Started At (from props):", startedAt, "Type:", typeof startedAt);
+  console.log("📅 Completed At (state):", completedAt, "Type:", typeof completedAt);
+
+  const [showStar, setShowStar] = useState(false);
+  const starComponentRef = useRef(null);
 
   //usePreventScreenCapture();
 
@@ -21,10 +28,37 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
   const percentageScore = (score / quizData.settings.maxScore) * 100;
   const passed = percentageScore >= passingPercent;
 
-  const durationMs = new Date(completedAt) - new Date(startedAt);
-  const durationMins = Math.floor(durationMs / 60000);
-  const durationSecs = Math.floor((durationMs % 60000) / 1000);
-  const duration = `${durationMins}m ${durationSecs}s`
+  // ✅ FIXED: Proper duration calculation
+  const calculateDuration = () => {
+    try {
+      // Convert strings to Date objects
+      const startDate = new Date(startedAt);
+      const endDate = new Date(completedAt);
+      
+      console.log("⏱️ Start Date:", startDate);
+      console.log("⏱️ End Date:", endDate);
+      
+      // Check if dates are valid
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.log("Invalid date format");
+        return "0m 0s";
+      }
+      
+      // Calculate difference in milliseconds
+      const durationMs = Math.abs(endDate.getTime() - startDate.getTime());
+      console.log("⏱️ Duration in ms:", durationMs);
+      
+      const durationMins = Math.floor(durationMs / 60000);
+      const durationSecs = Math.floor((durationMs % 60000) / 1000);
+      
+      return `${durationMins}m ${durationSecs}s`;
+    } catch (error) {
+      console.log("Error calculating duration:", error);
+      return "0m 0s";
+    }
+  };
+
+  const duration = calculateDuration();
 
   let correctItems = 0;
 
@@ -45,9 +79,11 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
     if (!userId) return;
 
     const now = completedAt.toISOString();
+
     try {
-      // ✅ Save score
-      // Step 1: Check for existing attempts
+      // ----------------------------------------
+      // 1. Get next attempt number
+      // ----------------------------------------
       const rows = await db.getAllAsync(
         `SELECT MAX(attempt_number) AS max_attempt
         FROM pupil_test_scores
@@ -55,11 +91,14 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         [userId, quizData.quizId]
       );
 
-      // Step 2: Determine next attempt number
-      const maxAttempt = rows[0]?.max_attempt;   // grab the first row
+      const maxAttempt = rows[0]?.max_attempt;
       const nextAttempt = maxAttempt ? maxAttempt + 1 : 1;
 
-      // Step 3: Insert new score with incremented attempt
+      // ----------------------------------------
+      // 2. Insert new test score
+      // ----------------------------------------
+      const grade = Math.round((score / quizData.settings.maxScore) * 100);
+
       await db.runAsync(
         `INSERT INTO pupil_test_scores 
         (pupil_id, test_id, score, max_score, taken_at, grade, attempt_number, is_synced, server_score_id)
@@ -70,21 +109,47 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
           score,
           quizData.settings.maxScore,
           now,
-          Math.round((score / quizData.settings.maxScore) * 100),
+          grade,
           nextAttempt
         ]
       );
 
-      // ✅ Save content status 
+      // ⭐ ----------------------------------------
+      // ⭐ REWARD LOGIC (Grade 100 + Attempt 1)
+      // ⭐ ----------------------------------------
+      if (grade === 100) {
+
+        setShowStar(true);
+        setTimeout(() => {
+          starComponentRef.current?.play();
+        }, 100);
+
+        try {
+          await db.runAsync(
+            `UPDATE users 
+            SET pupil_points = pupil_points + 1 
+            WHERE user_id = ?`,
+            [userId]
+          );
+          console.log("⭐ Reward applied! +1 pupil_point");
+        } catch (err) {
+          console.log("❌ Failed to update pupil_points:", err);
+        }
+        
+        onShowStar?.();
+      }
+
+      // ----------------------------------------
+      // 3. Update content and lesson status (your existing code)
+      // ----------------------------------------
       if (passed) {
         await db.runAsync(
           `UPDATE subject_contents 
           SET done = 1, completed_at = ?, started_at = ?, duration = ?
-          WHERE server_content_id = ? `,
+          WHERE server_content_id = ?`,
           [now, startedAt, duration, quizData.contentId]
         );
 
-        // 🔎 Step 2: Fetch the lesson_belong for this content
         const contentRow = await db.getAllAsync(
           `SELECT lesson_belong 
           FROM subject_contents 
@@ -95,7 +160,6 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         if (contentRow && contentRow.length > 0) {
           const lesson_belong = contentRow[0].lesson_belong;
 
-          // 📊 Step 2.5: Fetch all contents under this lesson
           const rows = await db.getAllAsync(
             `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
             [lesson_belong]
@@ -105,11 +169,9 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
           const doneCount = rows.filter(r => r.done).length;
           const progress = total > 0 ? (doneCount / total) * 100 : 0;
 
-          // ✅ Step 3: Determine status and completed_at for lesson
           const lessonStatus = progress === 100;
           const lessonCompletedAt = lessonStatus ? now : null;
 
-          // ✅ Step 4: Update lessons table
           await db.runAsync(
             `UPDATE lessons
             SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
@@ -122,7 +184,6 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
       } else {
         console.log(`Content ${quizData.quizId} not marked done — quiz not passed.`);
       }
-
 
       // ✅ Save answers
       for (const q of quizData.questions) {
@@ -174,10 +235,10 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         }
       }
 
-
       console.log("✅ Results saved for user:", userId);
+
     } catch (err) {
-      console.error("❌ Error saving results:", err);
+      console.log("❌ Error saving results:", err);
     }
   };
 
@@ -239,11 +300,18 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
     <View style={styles.container}>
       <Text style={styles.title}>{isPracticeMode ? "Review Result" : "Test Results"}</Text>
 
+      {showStar && (
+        <Star 
+          ref={starComponentRef}
+          onClose={() => setShowStar(false)}
+        />
+      )}
+
       {/* Summary Info */}
       <SummaryBox passed={passed} score={score} maxScore={quizData.settings.maxScore}>
         <Text style={{ marginTop: 8 }}>Started: {new Date(startedAt).toLocaleString()}</Text>
         <Text>Completed: {new Date(completedAt).toLocaleString()}</Text>
-        <Text>Duration: {duration} </Text>
+        <Text>Duration: {duration}</Text>
         <Text style={{ marginTop: 6 }}>Grade: {score} out of {quizData.settings.maxScore} ({Math.round((score / quizData.settings.maxScore) * 100)}%)</Text>
       </SummaryBox>
 

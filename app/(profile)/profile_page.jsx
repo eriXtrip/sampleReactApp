@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import NetInfo from '@react-native-community/netinfo';
+
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -16,6 +18,7 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import  RankingBoard  from '../../components/RankingBoard';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { useRanking } from '../../contexts/RankingContext';
+import SimpleStarsCard from '../../components/StarCard';
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -33,7 +36,7 @@ const ProfilePage = () => {
   const [birthday, setBirthday] = useState(''); // new (YYYY-MM-DD)
   const [saving, setSaving] = useState(false);
   const [avatarUri, setAvatarUri] = useState(null);
-
+  const [isOnline, setIsOnline] = useState(true);
   const { ranking, loading } = useRanking();
 
 
@@ -48,6 +51,14 @@ const ProfilePage = () => {
       setBirthday(user.birthday || '');
     }
   }, [user]);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsOnline(state.isConnected);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleSave = async () => {
     const payload = {
@@ -162,9 +173,13 @@ const ProfilePage = () => {
 
       {/* Pupil details card (visible when not editing) */}
       {!editing ? (
-        <>
-          <RankingBoard ranking={ranking} />
-        </>
+        <ScrollView 
+          contentContainerStyle={{ paddingBottom: 40 }} 
+          showsVerticalScrollIndicator={false}
+        >
+          {isOnline && <RankingBoard ranking={ranking} />}
+          <SimpleStarsCard points={user?.pupil_points} />
+        </ScrollView>
       ) : null}
 
       {editing ? (

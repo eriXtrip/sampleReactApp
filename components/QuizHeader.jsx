@@ -40,7 +40,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 0,
   },
   subtitle: {
     fontSize: 16,

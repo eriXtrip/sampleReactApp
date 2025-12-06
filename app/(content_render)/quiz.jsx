@@ -22,6 +22,8 @@ import PasswordModal from "../../components/PasswordModal";
 import lessonData from "../../data/lessonData";
 import { useSQLiteContext } from "expo-sqlite";
 import { usePreventScreenCapture } from "expo-screen-capture";
+import Star from "../../components/Star";
+import { useRef } from "react";
 
 
 
@@ -30,7 +32,8 @@ export default function QuizScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const isPracticeMode = practice === "1" || practice === "true" || practice === true;
-
+  const starRef = useRef(null);
+  const [showStar, setShowStar] = useState(false);
   //usePreventScreenCapture();
 
   const [quizData, setQuizData] = useState(null);
@@ -514,14 +517,20 @@ export default function QuizScreen() {
   // Results screen
   if (showResults) {
     return (
-      <ResultsScreen
-        score={score}
-        quizData={quizData}
-        answers={answers}
-        startedAt={startedAt}
-        onClose={() => router.back()}
-        isPracticeMode={isPracticeMode}
-      />
+      <>
+        <ResultsScreen
+          score={score}
+          quizData={quizData}
+          answers={answers}
+          startedAt={startedAt}
+          onClose={() => router.back()}
+          isPracticeMode={isPracticeMode}
+          starRef={starRef}
+          onShowStar={() => {
+            console.log("🎬 onShowStar triggered");
+          }}
+        />
+      </>
     );
   }
   
@@ -529,7 +538,9 @@ export default function QuizScreen() {
   
   return (
     
+    
     <View style={styles.container}>
+
       {/* Progress Bar */}
       <ProgressBar current={currentQuestion} total={quizData.questions.length} />
 
@@ -695,4 +706,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
   },
+  starOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  }
 });
