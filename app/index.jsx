@@ -7,6 +7,7 @@ import { UserProvider } from "../contexts/UserContext";
 import { SQLiteProvider, useSQLiteContext  } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
 import { setupNetworkSyncListener, triggerSyncIfOnline, markDbInitialized } from '../local-database/services/syncUp.js';
+import { appLifecycleManager } from '../utils/appLifecycleManager';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = 100;
@@ -44,6 +45,14 @@ const SplashScreen = () => {
   const circle2Scale = useRef(new Animated.Value(0.1)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Initialize AppLifecycleManager with database
+  useEffect(() => {
+    if (db) {
+      const unsubscribe = appLifecycleManager.initialize(db);
+      return unsubscribe;
+    }
+  }, [db]);
 
   // Animation
   useEffect(() => {
