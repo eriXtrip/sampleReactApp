@@ -2,6 +2,7 @@
 
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath } from './resolveLocalPath';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from './dbHelpers';
 
 export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db) => {
   try {
@@ -40,7 +41,8 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
     // Update the database to decrement no_of_contents
     if (db && lesson_bellonId) {
       try {
-        await db.runAsync(
+        await safeRun(
+          db, 
           `UPDATE lessons
           SET no_of_contents = COALESCE(no_of_contents, 0) - 1
           WHERE lesson_id = ?`,
@@ -55,7 +57,8 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
     if(file){
       try{
 
-        await db.runAsync(
+        await safeRun(
+          db,
           `UPDATE subject_contents
           SET downloaded = 0
           WHERE file_name = ?`,

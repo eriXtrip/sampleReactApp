@@ -9,6 +9,7 @@ import {
   showSuccessToast,
   showErrorToast 
 } from './notificationUtils';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from './dbHelpers';
 
 // Download the main file and associated images for JSON-based content
 export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
@@ -131,7 +132,8 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
 
         console.log("Updating lesson no_of_contents for lesson_id=", lesson_bellonId);
       try {
-        await db.runAsync(
+        await safeRun(
+          db,
           `UPDATE lessons
           SET no_of_contents = COALESCE(no_of_contents, 0) + 1,
               is_downloaded = 1
@@ -148,7 +150,8 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
       try{
         const now = new Date().toISOString();
 
-        await db.runAsync(
+        await safeRun(
+          db,
           `UPDATE subject_contents
           SET downloaded = 1, downloaded_at = ?
           WHERE file_name = ?`,

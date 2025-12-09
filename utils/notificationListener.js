@@ -4,6 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { triggerLocalNotification } from './notificationUtils';
 import { waitForDbReady } from '../local-database/services/dbReady';
 import { dbMutex } from './databaseMutex';
+import { safeGetAll, safeRun } from './dbHelpers';
 
 export function useNotificationListener() {
   const db = useSQLiteContext();
@@ -21,14 +22,16 @@ export function useNotificationListener() {
           try {
             await dbMutex.acquire('notifications');
             
-            const notifications = await db.getAllAsync(
+            const notifications = await safeGetAll(
+              db,
               `SELECT * FROM notifications WHERE is_read = 0 ORDER BY created_at`
             );
 
             for (const n of notifications) {
               await triggerLocalNotification(n.title, n.message);
 
-              await db.runAsync(
+              await safeRun(
+                db,
                 `UPDATE notifications SET is_read = 1 WHERE notification_id = ?`,
                 [n.notification_id]
               );
