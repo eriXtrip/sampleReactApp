@@ -1,6 +1,6 @@
 // app/_layout.jsx
-import { useEffect, useContext } from 'react';
-import { useColorScheme, Alert, Platform, Linking } from 'react-native';
+import { useEffect, useContext, useState  } from 'react';
+import { useColorScheme, Alert, Platform, Linking, AppState  } from 'react-native';
 import { Stack } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
@@ -131,6 +131,7 @@ const setupNavigationBar = async () => {
 const RootLayoutContent = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
+  const [appState, setAppState] = useState(AppState.currentState);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   //useNotificationListener();
@@ -157,19 +158,35 @@ const RootLayoutContent = () => {
     })();
   }, []);
 
-  useEffect(() => {
-    let lastPath = null;
-    const un = setInterval(() => {
-      try {
-        const db = useSQLiteContext(); // only valid inside component; else adapt
-        if (db && db.databasePath !== lastPath) {
-          lastPath = db.databasePath;
-          console.trace('DB path changed ->', db.databasePath); // traces call stack
+  // useEffect(() => {
+  //   let lastPath = null;
+  //   const un = setInterval(() => {
+  //     try {
+  //       const db = useSQLiteContext(); // only valid inside component; else adapt
+  //       if (db && db.databasePath !== lastPath) {
+  //         lastPath = db.databasePath;
+  //         console.trace('DB path changed ->', db.databasePath); // traces call stack
+  //       }
+  //     } catch (e) {}
+  //   }, 1000);
+  //   return () => clearInterval(un);
+  // }, []);
+
+    useEffect(() => {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        console.log('App state changed to:', nextAppState);
+        setAppState(nextAppState);
+
+        // Optional: perform actions based on state
+        if (nextAppState === 'active') {
+          console.log('App is in foreground');
+        } else if (nextAppState.match(/inactive|background/)) {
+          console.log('App is in background or inactive');
         }
-      } catch (e) {}
-    }, 1000);
-    return () => clearInterval(un);
-  }, []);
+      });
+
+      return () => subscription.remove();
+    }, []);
 
   return (
     <>

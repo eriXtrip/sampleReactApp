@@ -1,4 +1,5 @@
 // local-database/services/userService.js
+import { safeSqlWrite } from "../helpers/safeSqlWrite";
 export default class UserService {
   static db = null;
 
@@ -25,80 +26,83 @@ export default class UserService {
       if (existingUser) {
         console.log('User exists, updating fields...');
         // Update existing user
-        await activeDb.runAsync(
-          `UPDATE users SET
-            server_id = ?,
-            role_id = ?,
-            first_name = ?,
-            middle_name = ?,
-            last_name = ?,
-            suffix = ?,
-            gender = ?,
-            birth_date = ?,
-            lrn = ?,
-            teacher_id = ?,
-            token = ?,
-            last_sync = datetime('now'),
-            avatar_id = ?,
-            avatar = ?,
-            avatar_url = ?,
-            avatar_file_name = ?,
-            avatar_thumbnail = ?
-            pupil_points = ?
-          WHERE email = ?`,
-          [
-            serverUser.server_id,
-            serverUser.role_id,
-            serverUser.first_name,
-            serverUser.middle_name || null,
-            serverUser.last_name,
-            serverUser.suffix || null,
-            serverUser.gender || null,
-            serverUser.birth_date || null,
-            serverUser.lrn || null,
-            serverUser.teacher_id || null,
-            token,
-            serverUser.avatar?.id || null,
-            serverUser.avatar?.avatar || null,
-            serverUser.avatar_url || null,
-            serverUser.avatar.avatar_file_name || null,
-            serverUser.avatar?.thumbnail || null,
-            serverUser.email,
-            serverUser.total_points,
-          ]
-        );
-
+          await safeSqlWrite(activeDb, async (txDb) => {
+            await txDb.runAsync(
+              `UPDATE users SET
+                server_id = ?,
+                role_id = ?,
+                first_name = ?,
+                middle_name = ?,
+                last_name = ?,
+                suffix = ?,
+                gender = ?,
+                birth_date = ?,
+                lrn = ?,
+                teacher_id = ?,
+                token = ?,
+                last_sync = datetime('now'),
+                avatar_id = ?,
+                avatar = ?,
+                avatar_url = ?,
+                avatar_file_name = ?,
+                avatar_thumbnail = ?,
+                pupil_points = ?
+              WHERE email = ?`,
+              [
+                serverUser.server_id,
+                serverUser.role_id,
+                serverUser.first_name,
+                serverUser.middle_name || null,
+                serverUser.last_name,
+                serverUser.suffix || null,
+                serverUser.gender || null,
+                serverUser.birth_date || null,
+                serverUser.lrn || null,
+                serverUser.teacher_id || null,
+                token,
+                serverUser.avatar?.id || null,
+                serverUser.avatar?.avatar || null,
+                serverUser.avatar?.avatar_url || null,
+                serverUser.avatar?.avatar_file_name || null,
+                serverUser.avatar?.thumbnail || null,
+                serverUser.total_points,
+                serverUser.email,
+              ]
+            );
+          });
         } else {
 
         // Insert new user
-        await activeDb.runAsync(
-          `INSERT INTO users (
-            server_id, role_id, email, first_name, middle_name, last_name, 
-            suffix, gender, birth_date, lrn, teacher_id, token, last_sync,
-            avatar_id, avatar, avatar_url, avatar_file_name, avatar_thumbnail,
-            pupil_points
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
-          [
-            serverUser.server_id,
-            serverUser.role_id,
-            serverUser.email,
-            serverUser.first_name,
-            serverUser.middle_name || null,
-            serverUser.last_name,
-            serverUser.suffix || null,
-            serverUser.gender || null,
-            serverUser.birth_date || null,
-            serverUser.lrn || null,
-            serverUser.teacher_id || null,
-            token,
-            serverUser.avatar?.id || null,
-            serverUser.avatar?.avatar || null,
-            serverUser.avatar_url || null,           // ← Local file path
-            serverUser.avatar_file_name || null,     // ← Original avatar_file_name
-            serverUser.avatar?.thumbnail || null,
-            serverUser.total_points,
-          ]
-        );
+        await safeSqlWrite(activeDb, async (txDb) => {
+          await txDb.runAsync(
+            `INSERT INTO users (
+              server_id, role_id, email, first_name, middle_name, last_name, 
+              suffix, gender, birth_date, lrn, teacher_id, token, last_sync,
+              avatar_id, avatar, avatar_url, avatar_file_name, avatar_thumbnail,
+              pupil_points
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
+            [
+              serverUser.server_id,
+              serverUser.role_id,
+              serverUser.email,
+              serverUser.first_name,
+              serverUser.middle_name || null,
+              serverUser.last_name,
+              serverUser.suffix || null,
+              serverUser.gender || null,
+              serverUser.birth_date || null,
+              serverUser.lrn || null,
+              serverUser.teacher_id || null,
+              token,
+              serverUser.avatar?.id || null,
+              serverUser.avatar?.avatar || null,
+              serverUser.avatar?.avatar_url || null,           // ← Local file path
+              serverUser.avatar?.avatar_file_name || null,     // ← Original avatar_file_name
+              serverUser.avatar?.thumbnail || null,
+              serverUser.total_points,
+            ]
+          );
+        });
       }
       console.log('✅ User synced successfully');
     } catch (error) {
