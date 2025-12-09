@@ -35,7 +35,7 @@ export default function QuizScreen() {
   const isPracticeMode = practice === "1" || practice === "true" || practice === true;
   const starRef = useRef(null);
   const [showStar, setShowStar] = useState(false);
-  //usePreventScreenCapture();
+  usePreventScreenCapture();
 
   const [quizData, setQuizData] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
