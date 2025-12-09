@@ -643,7 +643,7 @@ const ContentDetails = () => {
             onPress={() => {
               // Determine practice mode
               const practice =
-                contents[0]?.content_type === 'quiz' && (isDone || quizScore)
+                contents[0]?.content_type === 'quiz' && (isDone)
                   ? 1   // Practice mode
                   : 0;  // Normal open
 
