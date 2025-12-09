@@ -1,15 +1,18 @@
 // local-database/services/database.js
 import { markDbInitialized } from './syncUp.js';
+import { safeExec } from '../../utils/dbHelpers.js';
 
 export async function initializeDatabase(db) {
-  await db.execAsync(`
+  await safeExec(db, `
     -- roles (static, matches MySQL)
     CREATE TABLE IF NOT EXISTS roles (
       role_id INTEGER PRIMARY KEY,
       role_name TEXT NOT NULL UNIQUE,
       description TEXT
     );
-
+  `);
+  
+  await safeExec(db, `
     -- users (subset of MySQL users)
     CREATE TABLE IF NOT EXISTS users (
       user_id INTEGER PRIMARY KEY,
@@ -34,7 +37,9 @@ export async function initializeDatabase(db) {
       pupil_points INTEGER,
       FOREIGN KEY (role_id) REFERENCES roles(role_id)
     );
+  `);
 
+  await safeExec(db, `
     -- sessions
     CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +48,9 @@ export async function initializeDatabase(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+  `);
 
+  await safeExec(db, `
     -- sections (full mirror)
     CREATE TABLE IF NOT EXISTS sections (
       section_id INTEGER PRIMARY KEY,
@@ -54,7 +61,9 @@ export async function initializeDatabase(db) {
       school_name TEXT,
       school_year TEXT NOT NULL
     );
+  `);
 
+  await safeExec(db, `
     -- subjects (minimal: only what's needed for navigation)
     CREATE TABLE IF NOT EXISTS subjects (
       subject_id INTEGER PRIMARY KEY,
@@ -64,7 +73,9 @@ export async function initializeDatabase(db) {
       description TEXT,
       is_public BOOLEAN
     );
+  `);
 
+  await safeExec(db, `
     -- Junction: subjects_in_section
     CREATE TABLE IF NOT EXISTS subjects_in_section (
       section_belong INTEGER NOT NULL,
@@ -74,7 +85,9 @@ export async function initializeDatabase(db) {
       FOREIGN KEY (section_belong) REFERENCES sections(section_id) ON DELETE CASCADE,
       FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE
     );
+  `);
 
+  await safeExec(db, `
     -- Lessons (linked to subjects)
     CREATE TABLE IF NOT EXISTS lessons (
       lesson_id INTEGER PRIMARY KEY,
@@ -94,7 +107,9 @@ export async function initializeDatabase(db) {
       no_of_contents INTEGER DEFAULT 0,
       FOREIGN KEY (subject_belong) REFERENCES subjects(subject_id)
     );
-
+  `);
+  
+  await safeExec(db, `
     -- Subject Contents (only metadata + download status)
     CREATE TABLE IF NOT EXISTS subject_contents (
       content_id INTEGER PRIMARY KEY,
@@ -117,14 +132,18 @@ export async function initializeDatabase(db) {
       synced_at TEXT,
       FOREIGN KEY (lesson_belong) REFERENCES lessons(lesson_id)
     );
+  `);
 
+  await safeExec(db, `
     -- Game Types (static, small)
     CREATE TABLE IF NOT EXISTS game_types (
       game_type_id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT
     );
+  `);
 
+  await safeExec(db, `
     -- Games (metadata only; actual game = JSON from url)
     CREATE TABLE IF NOT EXISTS games (
       game_id INTEGER PRIMARY KEY,
@@ -138,7 +157,9 @@ export async function initializeDatabase(db) {
       FOREIGN KEY (content_id) REFERENCES subject_contents(content_id),
       FOREIGN KEY (game_type_id) REFERENCES game_types(game_type_id)
     );
+  `);
 
+  await safeExec(db, `
     -- Pupil Test Scores (for progress tracking)
     CREATE TABLE IF NOT EXISTS pupil_test_scores (
       score_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,7 +175,9 @@ export async function initializeDatabase(db) {
       synced_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id)
     );
+  `);
 
+  await safeExec(db, `
     -- Pupil Answers (only choice selection)
     CREATE TABLE IF NOT EXISTS pupil_answers (
       answer_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,7 +189,9 @@ export async function initializeDatabase(db) {
       synced_at TEXT,
       FOREIGN KEY (pupil_id) REFERENCES users(user_id)
     );
+  `);
 
+  await safeExec(db, `
     -- Achievements (only earned ones)
     CREATE TABLE IF NOT EXISTS pupil_achievements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,7 +210,9 @@ export async function initializeDatabase(db) {
       FOREIGN KEY (subject_content_id) REFERENCES subject_contents(content_id),
       UNIQUE (pupil_id, server_achievement_id)
     );
+  `);
 
+  await safeExec(db, `
     -- User-specific notifications (offline support)
     CREATE TABLE IF NOT EXISTS notifications (
         notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +226,9 @@ export async function initializeDatabase(db) {
         is_synced BOOLEAN DEFAULT FALSE,
         synced_at TEXT
     );
+  `);
 
+  await safeExec(db, `
     -- Classmates (users in the same sections)
     CREATE TABLE IF NOT EXISTS classmates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,7 +239,9 @@ export async function initializeDatabase(db) {
       FOREIGN KEY (section_id) REFERENCES sections(section_id) ON DELETE CASCADE,
       UNIQUE (user_id, section_id)
     );
+  `);
 
+  await safeExec(db, `
     -- Pre-populate roles (must match MySQL)
     INSERT OR IGNORE INTO roles (role_id, role_name, description) VALUES 
       (1, 'admin', 'Administrator'),
@@ -218,5 +249,6 @@ export async function initializeDatabase(db) {
       (3, 'pupil', 'Student');
 
   `);
+  
   markDbInitialized();
 }
