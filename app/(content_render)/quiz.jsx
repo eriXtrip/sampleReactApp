@@ -21,6 +21,7 @@ import ResultsScreen from "../../components/ResultsScreen";
 import PasswordModal from "../../components/PasswordModal";
 import lessonData from "../../data/lessonData";
 import { useSQLiteContext } from "expo-sqlite";
+import { safeRun, safeGetFirst } from '../../utils/dbHelpers';
 import { usePreventScreenCapture } from "expo-screen-capture";
 import Star from "../../components/Star";
 import { useRef } from "react";
@@ -76,7 +77,7 @@ export default function QuizScreen() {
 
   const getCurrentUserId = async () => {
     try {
-      const result = await db.getFirstAsync(`SELECT user_id FROM users LIMIT 1`);
+      const result = await safeGetFirst(db, `SELECT user_id FROM users LIMIT 1`);
       console.log("Current user ID:", result?.user_id);
       return result?.user_id || null;
     } catch (err) {
@@ -91,7 +92,7 @@ export default function QuizScreen() {
     if (!userId) return;
 
     try {
-      await db.runAsync(
+      await safeRun(db,
         `INSERT INTO pupil_test_scores (pupil_id, test_id, score, max_score, taken_at) 
         VALUES (?, ?, ?, ?, ?)`,
         [userId, quizData.quizId, finalScore, maxScore, now]
@@ -115,7 +116,7 @@ export default function QuizScreen() {
           const selected = q.choices.find(c => c.text === userAns);
           const choiceId = selected ? selected.choice_id : null;
 
-          await db.runAsync(
+          await safeRun(db,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, ?, 0, NULL)`,
             [userId, q.id, choiceId]
@@ -127,7 +128,7 @@ export default function QuizScreen() {
           const selected = q.choices.find(c => c.text === userAns);
           const choiceId = selected ? selected.choice_id : null;
 
-          await db.runAsync(
+          await safeRun(db,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, ?, 0, NULL)`,
             [userId, q.id, choiceId]
@@ -142,7 +143,7 @@ export default function QuizScreen() {
             const selected = q.choices.find(c => c.text === ansText);
             const choiceId = selected ? selected.choice_id : null;
 
-            await db.runAsync(
+            await safeRun(db,
               `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
               VALUES (?, ?, ?, 0, NULL)`,
               [userId, q.id, choiceId]
@@ -152,7 +153,7 @@ export default function QuizScreen() {
 
         // ENUMERATION (NO choice_id)
         else if (q.type === "enumeration") {
-          await db.runAsync(
+          await safeRun(db,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, answer_text, is_synced, server_answer_id)
             VALUES (?, ?, NULL, ?, 0, NULL)`,
             [userId, q.id, userAns || ""]

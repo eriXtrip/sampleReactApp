@@ -10,6 +10,7 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import * as Application from 'expo-application';
 import { useSQLiteContext } from 'expo-sqlite';
+import { safeRun, safeGetAll } from '../../utils/dbHelpers';
 
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
@@ -88,11 +89,11 @@ const SubjectPage = () => {
   const fetchLessonsAndAchievements = async () => {
     try {
       // 1️⃣ Fetch lessons for this subject
-      const lessonsData = await db.getAllAsync(
+      const lessonsData = await safeGetAll(db,
         `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number, no_of_contents
         FROM lessons
         WHERE subject_belong = ?
-        ORDER BY lesson_number ASC`, // or DESC for descending order
+        ORDER BY lesson_number ASC`,
         [subject_id]
       );
 
@@ -101,22 +102,26 @@ const SubjectPage = () => {
       const lessonIds = lessonsData.map(l => l.lesson_id);
 
       // 3️⃣ Fetch all content_ids related to these lessons
-      const contentsData = await db.getAllAsync(
-        `SELECT content_id, lesson_belong 
-          FROM subject_contents
-          WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
-        lessonIds
-      );
+      const contentsData = lessonIds.length
+        ? await safeGetAll(db,
+            `SELECT content_id, lesson_belong 
+              FROM subject_contents
+              WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
+            lessonIds
+          )
+        : [];
 
       const contentIds = contentsData.map(c => c.content_id);
 
       // 4️⃣ Fetch pupil achievements for these contents
-      const achievementsData = await db.getAllAsync(
-        `SELECT * 
-          FROM pupil_achievements
-          WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
-        [ ...contentIds] // all content IDs
-      );
+      const achievementsData = contentIds.length
+        ? await safeGetAll(db,
+            `SELECT * 
+              FROM pupil_achievements
+              WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
+            [ ...contentIds]
+          )
+        : [];
 
       // 5️⃣ Calculate total progress
       const totalLessons = lessonsData.length;
@@ -184,7 +189,7 @@ const SubjectPage = () => {
         if (!lesson) continue;
 
         // Update all subject_contents for this lesson
-        await db.runAsync(
+        await safeRun(db,
           `UPDATE subject_contents
           SET done = 1
           WHERE lesson_belong = ?`,
@@ -192,7 +197,7 @@ const SubjectPage = () => {
         );
 
         // Optionally, mark lesson itself as done
-        await db.runAsync(
+        await safeRun(db,
           `UPDATE lessons
           SET status = 1
           WHERE lesson_id = ?`,
@@ -220,14 +225,14 @@ const SubjectPage = () => {
         const lesson = lessons.find(l => l.lesson_id === lesson_id);
         if (!lesson) continue;
 
-        await db.runAsync(
+        await safeRun(db,
           `UPDATE subject_contents
           SET done = 0
           WHERE lesson_belong = ?`,
           [lesson.lesson_id]
         );
 
-        await db.runAsync(
+        await safeRun(db,
           `UPDATE lessons
           SET status = 0
           WHERE lesson_id = ?`,
@@ -288,7 +293,7 @@ const SubjectPage = () => {
       for (const lesson_id of lessonsToDownload) {
         const lessonId = lesson_id;
 
-        const contents = await db.getAllAsync(
+        const contents = await safeGetAll(db,
           `SELECT content_id, title, file_name, url, content_type, lesson_belong FROM subject_contents WHERE lesson_belong = ?`,
           [lessonId]
         );
@@ -331,7 +336,7 @@ const SubjectPage = () => {
 
           // mark in SQLite
           try {
-            await db.runAsync(
+            await safeRun(db,
               `UPDATE subject_contents 
               SET downloaded_at = datetime('now'), file_name = ?, is_synced = 0
               WHERE content_id = ?`,
