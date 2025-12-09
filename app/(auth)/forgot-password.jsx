@@ -1,7 +1,7 @@
 // SAMPLEREACTAPP/app/auth/forgot-password.jsx
 
 import React, { useState, useRef, useContext } from 'react'
-import { StyleSheet, Text, View, Pressable, TextInput } from 'react-native'
+import { StyleSheet, Text, View, Pressable, TextInput, ActivityIndicator } from 'react-native'
 import { Link, useRouter } from 'expo-router'
 import { useColorScheme } from 'react-native'
 import { Colors } from '../../constants/Colors'
@@ -44,6 +44,8 @@ const ForgotPassword = () => {
     const { timer: resendTimer, isRunning, start: startResendTimer } = useResendTimer(RESEND_TIME);
 
     const inputRefs = useRef(Array(6).fill(null))
+
+    const [isVerififyCode, setVerifyCode] = useState(false);
 
     const showAlert = (msg) => setAlert({ visible: true, message: msg })
     const closeAlert = () => setAlert({ ...alert, visible: false })
@@ -122,12 +124,14 @@ const ForgotPassword = () => {
         }
 
         try {
+            setVerifyCode(true); // start loading
             console.log('Submitting email:', email);
             await startPasswordReset({ email });
             startResendTimer(); // Starts the countdown
             setStep(2);
         } catch (error) {
             showAlert(error.message || 'Account not found');
+            setVerifyCode(false);
         }
     };
 
@@ -214,7 +218,12 @@ const ForgotPassword = () => {
                     <Spacer height={20} />
                     
                     {/* Submit Button */}
-                    <ThemedButton onPress={handleSubmitEmail}>Send Reset Code</ThemedButton>
+                    <ThemedButton 
+                        onPress={handleSubmitEmail}
+                        loading={isVerififyCode}
+                    >
+                        {isVerififyCode ? "Sending..." : "Send Reset Code"}
+                    </ThemedButton>
 
                 </>
             )}

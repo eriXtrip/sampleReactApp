@@ -1,6 +1,6 @@
 // SAMPLEREACTAPP/app/auth/register.jsx
 import React, { useState, useRef, useContext  } from 'react'
-import { StyleSheet, Platform, Text, TouchableOpacity, View, Pressable, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Platform, Text, TouchableOpacity, View, Pressable, ScrollView, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,8 @@ const Register = () => {
     
     const [agreedTerms, setAgreedTerms] = useState(false);
     const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+
+    const [isVerififyCode, setVerifyCode] = useState(false);
 
     const showAlert = (msg) => setAlert({ visible: true, message: msg });
     const closeAlert = () => setAlert({ ...alert, visible: false });
@@ -112,6 +114,7 @@ const Register = () => {
         if (!formData.email) {
             return showAlert('Email is required.');
         }
+
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             return showAlert('Invalid email format.');
         }
@@ -120,7 +123,7 @@ const Register = () => {
 
     const handleBack6 = () => setStep(6);
     const handleBack5 = () => setStep(5);
-    const handleBack4 = () => setStep(4);
+    const handleBack4 = () => setStep(3);
     const handleBack3 = () => setStep(3);
     const handleBack2 = () => setStep(2);
     const handleBack1 = () => setStep(1);
@@ -249,7 +252,7 @@ const Register = () => {
     // Step 1: Start Registration with backend
     const handleStartRegistration = async () => {
         startResendTimer(); // Starts the countdown
-        
+        setVerifyCode(true);
         setLoading(true);
         try {
             const result = await startRegistration({
@@ -266,6 +269,7 @@ const Register = () => {
             });
 
             if (result.success) {
+                setVerifyCode(false);
                 setStep(6); // Move to verification step
                 console.log('DEBUG - Registration Started:', {
                     email: formData.email,
@@ -409,7 +413,7 @@ const Register = () => {
                     <View style={[styles.progressLine, step >= 1 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 2 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 3 && styles.activeLine]} />
-                    <View style={[styles.progressLine, step >= 4 && styles.activeLine]} />
+                    {/* <View style={[styles.progressLine, step >= 4 && styles.activeLine]} /> */}
                     <View style={[styles.progressLine, step >= 5 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 6 && styles.activeLine]} />
                     <View style={[styles.progressLine, step >= 7 && styles.activeLine]} />
@@ -672,10 +676,9 @@ const Register = () => {
 
                         <ThemedButton 
                             onPress={handleNext4} 
-                            disabled={!formData.email || loading}
-                            loading={loading}
+                            disabled={!formData.email || isVerififyCode}
                         >
-                            Send Verification Code
+                            {isVerififyCode ?  "Sending..." : "Send Verification Code" }
                         </ThemedButton>
                     </>
                     ) : step === 6 ? (
@@ -887,7 +890,7 @@ const styles = StyleSheet.create({
     },
     progressLine: {
         height: 2,
-        width: '12.5%',
+        width: '14.28%',
         backgroundColor: '#ddd',
         marginHorizontal: 0,
     },
