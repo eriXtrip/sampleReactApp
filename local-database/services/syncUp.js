@@ -4,6 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { saveSyncDataToSQLite  } from '../../local-database/services/syncService.js';
 import { dbMutex } from '../../utils/databaseMutex.js';
+import { appLifecycleManager } from '../../utils/appLifecycleManager.js';
 
 
 // ===============================
@@ -14,6 +15,7 @@ let isSyncing = false;
 
 // Remove retryCount from global scope - make it per-task
 const MAX_RETRIES = 3;
+const SYNC_TIMEOUT = 60000; // 60 second timeout for entire sync operation
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
@@ -29,43 +31,47 @@ async function runSyncQueue(db) {
   }
 
   isSyncing = true;
-  
-  // Create a copy of the queue to process
-  const queueToProcess = [...syncQueue];
-  syncQueue = []; // Clear the main queue
+  appLifecycleManager.markSyncStart();
 
-  console.log(`🔄 Processing ${queueToProcess.length} sync tasks...`);
+  try {
+    // Create a copy of the queue to process
+    const queueToProcess = [...syncQueue];
+    syncQueue = []; // Clear the main queue
 
-  for (const task of queueToProcess) {
-    let retryCount = 0;
-    let success = false;
+    console.log(`🔄 Processing ${queueToProcess.length} sync tasks...`);
 
-    while (retryCount <= MAX_RETRIES && !success) {
-      try {
-        console.log(`▶ Running sync task: ${task.name} (attempt ${retryCount + 1})`);
-        await task.fn(db);
-        console.log(`✅ Sync task completed: ${task.name}`);
-        success = true;
-        
-      } catch (err) {
-        retryCount++;
-        console.error(`❌ Sync task failed: ${task.name} (attempt ${retryCount})`, err);
+    for (const task of queueToProcess) {
+      let retryCount = 0;
+      let success = false;
 
-        if (retryCount <= MAX_RETRIES) {
-          const backoff = 2000 * retryCount; // 2s, 4s, 6s
-          console.log(`⟳ Retrying ${task.name} in ${backoff / 1000}s...`);
-          await delay(backoff);
-        } else {
-          console.log(`⛔ Max retries reached for ${task.name}. Moving to next task.`);
-          // Optionally re-queue the failed task for next sync cycle
-          syncQueue.push(task);
+      while (retryCount <= MAX_RETRIES && !success) {
+        try {
+          console.log(`▶ Running sync task: ${task.name} (attempt ${retryCount + 1})`);
+          await task.fn(db);
+          console.log(`✅ Sync task completed: ${task.name}`);
+          success = true;
+          
+        } catch (err) {
+          retryCount++;
+          console.error(`❌ Sync task failed: ${task.name} (attempt ${retryCount})`, err);
+
+          if (retryCount <= MAX_RETRIES) {
+            const backoff = 2000 * retryCount; // 2s, 4s, 6s
+            console.log(`⟳ Retrying ${task.name} in ${backoff / 1000}s...`);
+            await delay(backoff);
+          } else {
+            console.log(`⛔ Max retries reached for ${task.name}. Moving to next task.`);
+            // Optionally re-queue the failed task for next sync cycle
+            syncQueue.push(task);
+          }
         }
       }
     }
+  } finally {
+    isSyncing = false;
+    appLifecycleManager.markSyncEnd();
+    console.log("🎯 Sync queue processing completed");
   }
-
-  isSyncing = false;
-  console.log("🎯 Sync queue processing completed");
 }
 
 let isDbInitialized = false;
@@ -134,28 +140,37 @@ export async function syncTestScoresToServer(db) {
       inserted_answer_ids = []
     } = await res.json();
 
-    // ---- Update synced test scores ----
-    for (let i = 0; i < unsyncedScores.length; i++) {
-      await db.runAsync(
-        `UPDATE pupil_test_scores
-         SET server_score_id = ?, is_synced = 1, synced_at = datetime('now')
-         WHERE score_id = ?`,
-        [inserted_score_ids[i] || null, unsyncedScores[i].score_id]
-      );
-    }
+    // ---- Update synced test scores (in transaction) ----
+    try {
+      await db.execAsync("BEGIN TRANSACTION");
+      
+      for (let i = 0; i < unsyncedScores.length; i++) {
+        await db.runAsync(
+          `UPDATE pupil_test_scores
+           SET server_score_id = ?, is_synced = 1, synced_at = datetime('now')
+           WHERE score_id = ?`,
+          [inserted_score_ids[i] || null, unsyncedScores[i].score_id]
+        );
+      }
 
-    // ---- Update synced answers ----
-    for (let i = 0; i < unsyncedAnswers.length; i++) {
-      await db.runAsync(
-        `UPDATE pupil_answers
-         SET server_answer_id = ?, is_synced = 1, synced_at = datetime('now')
-         WHERE answer_id = ?`,
-        [inserted_answer_ids[i] || null, unsyncedAnswers[i].answer_id]
-      );
-    }
+      // ---- Update synced answers ----
+      for (let i = 0; i < unsyncedAnswers.length; i++) {
+        await db.runAsync(
+          `UPDATE pupil_answers
+           SET server_answer_id = ?, is_synced = 1, synced_at = datetime('now')
+           WHERE answer_id = ?`,
+          [inserted_answer_ids[i] || null, unsyncedAnswers[i].answer_id]
+        );
+      }
 
-    console.log(`Synced: ${unsyncedScores.length} scores, ${unsyncedAnswers.length} answers`);
-    return true;
+      await db.execAsync("COMMIT");
+      console.log(`✅ Synced: ${unsyncedScores.length} scores, ${unsyncedAnswers.length} answers`);
+      return true;
+    } catch (err) {
+      await db.execAsync("ROLLBACK");
+      console.error('❌ Pupil Answer Sync error (rolled back):', err);
+      return false;
+    }
 
   } catch (err) {
     console.error('❌ Pupil Answer Sync error:', err);
@@ -352,31 +367,36 @@ export async function syncProgressToServer(db) {
 
     const { inserted_progress_ids = [], inserted_content_ids = [] } = await res.json();
 
-    // ---- Mark lessons progress synced locally ----
-    for (let i = 0; i < unsyncedLessonProgress.length; i++) {
-      await db.runAsync(`
-        UPDATE lessons
-        SET is_synced = 1, synced_at = datetime('now')
-        WHERE server_lesson_id = ?
-      `, [unsyncedLessonProgress[i].server_lesson_id]);
+    // ---- Mark lessons progress synced locally (in transaction) ----
+    try {
+      await db.execAsync("BEGIN TRANSACTION");
+      
+      for (let i = 0; i < unsyncedLessonProgress.length; i++) {
+        await db.runAsync(`
+          UPDATE lessons
+          SET is_synced = 1, synced_at = datetime('now')
+          WHERE server_lesson_id = ?
+        `, [unsyncedLessonProgress[i].server_lesson_id]);
+      }
+
+      // ---- Mark content progress synced locally ----
+      for (let i = 0; i < unsyncedContentProgress.length; i++) {
+        await db.runAsync(`
+          UPDATE subject_contents
+          SET is_synced = 1, synced_at = datetime('now')
+          WHERE content_id = ?
+        `, [unsyncedContentProgress[i].content_id]);
+      }
+
+      await db.execAsync("COMMIT");
+      console.log(`✅ Successfully synced ${unsyncedLessonProgress.length} lessons and ${unsyncedContentProgress.length} content progress rows`);
+      return true;
+    } catch (err) {
+      await db.execAsync("ROLLBACK");
+      console.error('❌ Progress sync error (rolled back):', err);
+      return false;
     }
 
-    // ---- Mark content progress synced locally ----
-    for (let i = 0; i < unsyncedContentProgress.length; i++) {
-      await db.runAsync(`
-        UPDATE subject_contents
-        SET is_synced = 1, synced_at = datetime('now')
-        WHERE content_id = ?
-      `, [unsyncedContentProgress[i].content_id]);
-    }
-
-    console.log(`✅ Successfully synced ${unsyncedLessonProgress.length} lessons and ${unsyncedContentProgress.length} content progress rows`);
-    return true;
-
-  } catch (err) {
-    console.error('❌ Progress sync error:', err);
-    return false;
-  }
 }
 
 export async function syncAchievements(db) {
@@ -506,8 +526,13 @@ export async function triggerSyncIfOnline(db, flags = {}) {
 
   console.log("🌐 Online & API reachable → Starting sync...");
 
-  // Acquire mutex for entire sync operation
-  await dbMutex.acquire('sync');
+  // Acquire mutex for entire sync operation with timeout
+  try {
+    await dbMutex.acquire('sync', SYNC_TIMEOUT);
+  } catch (err) {
+    console.error("❌ Failed to acquire sync lock:", err.message);
+    return;
+  }
 
   try {
     // Queue tasks
@@ -518,8 +543,13 @@ export async function triggerSyncIfOnline(db, flags = {}) {
       { name: "syncNotifications", fn: syncNotifications }
     );
 
-    // Run all queued sync tasks
-    await runSyncQueue(db);
+    // Run all queued sync tasks with timeout
+    const syncPromise = runSyncQueue(db);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Sync operation timeout')), SYNC_TIMEOUT)
+    );
+
+    await Promise.race([syncPromise, timeoutPromise]);
 
     // 🔄 Refresh data from server - KEEP THIS INSIDE MUTEX
     const API_URL = await getApiUrl();
@@ -539,6 +569,10 @@ export async function triggerSyncIfOnline(db, flags = {}) {
 
   } catch (err) {
     console.error("❌ Sync operation failed:", err);
+    // Clean up on timeout
+    if (err.message === 'Sync operation timeout') {
+      dbMutex.forceRelease('sync');
+    }
   } finally {
     // Always release mutex in finally block
     dbMutex.release('sync');
