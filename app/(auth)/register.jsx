@@ -95,7 +95,7 @@ const Register = () => {
 
     const handleNext2 = () => {
         if (!validateStep(3)) return showAlert('Please choose your birthday.');
-        setStep(4);
+        setStep(5); //skip step 5
     };
 
     const handleNext3 = () => {
@@ -261,8 +261,8 @@ const Register = () => {
                 suffix: formData.suffix,
                 gender: formData.gender,
                 birthday: formData.birthday,
-                lrn: formData.role === 'Pupil' ? formData.lrn : null,
-                teacherId: formData.role === 'Teacher' ? formData.teacherId : null
+                lrn: formData.role === 'Pupil' ? '000000000000' : null,
+                teacherId: formData.role === 'Teacher' ? '0000000000' : null
             });
 
             if (result.success) {

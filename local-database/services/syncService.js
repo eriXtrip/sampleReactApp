@@ -15,10 +15,9 @@ export async function saveSyncDataToSQLite(data, db) {
 
   try {
     console.log("🚀 Starting sync transaction...");
-    await safeExec( db, "BEGIN TRANSACTION");
 
     // 🔥 Clear previous data
-    // await safeExec( db,`
+    // await safeRun( db,`
     //   DELETE FROM users;
     //   DELETE FROM sections;
     //   DELETE FROM subjects;
@@ -393,11 +392,9 @@ export async function saveSyncDataToSQLite(data, db) {
       }
     }
 
-    await safeExec(db, "COMMIT");
     console.log("✅ Sync data saved to SQLite (transaction committed)");
   } catch (error) {
     console.error("❌ Sync failed, rolling back:", error);
-    await safeExec(db, "ROLLBACK");
     throw error;
   }
 }

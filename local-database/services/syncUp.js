@@ -142,7 +142,6 @@ export async function syncTestScoresToServer(db) {
 
     // ---- Update synced test scores (in transaction) ----
     try {
-      await safeExec(db, "BEGIN TRANSACTION");
       
       for (let i = 0; i < unsyncedScores.length; i++) {
         await safeRun(
@@ -165,11 +164,9 @@ export async function syncTestScoresToServer(db) {
         );
       }
 
-      await safeExec(db, "COMMIT");
       console.log(`✅ Synced: ${unsyncedScores.length} scores, ${unsyncedAnswers.length} answers`);
       return true;
     } catch (err) {
-      await safeExec(db, "ROLLBACK");
       console.error('❌ Pupil Answer Sync error (rolled back):', err);
       return false;
     }
@@ -374,7 +371,6 @@ export async function syncProgressToServer(db) {
 
     // ---- Mark lessons progress synced locally (in transaction) ----
     try {
-      await safeExec(db, "BEGIN TRANSACTION");
       
       for (let i = 0; i < unsyncedLessonProgress.length; i++) {
         await safeRun(db, `
@@ -393,11 +389,9 @@ export async function syncProgressToServer(db) {
         `, [unsyncedContentProgress[i].content_id]);
       }
 
-      await safeExec(db,"COMMIT");
       console.log(`✅ Successfully synced ${unsyncedLessonProgress.length} lessons and ${unsyncedContentProgress.length} content progress rows`);
       return true;
     } catch (err) {
-      await safeExec(db,"ROLLBACK");
       console.error('❌ Progress sync error (rolled back):', err);
       return false;
     }
