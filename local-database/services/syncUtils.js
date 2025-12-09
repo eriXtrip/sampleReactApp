@@ -1,7 +1,10 @@
 // local-database/services/syncUtils.js
+
+import { safeRun } from "../../utils/dbHelpers";
 export async function markUnsynced(db, tableName, localId) {
   try {
-    await db.runAsync(
+    await safeRun(
+      db,
       `UPDATE ${tableName} SET is_synced = 0, synced_at = NULL WHERE rowid = ?`,
       [localId]
     );

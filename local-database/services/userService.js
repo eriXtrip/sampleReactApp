@@ -1,5 +1,6 @@
 // local-database/services/userService.js
-import { safeSqlWrite } from "../helpers/safeSqlWrite";
+import { safeRun, safeGetAll, safeGetFirst } from '../../utils/dbHelpers';
+
 export default class UserService {
   static db = null;
 
@@ -18,7 +19,7 @@ export default class UserService {
     }
 
     try {
-      const existingUser = await activeDb.getFirstAsync(
+      const existingUser = await safeGetAll(activeDb,
         'SELECT * FROM users WHERE email = ? LIMIT 1',
         [serverUser.email]
       );
@@ -26,8 +27,7 @@ export default class UserService {
       if (existingUser) {
         console.log('User exists, updating fields...');
         // Update existing user
-          await safeSqlWrite(activeDb, async (txDb) => {
-            await txDb.runAsync(
+          await safeRun(activeDb,
               `UPDATE users SET
                 server_id = ?,
                 role_id = ?,
@@ -69,12 +69,10 @@ export default class UserService {
                 serverUser.email,
               ]
             );
-          });
         } else {
 
         // Insert new user
-        await safeSqlWrite(activeDb, async (txDb) => {
-          await txDb.runAsync(
+        await safeRun(activeDb,
             `INSERT INTO users (
               server_id, role_id, email, first_name, middle_name, last_name, 
               suffix, gender, birth_date, lrn, teacher_id, token, last_sync,
@@ -102,7 +100,6 @@ export default class UserService {
               serverUser.total_points,
             ]
           );
-        });
       }
       console.log('✅ User synced successfully');
     } catch (error) {
@@ -120,7 +117,7 @@ export default class UserService {
     }
 
     try {
-      const tableExists = await activeDb.getFirstAsync(
+      const tableExists = await safeGetFirst(activeDb, 
         `SELECT name FROM sqlite_master 
          WHERE type='table' AND name='users'`
       );
@@ -130,7 +127,7 @@ export default class UserService {
         return null;
       }
 
-      return await activeDb.getFirstAsync('SELECT * FROM users LIMIT 1');
+      return await safeGetAll(activeDb, 'SELECT * FROM users LIMIT 1');
     } catch (error) {
       console.error('❌ Failed to get user:', error);
       return null;
@@ -145,7 +142,7 @@ export default class UserService {
     const tables = ['users', 'sessions'];
     for (const table of tables) {
       try {
-        await activeDb.runAsync(`DELETE FROM ${table}`);
+        await safeRun(activeDb, `DELETE FROM ${table}`);
       } catch (e) {
         console.debug(`(debug) Skip clear ${table}: ${e.message}`);
       }
@@ -184,7 +181,7 @@ export default class UserService {
 
       for (const table of tablesToClear) {
         try {
-          await activeDb.runAsync(`DELETE FROM ${table}`);
+          await safeRun(activeDb,`DELETE FROM ${table}`);
         } catch (e) {
           console.warn(`⚠️ Skip clear ${table}:`, e.message);
         }
@@ -227,7 +224,7 @@ export default class UserService {
 
     for (const table of tables) {
       try {
-        const exists = await activeDb.getFirstAsync(
+        const exists = await safeGetAll(activeDb,
           `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`,
           [table]
         );
@@ -237,7 +234,7 @@ export default class UserService {
           continue;
         }
 
-        const rows = await activeDb.getAllAsync(`SELECT * FROM ${table}`);
+        const rows = await safeGetAll(activeDb, `SELECT * FROM ${table}`);
         console.log(`\n📋 Table '${table}' (${rows.length} rows):`);
 
         if (rows.length === 0) {

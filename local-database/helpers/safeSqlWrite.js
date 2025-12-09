@@ -1,3 +1,5 @@
+// local-database/helpers/safeSqlWrite.js
+
 export async function safeSqlWrite(db, callback) {
   try {
     await db.execAsync("BEGIN TRANSACTION;");

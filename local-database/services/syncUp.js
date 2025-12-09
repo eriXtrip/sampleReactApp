@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { saveSyncDataToSQLite  } from '../../local-database/services/syncService.js';
 import { dbMutex } from '../../utils/databaseMutex.js';
 import { appLifecycleManager } from '../../utils/appLifecycleManager.js';
-
+import {safeExec, safeGetAll, safeGetFirst, safeRun} from '../../utils/dbHelpers';
 
 // ===============================
 // 🔥 Background Sync Queue System
@@ -91,21 +91,21 @@ export async function syncTestScoresToServer(db) {
     const API_URL = await getApiUrl();
     const token = await SecureStore.getItemAsync('authToken');
 
-    const user = await db.getFirstAsync(`
+    const user = await safeGetFirst(db,`
       SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
     `);
 
     if (!user?.server_id) return false;
 
     // ---- Get unsynced test scores ----
-    const unsyncedScores = await db.getAllAsync(`
+    const unsyncedScores = await safeGetAll(db, `
       SELECT score_id, test_id, score, max_score, grade, attempt_number, taken_at
       FROM pupil_test_scores 
       WHERE is_synced = 0
     `);
 
     // ---- Get unsynced pupil answers ----
-    const unsyncedAnswers = await db.getAllAsync(`
+    const unsyncedAnswers = await safeGetAll(db,`
       SELECT answer_id, question_id, choice_id, synced_at
       FROM pupil_answers
       WHERE is_synced = 0
@@ -142,10 +142,11 @@ export async function syncTestScoresToServer(db) {
 
     // ---- Update synced test scores (in transaction) ----
     try {
-      await db.execAsync("BEGIN TRANSACTION");
+      await safeExec(db, "BEGIN TRANSACTION");
       
       for (let i = 0; i < unsyncedScores.length; i++) {
-        await db.runAsync(
+        await safeRun(
+          db,
           `UPDATE pupil_test_scores
            SET server_score_id = ?, is_synced = 1, synced_at = datetime('now')
            WHERE score_id = ?`,
@@ -155,7 +156,8 @@ export async function syncTestScoresToServer(db) {
 
       // ---- Update synced answers ----
       for (let i = 0; i < unsyncedAnswers.length; i++) {
-        await db.runAsync(
+        await safeRun(
+          db,
           `UPDATE pupil_answers
            SET server_answer_id = ?, is_synced = 1, synced_at = datetime('now')
            WHERE answer_id = ?`,
@@ -163,11 +165,11 @@ export async function syncTestScoresToServer(db) {
         );
       }
 
-      await db.execAsync("COMMIT");
+      await safeExec(db, "COMMIT");
       console.log(`✅ Synced: ${unsyncedScores.length} scores, ${unsyncedAnswers.length} answers`);
       return true;
     } catch (err) {
-      await db.execAsync("ROLLBACK");
+      await safeExec(db, "ROLLBACK");
       console.error('❌ Pupil Answer Sync error (rolled back):', err);
       return false;
     }
@@ -186,13 +188,14 @@ export async function syncNotifications(db) {
   try {
     const API_URL = await getApiUrl();
     const token = await SecureStore.getItemAsync('authToken');
-    const user = await db.getFirstAsync(`
-      SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
+    const user = await safeRun(
+      db,
+      `SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
     `);
     if (!user?.server_id) return false;
 
     // Get notifications that need syncing (both new AND updates)
-    const localChanges = await db.getAllAsync(`
+    const localChanges = await safeGetAll(db, `
       SELECT 
         notification_id,
         server_notification_id,
@@ -241,7 +244,7 @@ export async function syncNotifications(db) {
       if (change.server_notification_id) {
         // Already has server ID - this is an update (like read status)
         // Mark as synced since server acknowledged
-        await db.runAsync(`
+        await safeRun(db, `
           UPDATE notifications
           SET is_synced = 1, synced_at = datetime('now')
           WHERE notification_id = ?
@@ -251,15 +254,17 @@ export async function syncNotifications(db) {
         const newServerId = inserted_notification_ids.shift();
         if (newServerId) {
           // Check if this server ID already exists locally
-          const existing = await db.getFirstAsync(
+          const existing = await safeRun(
+            db,
             'SELECT notification_id FROM notifications WHERE server_notification_id = ?',
             [newServerId]
           );
           
           if (existing) {
             // Server ID already exists - UPDATE the existing record
-            await db.runAsync(`
-              UPDATE notifications
+            await safeRun(
+              db, 
+              `UPDATE notifications
               SET title = ?, message = ?, type = ?, 
                   is_read = ?, read_at = ?, created_at = ?,
                   is_synced = 1, synced_at = datetime('now')
@@ -275,13 +280,13 @@ export async function syncNotifications(db) {
             ]);
             
             // Delete the duplicate local entry
-            await db.runAsync(
+            await safeRun(db,
               'DELETE FROM notifications WHERE notification_id = ?',
               [change.notification_id]
             );
           } else {
             // Server ID doesn't exist - UPDATE with server ID
-            await db.runAsync(`
+            await safeRun(db, `
               UPDATE notifications
               SET server_notification_id = ?, is_synced = 1, synced_at = datetime('now')
               WHERE notification_id = ?
@@ -315,7 +320,7 @@ export async function syncProgressToServer(db) {
     const API_URL = await getApiUrl();
     const token = await SecureStore.getItemAsync('authToken');
 
-    const user = await db.getFirstAsync(`
+    const user = await safeGetFirst(db, `
       SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
     `);
 
@@ -327,7 +332,7 @@ export async function syncProgressToServer(db) {
     console.log('🔹 Fetching unsynced progress...');
 
     // ---- Get unsynced lessons progress ----
-    const unsyncedLessonProgress = await db.getAllAsync(`
+    const unsyncedLessonProgress = await safeGetAll(db, `
       SELECT server_lesson_id, lesson_id, status, progress, last_accessed, completed_at
       FROM lessons
       WHERE is_synced = 0
@@ -335,7 +340,7 @@ export async function syncProgressToServer(db) {
     console.log(`📘 Unsynced lessons progress: ${unsyncedLessonProgress.length} rows`);
 
     // ---- Get unsynced content progress ----
-    const unsyncedContentProgress = await db.getAllAsync(`
+    const unsyncedContentProgress = await safeGetAll(db, `
       SELECT content_id, done, last_accessed, started_at, completed_at, duration
       FROM subject_contents
       WHERE is_synced = 0
@@ -369,10 +374,10 @@ export async function syncProgressToServer(db) {
 
     // ---- Mark lessons progress synced locally (in transaction) ----
     try {
-      await db.execAsync("BEGIN TRANSACTION");
+      await safeExec(db, "BEGIN TRANSACTION");
       
       for (let i = 0; i < unsyncedLessonProgress.length; i++) {
-        await db.runAsync(`
+        await safeRun(db, `
           UPDATE lessons
           SET is_synced = 1, synced_at = datetime('now')
           WHERE server_lesson_id = ?
@@ -381,18 +386,18 @@ export async function syncProgressToServer(db) {
 
       // ---- Mark content progress synced locally ----
       for (let i = 0; i < unsyncedContentProgress.length; i++) {
-        await db.runAsync(`
+        await safeRun(db, `
           UPDATE subject_contents
           SET is_synced = 1, synced_at = datetime('now')
           WHERE content_id = ?
         `, [unsyncedContentProgress[i].content_id]);
       }
 
-      await db.execAsync("COMMIT");
+      await safeExec(db,"COMMIT");
       console.log(`✅ Successfully synced ${unsyncedLessonProgress.length} lessons and ${unsyncedContentProgress.length} content progress rows`);
       return true;
     } catch (err) {
-      await db.execAsync("ROLLBACK");
+      await safeExec(db,"ROLLBACK");
       console.error('❌ Progress sync error (rolled back):', err);
       return false;
     }
@@ -420,7 +425,7 @@ export async function syncAchievements(db) {
     const token = await SecureStore.getItemAsync('authToken');
 
     // Get the first user with server_id
-    const user = await db.getFirstAsync(`
+    const user = await safeGetFirst(db,`
       SELECT server_id FROM users WHERE server_id IS NOT NULL LIMIT 1
     `);
 
@@ -430,7 +435,7 @@ export async function syncAchievements(db) {
     }
 
     // Get unsynced achievements
-    const unsyncedAchievements = await db.getAllAsync(`
+    const unsyncedAchievements = await safeGetAll(db, `
       SELECT pupil_id, server_badge_id, server_achievement_id, earned_at
       FROM pupil_achievements
       WHERE is_synced = 0
@@ -464,7 +469,8 @@ export async function syncAchievements(db) {
 
     // Mark local achievements as synced
     for (let i = 0; i < unsyncedAchievements.length; i++) {
-      await db.runAsync(
+      await safeRun(
+        db,
         `UPDATE pupil_achievements
          SET is_synced = 1, synced_at = datetime('now')
          WHERE id = ?`,
@@ -496,7 +502,7 @@ export async function triggerSyncIfOnline(db, flags = {}) {
   // 🔍 Comprehensive user and auth check
   try {
     // Check if user exists in local database
-    const user = await db.getFirstAsync(`
+    const user = await safeGetFirst(db, `
       SELECT user_id, server_id FROM users LIMIT 1
     `);
     
