@@ -396,6 +396,10 @@ export async function syncProgressToServer(db) {
       console.error('❌ Progress sync error (rolled back):', err);
       return false;
     }
+  } catch (err) {
+    console.error('❌ Progress sync error:', err);
+    return false;
+  }
 
 }
 

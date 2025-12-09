@@ -1,3 +1,5 @@
+// samplereactapp/app/(content_render)/content_details.jsx
+
 import React, { useContext, useState, useEffect } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert } from 'react-native';

@@ -1,3 +1,5 @@
+// samplereactapp/app/(home)/lesson_page.jsx
+
 import React, { useState, useContext, useEffect } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';

@@ -6,7 +6,7 @@ let dbInstance = null;
 
 export async function getDatabase() {
   if (!dbInstance) {
-    dbInstance = await SQLite.openDatabaseAsync('mydb.db');
+    dbInstance = await SQLite.openDatabaseAsync('mquest.db');
     await initializeDatabase(dbInstance);
   }
   return dbInstance;

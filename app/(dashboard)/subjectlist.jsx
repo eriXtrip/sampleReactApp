@@ -1,3 +1,5 @@
+// app/(dashboard)/subjectlist.jsx
+
 import { StyleSheet, View, Image, FlatList, TouchableOpacity, RefreshControl} from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useContext, useEffect, useState } from 'react';
