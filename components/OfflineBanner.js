@@ -39,7 +39,7 @@ const OfflineBanner = () => {
     if (isOffline) {
       setMessage(`Offline mode`); //${networkType || 'No connection'}
     } else if (!isReachable) {
-      setMessage('Connecting to server...');
+      setMessage('Connecting...');
     } else {
       setMessage('Online');
     }

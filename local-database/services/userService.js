@@ -18,8 +18,10 @@ export default class UserService {
       return;
     }
 
+    console.log("User from Server: ", serverUser);
+
     try {
-      const existingUser = await safeGetAll(activeDb,
+      const existingUser = await safeGetFirst(activeDb,
         'SELECT * FROM users WHERE email = ? LIMIT 1',
         [serverUser.email]
       );
@@ -62,8 +64,8 @@ export default class UserService {
                 token,
                 serverUser.avatar?.id || null,
                 serverUser.avatar?.avatar || null,
-                serverUser.avatar?.avatar_url || null,
-                serverUser.avatar?.avatar_file_name || null,
+                serverUser.avatar?.url || serverUser.avatar_url || null, 
+                serverUser.avatar?.fileName || null,                   
                 serverUser.avatar?.thumbnail || null,
                 serverUser.total_points,
                 serverUser.email,
@@ -94,8 +96,8 @@ export default class UserService {
               token,
               serverUser.avatar?.id || null,
               serverUser.avatar?.avatar || null,
-              serverUser.avatar?.avatar_url || null,           // ← Local file path
-              serverUser.avatar?.avatar_file_name || null,     // ← Original avatar_file_name
+              serverUser.avatar?.url || serverUser.avatar_url || null, 
+              serverUser.avatar?.fileName || null,           
               serverUser.avatar?.thumbnail || null,
               serverUser.total_points,
             ]
@@ -208,7 +210,7 @@ export default class UserService {
 
     const tables = [
       // 'roles',
-      //'users',
+       'users',
       // 'sections',
       // 'subjects',
       // 'subjects_in_section',

@@ -97,6 +97,10 @@ export async function syncTestScoresToServer(db) {
 
     if (!user?.server_id) return false;
 
+    // Fetch the current pupil_points from DB
+    const userRow = await safeGetFirst(db, `SELECT pupil_points, server_id FROM users WHERE server_id IS NOT NULL LIMIT 1`);
+    const pupilPoints = userRow?.pupil_points || 0;
+
     // ---- Get unsynced test scores ----
     const unsyncedScores = await safeGetAll(db, `
       SELECT score_id, test_id, score, max_score, grade, attempt_number, taken_at
@@ -129,7 +133,8 @@ export async function syncTestScoresToServer(db) {
           question_id: a.question_id,
           choice_id: a.choice_id,
           answered_at: a.synced_at
-        }))
+        })),
+        pupil_points: pupilPoints 
       })
     });
 

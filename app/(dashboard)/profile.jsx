@@ -4,6 +4,7 @@ import { StyleSheet, View, Image, ScrollView, TouchableOpacity, ActivityIndicato
 import { Ionicons } from "@expo/vector-icons";
 import { useContext, useState, useEffect } from 'react';
 import { UserContext } from '../../contexts/UserContext';
+import { ProfileContext } from '../../contexts/ProfileContext';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
@@ -15,7 +16,7 @@ import DangerAlert from '../../components/DangerAlert';
 import ThemedAlert from '../../components/ThemedAlert';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
-import { ProfileContext } from '../../contexts/ProfileContext';
+import { ProfileProvider } from '../../contexts/ProfileContext';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { useSQLiteContext } from 'expo-sqlite';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
@@ -24,10 +25,10 @@ import usePullToRefresh from "../../hooks/usePullToRefresh";
 const Profile = () => {
   const router = useRouter();
   // Destructure both user and logout from context
-  const { user, logout } = useContext(UserContext);
+  const { logout } = useContext(UserContext);
   const db = useSQLiteContext();
   const colorScheme = useColorScheme();
-  const { themeColors } = useContext(ProfileContext);
+  const { themeColors, user, refreshUser } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
   const [avatarUri, setAvatarUri] = useState(null);
@@ -58,11 +59,14 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true); // Start loading
+    setIsLoggingOut(true);
     try {
       const success = await logout(user.server_id);
       if (success) {
-        router.replace('/login');
+        // Navigate after a tiny delay to avoid insertionEffect warning
+        setTimeout(() => {
+          router.replace('/login');
+        }, 0);
       } else {
         showThemedAlert('Server not reachable. Please try again.');
       }
@@ -70,9 +74,11 @@ const Profile = () => {
       console.error('Logout error:', error);
       showThemedAlert('Unexpected error occurred. Please try again.');
     } finally {
-      setIsLoggingOut(false); // Stop loading
+      // Defer stopping loading
+      setTimeout(() => setIsLoggingOut(false), 0);
     }
   };
+
 
   useEffect(() => {
     (async () => {
@@ -98,6 +104,8 @@ const Profile = () => {
 
       // Fallback to thumbnail
       setAvatarUri(user.avatar_thumbnail || null);
+      console.log("Profile: ", user.first_name, user.middle_name, user.last_name, user.avatar_file_name, user.avatar_thumbnail);
+
     })();
   }, [user]);
 

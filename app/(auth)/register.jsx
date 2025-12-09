@@ -441,7 +441,7 @@ const Register = () => {
 
                         <Spacer height={10} />
 
-                        <ThemedButton onPress={() => handleRoleSelect('Teacher')}>
+                        <ThemedButton style={{ display: 'none' }} onPress={() => handleRoleSelect('Teacher')}>
                             I am a Teacher
                         </ThemedButton>
                     </>

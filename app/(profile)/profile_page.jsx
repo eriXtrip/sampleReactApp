@@ -19,11 +19,12 @@ import  RankingBoard  from '../../components/RankingBoard';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { useRanking } from '../../contexts/RankingContext';
 import SimpleStarsCard from '../../components/StarCard';
+import { use } from 'react';
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { user, updateUser } = useContext(UserContext || {});
-  const { themeColors } = useContext(ProfileContext || {});
+  //const {  } = useContext(UserContext || {});
+  const { themeColors, user, updateUser } = useContext(ProfileContext || {});
   const colorScheme = useColorScheme();
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
 
@@ -34,6 +35,7 @@ const ProfilePage = () => {
   const [gradeLevel, setGradeLevel] = useState(''); // new
   const [section, setSection] = useState(''); // new
   const [birthday, setBirthday] = useState(''); // new (YYYY-MM-DD)
+  const [points, setPoints] = useState('');
   const [saving, setSaving] = useState(false);
   const [avatarUri, setAvatarUri] = useState(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -49,6 +51,7 @@ const ProfilePage = () => {
       setGradeLevel(user.grade_level || '');
       setSection(user.section || '');
       setBirthday(user.birthday || '');
+      setPoints(user.pupil_points || '');
     }
   }, [user]);
 
@@ -158,7 +161,7 @@ const ProfilePage = () => {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', display: 'none' }}>
           {editing ? (
             <TouchableOpacity style={styles.iconButton} onPress={() => setEditing(false)}>
               <Ionicons name="close" size={22} color={theme.text} />
@@ -178,7 +181,7 @@ const ProfilePage = () => {
           showsVerticalScrollIndicator={false}
         >
           {isOnline && <RankingBoard ranking={ranking} />}
-          <SimpleStarsCard points={user?.pupil_points} />
+          <SimpleStarsCard points={points} />
         </ScrollView>
       ) : null}
 

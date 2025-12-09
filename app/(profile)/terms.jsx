@@ -56,61 +56,55 @@ const TermsScreen = () => {
           their own terms and privacy policies. We are not responsible for the content or practices of third-party sites.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>7. Payments (if applicable)</ThemedText>
-        <ThemedText style={styles.p}>
-          If the Service includes paid features, applicable billing terms, renewal rules, and refund policies will be
-          presented to you at purchase. You can cancel auto-renewal in accordance with those terms.
-        </ThemedText>
-
-        <ThemedText style={styles.h1}>8. Communications and Notifications</ThemedText>
+        <ThemedText style={styles.h1}>7. Communications and Notifications</ThemedText>
         <ThemedText style={styles.p}>
           We may send in-app, push, or email notifications about service updates, account activity, and security alerts.
           You may adjust notification preferences in your device or account settings where available.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>9. Privacy</ThemedText>
+        <ThemedText style={styles.h1}>8. Privacy</ThemedText>
         <ThemedText style={styles.p}>
           Our data practices are described in the Privacy Policy. By using the Service, you agree that we may collect and
           use your information as outlined there.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>10. Disclaimers</ThemedText>
+        <ThemedText style={styles.h1}>9. Disclaimers</ThemedText>
         <ThemedText style={styles.p}>
           The Service is provided "as is" and "as available" without warranties of any kind, except as required by law.
           We do not guarantee uninterrupted or error-free operation.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>11. Limitation of Liability</ThemedText>
+        <ThemedText style={styles.h1}>10. Limitation of Liability</ThemedText>
         <ThemedText style={styles.p}>
           To the maximum extent permitted by law, matatag and company shall not be liable for any indirect, incidental,
           special, consequential, or punitive damages, or any loss of data or profits.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>12. Indemnification</ThemedText>
+        <ThemedText style={styles.h1}>11. Indemnification</ThemedText>
         <ThemedText style={styles.p}>
           You agree to indemnify and hold harmless matatag and company from any claims, damages, liabilities, and expenses
           arising from your use of the Service or violation of these Terms.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>13. Termination</ThemedText>
+        <ThemedText style={styles.h1}>12. Termination</ThemedText>
         <ThemedText style={styles.p}>
           We may suspend or terminate your access to the Service at any time for violations of these Terms, security
           risks, or legal requests.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>14. Changes to Terms</ThemedText>
+        <ThemedText style={styles.h1}>13. Changes to Terms</ThemedText>
         <ThemedText style={styles.p}>
           We may modify these Terms from time to time. Material changes will be communicated within the app or by other
           reasonable means. Your continued use of the Service after changes constitutes acceptance.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>15. Governing Law and Dispute Resolution</ThemedText>
+        <ThemedText style={styles.h1}>14. Governing Law and Dispute Resolution</ThemedText>
         <ThemedText style={styles.p}>
           These Terms are governed by the laws of philippines, without regard to its conflict of law principles. Any
           disputes shall be resolved in the courts or arbitration forums of philippines.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>16. Contact</ThemedText>
+        <ThemedText style={styles.h1}>15. Contact</ThemedText>
         <ThemedText style={styles.p}>
           For questions about these Terms, contact us at matatagquest@gmail.com.
         </ThemedText>

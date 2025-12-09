@@ -24,7 +24,7 @@ const PrivacyScreen = () => {
 
         <ThemedText style={styles.h1}>2. Information We Collect</ThemedText>
         <ThemedText style={styles.p}>
-          We collect information you provide (e.g., name, email, profile details) and information collected
+          We collect information you provide (e.g., name, email, gender, profile details) and information collected
           automatically (e.g., device information, app usage data, crash logs, IP address, and push tokens). We may
           also receive information from third-party services where integrations are used.
         </ThemedText>
@@ -35,7 +35,7 @@ const PrivacyScreen = () => {
           support offline usage, store progress, send notifications, debug issues, and enhance security.
         </ThemedText>
 
-        <ThemedText style={styles.h1}>4. Legal Bases (Where Applicable)</ThemedText>
+        <ThemedText style={styles.h1}>4. Legal Bases</ThemedText>
         <ThemedText style={styles.p}>
           Depending on your jurisdiction, we may rely on consent, contract performance, legitimate interests, and/or
           compliance with legal obligations as the legal bases for processing your data.
@@ -44,8 +44,7 @@ const PrivacyScreen = () => {
         <ThemedText style={styles.h1}>5. Sharing and Disclosure</ThemedText>
         <ThemedText style={styles.p}>
           We share data with service providers that help us deliver the Service (e.g., hosting, analytics, notifications).
-          We may disclose information to comply with legal requests or to protect rights and safety. In case of a
-          business transfer (e.g., merger), your data may be transferred to the new owner.
+          We may disclose information to comply with legal requests or to protect rights and safety.
         </ThemedText>
 
         <ThemedText style={styles.h1}>6. Data Storage, Security, and Retention</ThemedText>
@@ -69,7 +68,7 @@ const PrivacyScreen = () => {
 
         <ThemedText style={styles.h1}>9. Your Rights</ThemedText>
         <ThemedText style={styles.p}>
-          Depending on your location, you may have rights to access, correct, delete, or export your data, restrict or
+          Depending on your role, you may have rights to access, correct, delete, or export your data, restrict or
           object to certain processing, and withdraw consent. To exercise these rights, contact us at matatagquest@gmail.com.
         </ThemedText>
 

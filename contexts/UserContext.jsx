@@ -14,6 +14,7 @@ import { getLocalAvatarPath, ensureAvatarDirectory } from '../utils/avatarHelper
 import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { useRouter } from 'expo-router';
+import { safeExec, safeGetAll, safeGetFirst, safeRun } from "../utils/dbHelpers.js";
 
 export const UserContext = createContext();
 
@@ -386,7 +387,8 @@ export function UserProvider({ children }) {
       if (db) {
         try {
           // Get user's local points from SQLite
-          const userResult = await db.getAllAsync(
+          const userResult = await safeGetAll(
+            db,
             'SELECT pupil_points, server_id FROM users WHERE server_id = ? LIMIT 1',
             [server_id]
           );
@@ -472,8 +474,9 @@ export function UserProvider({ children }) {
       // 3. Clear all local DB tables
       if (dbInitialized && db) {
         console.log("🗑️ Clearing local DB tables...");
-        await db.execAsync(`
-          DELETE FROM users;
+        await safeExec(
+          db, 
+          `DELETE FROM users;
           DELETE FROM sections;
           DELETE FROM subjects;
           DELETE FROM subjects_in_section;
