@@ -14,6 +14,7 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { ASSETS_ICONS } from '../../data/assets_icon';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const SubjectList = () => {
   const colorScheme = useColorScheme();
@@ -38,12 +39,13 @@ const SubjectList = () => {
     const fetchData = async () => {
       try {
         // 1. Get sections
-        const sections = await db.getAllAsync(`SELECT * FROM sections`);
+        const sections = await safeGetAll(db, `SELECT * FROM sections`);
 
         // 2. For each section, get subjects
         const sectionData = await Promise.all(
           sections.map(async (sec) => {
-            const subjects = await db.getAllAsync(
+            const subjects = await safeGetAll(
+              db,
               `SELECT s.subject_id, s.subject_name, s.description, s.grade_level
                FROM subjects_in_section sis
                JOIN subjects s ON sis.subject_id = s.subject_id
@@ -70,7 +72,7 @@ const SubjectList = () => {
         );
 
         // 3. Get standalone subjects (not in subjects_in_section)
-        const standalone = await db.getAllAsync(`
+        const standalone = await safeGetAll(db, `
           SELECT * FROM subjects 
           WHERE subject_id NOT IN (SELECT subject_id FROM subjects_in_section)
         `);

@@ -11,6 +11,7 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { NOTIF_MAP } from '../../data/notif_map';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const Notification = () => {
   const db = useSQLiteContext(); // ✅ access to db
@@ -31,7 +32,8 @@ const Notification = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const result = await db.getAllAsync(
+        const result = await safeGetAll(
+          db,
           `SELECT * FROM notifications ORDER BY created_at DESC`
         );
         //console.log("📩 Notifications from DB:", result);

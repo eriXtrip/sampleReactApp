@@ -10,6 +10,7 @@ import Spacer from '../../components/Spacer';
 import ThemedActivity from '../../components/ThemedActivity';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const RecentActivityPage = () => {
   const navigation = useNavigation();
@@ -27,7 +28,7 @@ const RecentActivityPage = () => {
   useEffect(() => {
     const loadActivity = async () => {
       try {
-        const raw = await db.getAllAsync(`
+        const raw = await safeGetAll(db, `
           -- Completed Lessons
           SELECT 
             'lesson' AS type,

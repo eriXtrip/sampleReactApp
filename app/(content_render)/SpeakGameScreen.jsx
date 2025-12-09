@@ -10,6 +10,7 @@ import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 import { usePreventScreenCapture } from "expo-screen-capture";
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 export default function SpeakGameScreen() {
   const { uri, content_id } = useLocalSearchParams();

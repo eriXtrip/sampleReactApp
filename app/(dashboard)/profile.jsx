@@ -20,6 +20,7 @@ import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { useSQLiteContext } from 'expo-sqlite';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
 
+
 const Profile = () => {
   const router = useRouter();
   // Destructure both user and logout from context

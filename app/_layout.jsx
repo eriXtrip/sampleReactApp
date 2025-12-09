@@ -119,7 +119,7 @@ const setupNavigationBar = async () => {
       await NavigationBar.setButtonStyleAsync('light');
       
       // Optional: Set background color if needed
-      // await NavigationBar.setBackgroundColorAsync('#000000');
+      await NavigationBar.setBackgroundColorAsync('#000000');
       
     } catch (error) {
       console.log('NavigationBar setup error:', error);

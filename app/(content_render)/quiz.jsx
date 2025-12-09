@@ -21,11 +21,10 @@ import ResultsScreen from "../../components/ResultsScreen";
 import PasswordModal from "../../components/PasswordModal";
 import lessonData from "../../data/lessonData";
 import { useSQLiteContext } from "expo-sqlite";
-import { safeRun, safeGetFirst } from '../../utils/dbHelpers';
 import { usePreventScreenCapture } from "expo-screen-capture";
 import Star from "../../components/Star";
 import { useRef } from "react";
-
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 
 export default function QuizScreen() {

@@ -2,12 +2,12 @@
 import React, { useEffect, useState, useContext, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
-import { safeRun, safeGetAll, safeGetFirst } from '../utils/dbHelpers';
 import Spacer from "./Spacer";
 import SummaryBox from './SummaryBox';
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { usePreventScreenCapture } from "expo-screen-capture";
 import Star from './Star';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../utils/dbHelpers';
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode, onShowStar }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt, isPracticeMode });

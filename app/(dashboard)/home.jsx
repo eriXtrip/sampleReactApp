@@ -21,6 +21,7 @@ import { useContext } from 'react';
 import { ASSETS_ICONS } from '../../data/assets_icon';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 
 const Home = () => {
@@ -46,7 +47,8 @@ const Home = () => {
   useEffect(() => {
     const fetchAchievements = async () => {
       try {
-        const result = await db.getAllAsync(
+        const result = await safeGetAll(
+          db,
           `SELECT * FROM pupil_achievements`,
         );
         setAchievements(result);
@@ -89,8 +91,9 @@ const Home = () => {
   useEffect(() => {
     const loadSubjectsProgress = async () => {
       try {
-        const result = await db.getAllAsync(`
-         SELECT 
+        const result = await safeGetAll(
+        db,
+        `SELECT 
             s.subject_id,
             s.subject_name,
             COUNT(l.lesson_id) AS total_lessons,
@@ -122,7 +125,7 @@ const Home = () => {
   useEffect(() => {
     const loadRecentActivity = async () => {
       try {
-        const activities = await db.getAllAsync(`
+        const activities = await safeGetAll(db, `
           -- Completed lessons
           SELECT 
             'lesson' AS type,

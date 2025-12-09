@@ -13,6 +13,7 @@ import ThemedText from '../../components/ThemedText';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const LessonPage = () => {
   const colorScheme = useColorScheme();
@@ -42,7 +43,7 @@ const LessonPage = () => {
       try {
         if (!id) return;
 
-        const contents = await db.getAllAsync(
+        const contents = await safeGetAll(db, 
           `SELECT content_id, title, content_type, done, description, downloaded
           FROM subject_contents
           WHERE lesson_belong = ?`,

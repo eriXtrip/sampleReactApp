@@ -10,6 +10,7 @@ import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const SectionPage = () => {
   const db = useSQLiteContext();
@@ -47,7 +48,7 @@ const SectionPage = () => {
     const fetchData = async () => {
       try {
         // Query subjects
-        const subjectsResult = await db.getAllAsync(`
+        const subjectsResult = await safeGetAll(db, `
           SELECT s.subject_id, s.subject_name, s.grade_level
           FROM subjects_in_section sis
           JOIN subjects s ON sis.subject_id = s.subject_id
@@ -66,7 +67,7 @@ const SectionPage = () => {
         console.log("recieved section_id:", section_id);
 
         // Query classmates
-        const classmatesResult = await db.getAllAsync(`
+        const classmatesResult = await safeGetAll(db, `
           SELECT id, classmate_name, avatar
           FROM classmates
           WHERE section_id = ?

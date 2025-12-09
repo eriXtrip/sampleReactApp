@@ -12,6 +12,7 @@ import Spacer from '../../components/Spacer';
 import ThemedAchievement from '../../components/ThemedAchievement';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const AchievementsPage = () => {
   const navigation = useNavigation();
@@ -29,7 +30,7 @@ const AchievementsPage = () => {
   useEffect(() => {
     const loadAchievements = async () => {
       try {
-        const result = await db.getAllAsync(`
+        const result = await safeGetAll(db, `
           SELECT 
             title,
             description AS subtext,

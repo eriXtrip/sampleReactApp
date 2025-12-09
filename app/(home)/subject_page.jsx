@@ -393,7 +393,8 @@ const SubjectPage = () => {
 
   const getContentsForLesson = async (lessonId) => {
     try {
-      return await db.getAllAsync(
+      return await safeGetAll(
+        db,
         `SELECT content_id, content_type, url, file_name
         FROM subject_contents 
         WHERE lesson_belong = ?`,

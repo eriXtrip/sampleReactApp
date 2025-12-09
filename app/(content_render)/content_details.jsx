@@ -33,6 +33,7 @@ import {
   showSuccessToast,
   showErrorToast 
 } from '../../utils/notificationUtils';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const ContentDetails = () => {
   const { id, title, type, shortdescription, content, file, status} = useLocalSearchParams();
@@ -83,7 +84,8 @@ const ContentDetails = () => {
 
     const fetchContents = async () => {
       try {
-        const result = await db.getAllAsync(
+        const result = await safeGetAll(
+          db,
           `SELECT * FROM subject_contents WHERE content_id = ?`,
           [id]
         );
@@ -100,12 +102,14 @@ const ContentDetails = () => {
 
           // 🔥 FETCH QUIZ SCORE WHEN type = quiz
           if (item.content_type === "quiz" && item.test_id) {
-            const pupil = await db.getFirstAsync(
+            const pupil = await safeGetFirst(
+              db,
               `SELECT user_id FROM users LIMIT 1`
             );
 
             if (pupil) {
-              const scoreRow = await db.getFirstAsync(
+              const scoreRow = await safeGetFirst(
+                db,
                 `SELECT score, max_score, grade, attempt_number, taken_at
                 FROM pupil_test_scores
                 WHERE test_id = ? AND pupil_id = ?
@@ -174,7 +178,8 @@ const ContentDetails = () => {
       const now = new Date().toISOString();
 
       // Step 1: Update subject_contents done & completed_at
-      await db.runAsync(
+      await safeRun(
+        db,
         `UPDATE subject_contents 
         SET done = ?, completed_at = ?, last_accessed = ?
         WHERE content_id = ?`,
@@ -183,7 +188,8 @@ const ContentDetails = () => {
       console.log(`✅ Updated content_id=${content_id} with done=${newState}`);
 
       // Step 2: Fetch all contents for this lesson
-      const rows = await db.getAllAsync(
+      const rows = await safeGetAll(
+        db,
         `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
         [lesson_belong]
       );
@@ -197,7 +203,8 @@ const ContentDetails = () => {
       const lessonCompletedAt = lessonStatus ? now : null;
 
       // Step 4: Update lesson
-      await db.runAsync(
+      await safeRun(
+        db,
         `UPDATE lessons
         SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
         WHERE lesson_id = ?`,
@@ -248,7 +255,8 @@ const ContentDetails = () => {
           updateDownload(item.content_id, { status: 'completed', progress: 100 });
 
           const now = new Date().toISOString();
-          await db.runAsync(
+          await safeRun(
+            db,
             `UPDATE subject_contents 
             SET downloaded_at = ? 
             WHERE content_id = ?`,
@@ -277,7 +285,8 @@ const ContentDetails = () => {
     try {
     // --- update last_accessed column in subject_contents ---
     const now = new Date().toISOString();
-      await db.runAsync(
+      await safeRun(
+        db,
         `UPDATE subject_contents 
         SET last_accessed = ? 
         WHERE content_id = ?`,
