@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import NetInfo from '@react-native-community/netinfo';
 import { getApiUrl, getCachedApiUrl } from '../utils/apiManager';
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../utils/dbHelpers';
 
 const RankingContext = createContext();
 export const useRanking = () => useContext(RankingContext);
@@ -48,7 +49,7 @@ export function RankingProvider({ children }) {
     const loadUserToken = async () => {
       try {
         // If your db has getAllAsync helper
-        const rows = await db.getAllAsync(`SELECT token FROM users LIMIT 1;`);
+        const rows = await safeGetAll(db, `SELECT token FROM users LIMIT 1;`);
         if (rows.length > 0) setToken(rows[0].token);
       } catch (err) {
         //console.error("❌ Logout failed:", logoutError);("Failed to load user token:", err);

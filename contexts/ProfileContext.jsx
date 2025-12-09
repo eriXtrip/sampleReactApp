@@ -3,6 +3,7 @@
 import { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSQLiteContext } from "expo-sqlite";
+import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../utils/dbHelpers';
 
 export const ProfileContext = createContext();
 
@@ -31,7 +32,7 @@ export function ProfileProvider({ children }) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const row = await db.getFirstAsync(`SELECT * FROM users LIMIT 1`);
+        const row = await safeGetFirst(db, `SELECT * FROM users LIMIT 1`);
         if (row) {
           console.log("PROFILE CONTEXT LOADED USER:", row);
           setUser(row);   // <-- VERY IMPORTANT
@@ -49,7 +50,7 @@ export function ProfileProvider({ children }) {
   // 🔥 Function to refresh user manually after updates (achievements, sync, avatar changes)
   const refreshUser = async () => {
     try {
-      const row = await db.getFirstAsync(`SELECT * FROM users LIMIT 1`);
+      const row = await safeGetFirst(db, `SELECT * FROM users LIMIT 1`);
       if (row) {
         console.log("PROFILE CONTEXT REFRESHED USER:", row);
         setUser(row);
