@@ -5,12 +5,14 @@ import { resolveLocalPath } from './resolveLocalPath';
 import { safeExec, safeGetAll, safeRun, safeGetFirst, safeExecMany, enableWAL } from './dbHelpers';
 import { appLifecycleManager } from './appLifecycleManager';
 
-export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db) => {
+export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db, inizialized) => {
   try {
     if (!file) {
       console.error("File is undefined");
       return false;
     }
+
+    if(!inizialized) return;
     const localPath = resolveLocalPath(file);
 
     // Process associated image files if type is "gameIMGtext"

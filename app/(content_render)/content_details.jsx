@@ -51,7 +51,7 @@ const ContentDetails = () => {
 
   const [embedFailed, setEmbedFailed] = useState(false);
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   const [contents, setContents] = useState([]);
 
@@ -83,6 +83,7 @@ const ContentDetails = () => {
     if (!id) return;
 
     const fetchContents = async () => {
+      if (!inizialized) return;
       try {
         const result = await safeGetAll(
           db,
@@ -169,6 +170,7 @@ const ContentDetails = () => {
 
   const handleMarkAsDone = async () => {
     if (!contents.length) return;
+    if(!inizialized) return;
 
     const { content_id, lesson_belong } = contents[0];
     const newState = !isDone;
@@ -222,6 +224,7 @@ const ContentDetails = () => {
 
   const handleMarkAsDownloaded = async () => {
     if (!contents.length) return;
+    if(!inizialized) return;
 
     const item = contents[0];
 
@@ -276,6 +279,7 @@ const ContentDetails = () => {
 
   const handleOpen = async (practice = 0) => {
     if (!contents.length) return;
+    if(!inizialized) return;
 
     const { content_id, file_name, url, content_type, title } = contents[0];
     console.log("Opening content:", { content_id, file_name, url, content_type, title });
@@ -301,7 +305,7 @@ const ContentDetails = () => {
     if (['pdf', 'ppt', 'pptx'].includes(content_type)) {
       let fileUri = null;
       if (!fileExists) {
-        fileUri = await handleDownload(file_name, url, content_type, setFileExists, setDownloading);
+        fileUri = await handleDownload(file_name, url, content_type, setFileExists, setDownloading, inizialized);
       } else {
         fileUri = localPath;
       }
@@ -683,7 +687,7 @@ const ContentDetails = () => {
         onCancel={() => setShowDeleteAlert(false)}
         onConfirm={async () => {
           setShowDeleteAlert(false);
-          const success = await handleDelete(contents[0]?.file_name, contents[0]?.content_type, setFileExists, contents[0]?.lesson_belong, db);
+          const success = await handleDelete(contents[0]?.file_name, contents[0]?.content_type, setFileExists, contents[0]?.lesson_belong, db, inizialized);
           if (!success) {
             Alert.alert("Error", "Failed to delete the file or associated images. Please try again.");
           }

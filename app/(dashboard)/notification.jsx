@@ -14,7 +14,7 @@ import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const Notification = () => {
-  const db = useSQLiteContext(); // ✅ access to db
+  const {db, inizialized} = useSQLiteContext(); // ✅ access to db
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const { refreshing, onRefresh } = usePullToRefresh(db);
@@ -31,6 +31,7 @@ const Notification = () => {
 
   useEffect(() => {
     const fetchNotifications = async () => {
+      if (!inizialized) return;
       try {
         const result = await safeGetAll(
           db,

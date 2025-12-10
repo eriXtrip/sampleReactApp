@@ -35,7 +35,7 @@ export default function CompleteSentenceScreen() {
 
   //usePreventScreenCapture();
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   const [gameData, setGameData] = useState([]);
   const [gameBadge, setGameBadge] = useState(null);
@@ -270,7 +270,7 @@ export default function CompleteSentenceScreen() {
         badge={badge}   // ✅ comes directly from JSON
         onClose={async () => {
             console.log("Param to be sent:", { badge, content_id });
-            await saveAchievementAndUpdateContent(db, badge, content_id);
+            await saveAchievementAndUpdateContent(db, badge, content_id, inizialized);
             setShowBadge(false)
             router.back();
         }}

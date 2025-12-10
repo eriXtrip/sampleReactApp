@@ -36,7 +36,7 @@ export default function AngleHuntScreen() {
   const [questionSource, setQuestionSource] = useState(null);
   const [choiceSources, setChoiceSources] = useState({});
   
-  const db = useSQLiteContext();
+  const { db, initialized } = useSQLiteContext();
 
   // Load JSON data
   useEffect(() => {
@@ -256,7 +256,7 @@ export default function AngleHuntScreen() {
         badge={gameData.badge}
         onClose={async () => {
             console.log("Param to be sent:", { gameBadge: gameData.badge, content_id });
-            await saveAchievementAndUpdateContent(db, gameData.badge, content_id);
+            await saveAchievementAndUpdateContent(db, gameData.badge, content_id, inizialized);
             setShowBadge(false)
             router.back();
         }}

@@ -26,7 +26,7 @@ const LessonPage = () => {
   const decodedColor = accentColor ? decodeURIComponent(accentColor) : '#48cae4';
   console.log('Lesson Params:', { id, title, Quarter, description, decodedColor });
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   const [expanded, setExpanded] = useState(false);
   const [lessonContents, setLessonContents] = useState([]);
@@ -43,6 +43,8 @@ const LessonPage = () => {
     const fetchLessonContents = async () => {
       try {
         if (!id) return;
+
+        if(!inizialized) return;
 
         const contents = await safeGetAll(db, 
           `SELECT content_id, title, content_type, done, description, downloaded

@@ -16,7 +16,7 @@ export default function FlashCardScreen() {
   const { uri, content_id } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   usePreventScreenCapture();
 
@@ -121,7 +121,7 @@ export default function FlashCardScreen() {
         badge={gameBadge}
         onClose={async () => {
           if (gameBadge) {
-            await saveAchievementAndUpdateContent(db, gameBadge, content_id);
+            await saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized);
           }
           setShowBadge(false);
           router.back();

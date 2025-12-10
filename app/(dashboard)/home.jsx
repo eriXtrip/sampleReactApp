@@ -42,11 +42,12 @@ const Home = () => {
   const [avatarUri, setAvatarUri] = useState(null);
 
   const [achievements, setAchievements] = useState([]);
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const { refreshControlProps } = usePullToRefresh(db);
 
   useEffect(() => {
     const fetchAchievements = async () => {
+      if(!inizialized) return;
       try {
         const result = await safeGetAll(
           db,
@@ -91,6 +92,7 @@ const Home = () => {
 
   useEffect(() => {
     const loadSubjectsProgress = async () => {
+      if(!inizialized) return;
       try {
         const result = await safeGetAll(
         db,
@@ -129,6 +131,8 @@ const Home = () => {
         setRecentActivities([]);
         return;
       }
+
+      if(!inizialized) return;
 
       try {
         const activities = await safeGetAll(db, `

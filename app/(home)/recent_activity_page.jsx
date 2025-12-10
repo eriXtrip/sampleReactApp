@@ -17,7 +17,7 @@ const RecentActivityPage = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   const [activities, setActivities] = useState([]);
 
@@ -27,6 +27,7 @@ const RecentActivityPage = () => {
 
   useEffect(() => {
     const loadActivity = async () => {
+      if (!db || !inizialized) return;
       try {
         const raw = await safeGetAll(db, `
           -- Completed Lessons

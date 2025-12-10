@@ -11,7 +11,7 @@ import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../utils/dbHelpers'
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode, onShowStar }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt, isPracticeMode });
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const [completedAt, setCompletedAt] = useState(new Date());
   
   // Debug: Log the dates
@@ -65,6 +65,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
 
   // 🔹 get single saved user from users table
   const getCurrentUserId = async () => {
+    if (!inizialized) return;
     const result = await safeGetFirst(db, `SELECT user_id FROM users LIMIT 1`);
     return result?.user_id || null;
   };
@@ -78,6 +79,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
   const saveResults = async () => {
     const userId = await getCurrentUserId();
     if (!userId) return;
+    if (!inizialized) return;
 
     const now = completedAt.toISOString();
 

@@ -18,7 +18,7 @@ export default function SpeakGameScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   //usePreventScreenCapture();
 
@@ -191,7 +191,7 @@ export default function SpeakGameScreen() {
         badge={gameBadge}
         onClose={async () => {
           console.log("Param to be sent:", { gameBadge, content_id });
-          await saveAchievementAndUpdateContent(db, gameBadge, content_id);
+          await saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized);
           setShowBadge(false);
           router.back();
         }}

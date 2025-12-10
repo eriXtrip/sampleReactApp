@@ -55,7 +55,7 @@ export default function QuizScreen() {
   const [alertMessage, setAlertMessage] = useState("");
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   useEffect(() => {
     const backAction = () => {
@@ -89,6 +89,7 @@ export default function QuizScreen() {
     const now = new Date().toISOString();
     const userId = await getCurrentUserId();
     if (!userId) return;
+    if(!inizialized) return;
 
     try {
       await safeRun(db,
@@ -105,6 +106,7 @@ export default function QuizScreen() {
   const saveAnswers = async () => {
     const userId = await getCurrentUserId();
     if (!userId) return;
+    if(!inizialized);
 
     try {
       for (const q of quizData.questions) {

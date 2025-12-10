@@ -21,7 +21,7 @@ const SubjectList = () => {
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
   const router = useRouter();
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const { refreshing, onRefresh } = usePullToRefresh(db);
 
   const [expandedSections, setExpandedSections] = useState({});
@@ -37,6 +37,7 @@ const SubjectList = () => {
   // 📥 Fetch from SQLite
   useEffect(() => {
     const fetchData = async () => {
+      if(!inizialized) return;
       try {
         // 1. Get sections
         const sections = await safeGetAll(db, `SELECT * FROM sections`);

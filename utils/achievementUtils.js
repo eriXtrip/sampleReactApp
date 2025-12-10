@@ -8,8 +8,9 @@ import {
 
 import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
 
-export async function saveAchievementAndUpdateContent(db, gameBadge, content_id) {
+export async function saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized) {
     console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
+  if(!inizialized) return;
   try {
     // get current user_id
     const userRow = await safeGetFirst(db, `SELECT user_id FROM users LIMIT 1`);

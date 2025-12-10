@@ -26,7 +26,7 @@ const Profile = () => {
   const router = useRouter();
   // Destructure both user and logout from context
   const { logout } = useContext(UserContext);
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors, user, refreshUser } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];

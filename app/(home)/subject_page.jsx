@@ -33,7 +33,7 @@ import { ASSETS_ICONS } from '../../data/assets_icon';
 
 
 const SubjectPage = () => {
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -87,6 +87,7 @@ const SubjectPage = () => {
   }, [isFocused, db, subject_id]);
 
   const fetchLessonsAndAchievements = async () => {
+    if(!inizialized) return;
     try {
       // 1️⃣ Fetch lessons for this subject
       const lessonsData = await safeGetAll(db,
@@ -181,6 +182,7 @@ const SubjectPage = () => {
   // Mark selected lessons as done
   const onMarkDone = async () => {
     if (selectedIds.size === 0) return;
+    if(!inizialized) return;
 
     try {
       for (const lesson_id of selectedIds) {
@@ -219,6 +221,8 @@ const SubjectPage = () => {
   // Mark selected lessons as undone
   const onUndone = async () => {
     if (selectedIds.size === 0) return;
+
+    if(!inizialized) return;
 
     try {
       for (const lesson_id of selectedIds) {
@@ -269,7 +273,8 @@ const SubjectPage = () => {
           content.content_type,
           () => {},  // setFileExists not needed here
           lesson.lesson_id,
-          db
+          db,
+          inizialized
         );
       }
     }
@@ -281,6 +286,7 @@ const SubjectPage = () => {
 
   const onDownload = async () => {
     if (!db) return;
+    if (!inizialized) return;
     if (selectedIds.size === 0) return;
 
     setDownloading(true);
@@ -328,7 +334,8 @@ const SubjectPage = () => {
           () => {},
           () => {},
           c.lesson_belong,
-          db
+          db,
+          inizialized
         );
 
         if (localPath) {
@@ -392,6 +399,7 @@ const SubjectPage = () => {
 
 
   const getContentsForLesson = async (lessonId) => {
+    if(!inizialized) return;
     try {
       return await safeGetAll(
         db,

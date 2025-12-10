@@ -12,8 +12,10 @@ import {
 import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
 
 // Download the main file and associated images for JSON-based content
-export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
+export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db, inizialized) => {
    let loadingToastId = null;
+
+   if(!inizialized) return;
 
   try {
     setDownloading(true);

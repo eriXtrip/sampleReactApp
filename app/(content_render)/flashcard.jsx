@@ -23,7 +23,7 @@ export default function FlashCardScreen() {
   const { uri, content_id } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   //usePreventScreenCapture();
 
@@ -250,7 +250,7 @@ export default function FlashCardScreen() {
         onClose={async () => {
           if (gameBadge && content_id) {
             try {
-              await saveAchievementAndUpdateContent(db, gameBadge, content_id);
+              await saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized);
             } catch (error) {
               console.error("Failed to save achievement:", error);
             }

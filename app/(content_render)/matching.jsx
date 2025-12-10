@@ -22,7 +22,7 @@ export default function MatchingScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   //usePreventScreenCapture();
 
@@ -265,7 +265,7 @@ export default function MatchingScreen() {
         visible={showBadge}
         badge={gameBadge}
         onClose={async () => {
-          await saveAchievementAndUpdateContent(db, gameBadge, content_id);
+          await saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized);
           setShowBadge(false);
           router.back();
         }}

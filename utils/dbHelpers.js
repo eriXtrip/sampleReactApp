@@ -19,23 +19,14 @@ export async function enableWAL(db) {
 }
 
 /* --------------------------- HELPER: Retry with DB reinit --------------------------- */
-async function runWithDbRetry(fn, db, ...args) {
-  let retried = false;
-  while (true) {
-    try {
-      return await fn(db, ...args, retried);
-    } catch (err) {
-      if (!retried) {
-        console.warn("⚠️ SQLite fatal error detected, reinitializing DB...", err);
-        retried = true;
-        await initializeDatabase(db);
-        await enableWAL(db);
-        continue; // retry the same operation once
-      }
-      throw err; // already retried → throw
-    }
+async function runWithDbReady(fn, db, ...args) {
+  while (!db) {
+    console.warn("DB not ready, waiting...");
+    await new Promise(resolve => setTimeout(resolve, 50)); // wait 50ms
   }
+  return fn(db, ...args);
 }
+
 
 /* ---------------------------------------------------------------
    SAFE RUN — single SQL statement

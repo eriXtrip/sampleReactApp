@@ -13,7 +13,7 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 
 const SectionPage = () => {
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -46,6 +46,7 @@ const SectionPage = () => {
   // Fetch subjects and classmates from SQLite
   useEffect(() => {
     const fetchData = async () => {
+      if(!inizialized) return;
       try {
         // Query subjects
         const subjectsResult = await safeGetAll(db, `

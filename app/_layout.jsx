@@ -133,7 +133,7 @@ const RootLayoutContent = () => {
   const { themeColors } = useContext(ProfileContext);
   const [appState, setAppState] = useState(AppState.currentState);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-
+  const db = useSQLiteContext(); 
   //useNotificationListener();
 
   const { isApiLoaded } = useContext(ApiUrlContext);
@@ -145,14 +145,7 @@ const RootLayoutContent = () => {
   //   return () => subscription.remove();
   // }, []);
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      console.log('App state changed to:', nextAppState);
-      setAppState(nextAppState);
-    });
 
-    return () => subscription.remove();
-  }, []);
 
 
   useEffect(() => {
@@ -169,6 +162,31 @@ const RootLayoutContent = () => {
     })();
   }, []);
 
+   useEffect(() => {
+    const sub = AppState.addEventListener("change", async (nextState) => {
+      console.log("App state changed to:", nextState);
+
+      // Detect resume
+      if (
+        appState.match(/inactive|background/) &&
+        nextState === "active"
+      ) {
+        console.log("🔄 App resumed — refreshing SQLite DB reference");
+        try {
+          UserService.setDatabase(db);
+          console.log("✅ SQLite DB re-bound successfully on resume");
+        } catch (err) {
+          console.log("❌ Error rebinding DB:", err);
+        }
+      }
+
+      setAppState(nextState);
+    });
+
+    return () => sub.remove();
+  }, [appState, db]);
+
+
   // useEffect(() => {
   //   let lastPath = null;
   //   const un = setInterval(() => {
@@ -183,21 +201,6 @@ const RootLayoutContent = () => {
   //   return () => clearInterval(un);
   // }, []);
 
-    useEffect(() => {
-      const subscription = AppState.addEventListener('change', (nextAppState) => {
-        console.log('App state changed to:', nextAppState);
-        setAppState(nextAppState);
-
-        // Optional: perform actions based on state
-        if (nextAppState === 'active') {
-          console.log('App is in foreground');
-        } else if (nextAppState.match(/inactive|background/)) {
-          console.log('App is in background or inactive');
-        }
-      });
-
-      return () => subscription.remove();
-    }, []);
 
   return (
     <>

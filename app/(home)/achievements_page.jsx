@@ -19,7 +19,7 @@ const AchievementsPage = () => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
 
   const [achievements, setAchievements] = useState([]);
 
@@ -29,6 +29,9 @@ const AchievementsPage = () => {
 
   useEffect(() => {
     const loadAchievements = async () => {
+      if (!db || !inizialized) {
+        return;
+      }
       try {
         const result = await safeGetAll(db, `
           SELECT 
