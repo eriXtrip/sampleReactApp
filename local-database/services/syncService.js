@@ -2,43 +2,25 @@
 
 import { triggerLocalNotification } from "../../utils/notificationUtils";
 import { safeRun, safeGetFirst, safeGetAll, safeExec, enableWAL } from '../../utils/dbHelpers';
-import { waitForDb } from '../../utils/dbWaiter'
 
 /**
  * Saves full user sync data from server into local SQLite database (transactional).
  * @param {Object} data - The full sync payload from /user/sync-data
- * @param {Object} db - Expo SQLite database instance
+ * @param {Object} db - Expo SQLite database instance (required)
  */
 export async function saveSyncDataToSQLite(data, db) {
-  const [activeDB, setActiveDB] = useState(null);
   if (!db) {
     throw new Error("Database instance is required");
   }
 
-  // Wait for DB when hook mounts or db/initialized changes
-  useEffect(() => {
-    let isMounted = true;
-
-    async function initDb() {
-      try {
-        const dbReady = await waitForDb(db, initialized);
-        if (isMounted) setActiveDB(dbReady);
-      } catch (err) {
-        console.error("DB failed to initialize in pull-to-refresh:", err.message);
-      }
-    }
-
-    initDb();
-    return () => { isMounted = false; };
-  }, [db, initialized]);
-
-  await enableWAL(activeDB);
+  // Enable WAL mode for better concurrency
+  await enableWAL(db);
 
   try {
     console.log("🚀 Starting sync transaction...");
 
     // 🔥 Clear previous data
-    // await safeRun( activeDB,`
+    // await safeRun( db,`
     //   DELETE FROM users;
     //   DELETE FROM sections;
     //   DELETE FROM subjects;
@@ -57,7 +39,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`📋 Processing ${data.sections.length} sections...`);
       for (const s of data.sections) {
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO sections (
             server_section_id, teacher_id, teacher_name, section_name, school_name, school_year
           ) VALUES (?, ?, ?, ?, ?, ?)
@@ -85,7 +67,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`📚 Processing ${data.subjects.length} subjects...`);
       for (const sub of data.subjects) {
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO subjects (
             server_subject_id, subject_name, grade_level, description, is_public
           ) VALUES (?, ?, ?, ?, ?)
@@ -111,7 +93,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`📖 Processing ${data.lessons.length} lessons...`);
       for (const l of data.lessons) {
         const localSubject = await safeGetFirst(
-          activeDB,
+          db,
           "SELECT subject_id FROM subjects WHERE server_subject_id = ?",
           [l.subject_belong]
         );
@@ -121,7 +103,7 @@ export async function saveSyncDataToSQLite(data, db) {
         }
 
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO lessons (
             server_lesson_id, lesson_title, description, subject_belong, quarter, lesson_number, status, progress, last_accessed, completed_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -157,7 +139,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`📦 Processing ${data.subject_contents.length} subject contents...`);
       for (const c of data.subject_contents) {
         const localLesson = await safeGetFirst(
-          activeDB,
+          db,
           "SELECT lesson_id FROM lessons WHERE server_lesson_id = ?",
           [c.lesson_belong]
         );
@@ -167,7 +149,7 @@ export async function saveSyncDataToSQLite(data, db) {
         }
 
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO subject_contents (
             server_content_id, lesson_belong, content_type, url, title, description, file_name, done, last_accessed, started_at, completed_at, duration, test_id
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -211,7 +193,7 @@ export async function saveSyncDataToSQLite(data, db) {
         let localSubjectId = null;
         if (g.subject_id) {
           const subj = await safeGetFirst(
-            activeDB,
+            db,
             "SELECT subject_id FROM subjects WHERE server_subject_id = ?",
             [g.subject_id]
           );
@@ -221,7 +203,7 @@ export async function saveSyncDataToSQLite(data, db) {
         let localContentId = null;
         if (g.content_id) {
           const cont = await safeGetFirst(
-            activeDB,
+            db,
             "SELECT content_id FROM subject_contents WHERE server_content_id = ?",
             [g.content_id]
           );
@@ -229,7 +211,7 @@ export async function saveSyncDataToSQLite(data, db) {
         }
 
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO games (
             server_game_id, subject_id, content_id, game_type_id, title, description
           ) VALUES (?, ?, ?, ?, ?, ?)
@@ -257,7 +239,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`🔔 Processing ${data.notifications.length} notifications...`);
       for (const n of data.notifications) {
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO notifications (
             server_notification_id, title, message, type, is_read, created_at, read_at, is_synced
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -293,14 +275,14 @@ export async function saveSyncDataToSQLite(data, db) {
     // === 7. Pupil Test Scores ===
     if (Array.isArray(data.pupil_test_scores)) {
       console.log(`📊 Processing ${data.pupil_test_scores.length} pupil test scores...`);
-      const localUser = await safeGetFirst(activeDB, "SELECT user_id FROM users LIMIT 1");
+      const localUser = await safeGetFirst(db, "SELECT user_id FROM users LIMIT 1");
       
       if (localUser) {
         for (const score of data.pupil_test_scores) {
           
           // Use INSERT OR REPLACE instead of ON CONFLICT
           await safeRun(
-            activeDB,
+            db,
             `INSERT OR REPLACE INTO pupil_test_scores (
               score_id, server_score_id, pupil_id, test_id, score, max_score, 
               attempt_number, taken_at, grade, is_synced
@@ -329,14 +311,14 @@ export async function saveSyncDataToSQLite(data, db) {
     if (Array.isArray(data.pupil_achievements)) {
       console.log(`🏆 Processing ${data.pupil_achievements.length} pupil achievements...`);
 
-      const localUser = await safeGetFirst(activeDB, "SELECT user_id FROM users LIMIT 1");
+      const localUser = await safeGetFirst(db, "SELECT user_id FROM users LIMIT 1");
 
       if (localUser) {
         for (const ach of data.pupil_achievements) {
           try {
             // Use INSERT OR REPLACE which works with any primary key conflict
             await safeRun(
-              activeDB,
+              db,
               `INSERT OR REPLACE INTO pupil_achievements (
                 id, server_achievement_id, server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id, is_synced
               ) VALUES (
@@ -375,13 +357,13 @@ export async function saveSyncDataToSQLite(data, db) {
     if (Array.isArray(data.classmates)) {
       console.log(`👥 Processing ${data.classmates.length} classmates...`);
       for (const c of data.classmates) {
-        const section = await safeGetFirst(activeDB, 
+        const section = await safeGetFirst(db, 
           "SELECT section_id FROM sections LIMIT 1"
         );
         const sectionId = section?.section_id || null;
 
         await safeRun(
-          activeDB,
+          db,
           `INSERT INTO classmates (user_id, classmate_name, section_id, avatar) 
           VALUES (?, ?, ?, ?)
           ON CONFLICT(user_id, section_id) DO UPDATE SET
@@ -397,7 +379,7 @@ export async function saveSyncDataToSQLite(data, db) {
       console.log(`📚 Processing ${data.subjects_in_section.length} subjects in section...`);
       for (const sis of data.subjects_in_section) {
         await safeRun(
-          activeDB,
+          db,
           `INSERT OR IGNORE INTO subjects_in_section 
             (section_belong, subject_id, assigned_at)
           VALUES (

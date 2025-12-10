@@ -16,8 +16,6 @@ import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
 import { PermissionsAndroid } from 'react-native';
 import DatabaseBinder from './DatabaseBinder';
-
-import { LESSONS_DIR } from '../utils/resolveLocalPath';
 import { initializeDatabase } from '../local-database/services/database';
 import UserService from '../local-database/services/userService';
 import ThemedStatusBar from '../components/ThemedStatusBar';
@@ -233,7 +231,7 @@ const RootLayoutContent = () => {
 
 const RootLayout = () => { 
   return (
-    <SQLiteProvider databaseName="mquest.db">
+    <SQLiteProvider databaseName="mquest.db" onInit={initializeDatabase}>
       <DatabaseBinder />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ApiUrlProvider> 

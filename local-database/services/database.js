@@ -1,5 +1,5 @@
 // local-database/services/database.js
-import { markDbInitialized } from './syncUp.js';
+import { markDbInitialized } from './dbReady.js';
 import { safeExec, enableWAL  } from '../../utils/dbHelpers.js';
 
 export async function initializeDatabase(db) {

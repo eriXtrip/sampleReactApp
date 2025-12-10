@@ -3,29 +3,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '../hooks/useUser';
-import { UserProvider } from "../contexts/UserContext";
-import { SQLiteProvider, useSQLiteContext  } from 'expo-sqlite';
-import { initializeDatabase } from '../local-database/services/database';
-import { setupNetworkSyncListener, triggerSyncIfOnline, markDbInitialized } from '../local-database/services/syncUp.js';
+import { useSQLiteContext } from 'expo-sqlite';
+import { setupNetworkSyncListener, triggerSyncIfOnline } from '../local-database/services/syncUp.js';
 import { appLifecycleManager } from '../utils/appLifecycleManager';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = 100;
 
 const Index = () => {
-
-  return (
-    <SQLiteProvider databaseName="mquest.db" onInit={initializeDatabase}>
-      <UserProvider>
-        <SplashScreen />
-      </UserProvider>
-    </SQLiteProvider>
-  );
+  return <SplashScreen />;
 };
 
 export default Index;
 
-// 1. Setup NetInfo listener once
+// Setup network sync listener globally
 const SyncInitializer = () => {
   useEffect(() => {
     const unsubscribe = setupNetworkSyncListener();
@@ -75,12 +66,11 @@ const SplashScreen = () => {
     return () => pulseAnimation.stop();
   }, []);
 
-  // 2. When user is loaded → mark DB ready + trigger sync
+  // 2. When user and DB are ready → trigger sync
   useEffect(() => {
     if (db && initialized && !isLoading) {
       setTargetRoute(user ? '/home' : '/login');
-      markDbInitialized();  // ← Enable sync
-      triggerSyncIfOnline(db); // ← TRIGGER SYNC NOW
+      triggerSyncIfOnline(db); // ← Trigger sync when DB is ready
     }
   }, [db, initialized, isLoading, user]);
 
