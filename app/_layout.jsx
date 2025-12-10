@@ -12,6 +12,7 @@ import { EnrollmentProvider } from '../contexts/EnrollmentContext';
 import { DownloadProvider } from '../contexts/DownloadContext';
 import { RankingProvider } from '../contexts/RankingContext';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
+import { LESSONS_DIR } from '../utils/resolveLocalPath';
 import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
 import { PermissionsAndroid } from 'react-native';

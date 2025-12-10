@@ -2,8 +2,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
+import { UserProvider } from '../contexts/UserContext';
 import { useUser } from '../hooks/useUser';
-import { useSQLiteContext } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
+import { initializeDatabase } from '../local-database/services/database';
 import { setupNetworkSyncListener, triggerSyncIfOnline } from '../local-database/services/syncUp.js';
 import { appLifecycleManager } from '../utils/appLifecycleManager';
 
@@ -11,75 +13,177 @@ const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = 100;
 
 const Index = () => {
-  return <SplashScreen />;
+  return (
+    <SQLiteProvider 
+      databaseName="mquest.db" 
+      onInit={initializeDatabase}
+      useSuspense={false}
+    >
+      <UserProvider>
+        <SplashScreen />
+      </UserProvider>
+    </SQLiteProvider>
+  );
 };
 
 export default Index;
 
-// Setup network sync listener globally
-const SyncInitializer = () => {
-  useEffect(() => {
-    const unsubscribe = setupNetworkSyncListener();
-    return unsubscribe;
-  }, []);
-  return null;
-};
-
 const SplashScreen = () => {
-  const {db, initialized } = useSQLiteContext();
+  const sqliteContext = useSQLiteContext();
+  const db = sqliteContext?.db;
+  const initialized = sqliteContext?.initialized || false;
   const router = useRouter();
-  const { user, isLoading } = useUser();
+  const { user, isLoading, checkAuthStatus } = useUser();
   const [targetRoute, setTargetRoute] = useState(null);
   const [animationsCompleted, setAnimationsCompleted] = useState(false);
+  const [isDbReady, setIsDbReady] = useState(false);
+  const [syncTriggered, setSyncTriggered] = useState(false);
+  const [userChecked, setUserChecked] = useState(false);
 
   const circle1Scale = useRef(new Animated.Value(0.1)).current;
   const circle2Scale = useRef(new Animated.Value(0.1)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Initialize AppLifecycleManager with database
+  // DEBUG: Log database status
   useEffect(() => {
-    if (db) {
-      const unsubscribe = appLifecycleManager.initialize(db);
-      return unsubscribe;
+    console.log('🔄 SplashScreen - Database Status:', { 
+      hasSqliteContext: !!sqliteContext,
+      db: db ? '✓ Available' : '✗ Undefined', 
+      initialized,
+      isDbReady 
+    });
+  }, [sqliteContext, db, initialized, isDbReady]);
+
+  // Set up network listener once
+  useEffect(() => {
+    console.log('📡 Setting up network listener');
+    const unsubscribe = setupNetworkSyncListener();
+    return () => {
+      unsubscribe && unsubscribe();
+    };
+  }, []);
+
+  // Initialize database and wait for it to be ready
+  useEffect(() => {
+    if (db && initialized && !isDbReady) {
+      console.log('✅ Database is now fully ready!');
+      setIsDbReady(true);
+      
+      // Initialize app lifecycle manager
+      if (db && !appLifecycleManager.isInitialized) {
+        appLifecycleManager.initialize(db);
+      }
     }
-  }, [db]);
+  }, [db, initialized, isDbReady]);
+
+  // Check auth status once DB is ready
+  useEffect(() => {
+    if (isDbReady && !userChecked && checkAuthStatus) {
+      console.log('🔐 Checking authentication status...');
+      checkAuthStatus();
+      setUserChecked(true);
+    }
+  }, [isDbReady, userChecked, checkAuthStatus]);
 
   // Animation
   useEffect(() => {
+    console.log('🎬 Starting splash screen animations');
     const mainAnimations = Animated.sequence([
-      Animated.timing(circle1Scale, { toValue: 10, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(circle2Scale, { toValue: 10, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 0, duration: 580, useNativeDriver: true }),
+      Animated.timing(circle1Scale, { 
+        toValue: 10, 
+        duration: 500, 
+        easing: Easing.out(Easing.quad), 
+        useNativeDriver: true 
+      }),
+      Animated.timing(circle2Scale, { 
+        toValue: 10, 
+        duration: 500, 
+        easing: Easing.out(Easing.quad), 
+        useNativeDriver: true 
+      }),
+      Animated.timing(fadeAnim, { 
+        toValue: 0, 
+        duration: 580, 
+        useNativeDriver: true 
+      }),
     ]);
 
     const pulseAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(logoPulse, { toValue: 1.1, duration: 300, useNativeDriver: true }),
-        Animated.timing(logoPulse, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(logoPulse, { 
+          toValue: 1.1, 
+          duration: 300, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(logoPulse, { 
+          toValue: 1, 
+          duration: 300, 
+          useNativeDriver: true 
+        }),
       ])
     );
 
-    mainAnimations.start(() => setAnimationsCompleted(true));
+    mainAnimations.start(() => {
+      console.log('✅ Animations completed');
+      setAnimationsCompleted(true);
+    });
     pulseAnimation.start();
 
-    return () => pulseAnimation.stop();
+    return () => {
+      mainAnimations.stop();
+      pulseAnimation.stop();
+    };
   }, []);
 
-  // 2. When user and DB are ready → trigger sync
+  // Determine navigation when everything is ready
   useEffect(() => {
-    if (db && initialized && !isLoading) {
-      setTargetRoute(user ? '/home' : '/login');
-      triggerSyncIfOnline(db); // ← Trigger sync when DB is ready
+    console.log('📍 Navigation check:', {
+      isDbReady,
+      isLoading,
+      userChecked,
+      animationsCompleted,
+      user: user ? 'logged in' : 'not logged in'
+    });
+    
+    if (isDbReady && !isLoading && animationsCompleted && userChecked) {
+      const route = user ? '/home' : '/login';
+      console.log('🎯 Setting target route to:', route);
+      setTargetRoute(route);
+      
+      // Trigger sync if user is logged in
+      if (user && db && !syncTriggered) {
+        console.log('🔄 Triggering initial sync');
+        triggerSyncIfOnline(db);
+        setSyncTriggered(true);
+      }
     }
-  }, [db, initialized, isLoading, user]);
+  }, [isDbReady, isLoading, userChecked, animationsCompleted, user, db, syncTriggered]);
 
-  // 3. Navigate when ready
+  // Navigate when target route is set
   useEffect(() => {
-    if (targetRoute && animationsCompleted) {
-      router.replace(targetRoute);
+    if (targetRoute) {
+      console.log('🚀 Navigating to:', targetRoute);
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        router.replace(targetRoute);
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
-  }, [targetRoute, animationsCompleted, router]);
+  }, [targetRoute, router]);
+
+  // Fallback navigation after timeout
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!targetRoute) {
+        console.log('⚠️ Navigation timeout - forcing to login');
+        router.replace('/login');
+      }
+    }, 5000); // 5 second timeout
+    
+    return () => clearTimeout(timer);
+  }, [targetRoute, router]);
 
   return (
     <View style={styles.container}>
@@ -95,7 +199,13 @@ const SplashScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    overflow: 'hidden' 
+  },
   expandingCircle: {
     position: 'absolute',
     width: CIRCLE_SIZE,
@@ -106,5 +216,9 @@ const styles = StyleSheet.create({
     left: width / 2 - CIRCLE_SIZE / 2,
     zIndex: 0,
   },
-  logo: { width: 200, height: 200, zIndex: 1 },
+  logo: { 
+    width: 200, 
+    height: 200, 
+    zIndex: 1 
+  },
 });
