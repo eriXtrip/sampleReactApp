@@ -1,7 +1,7 @@
 // samplereactapp/local-database/services/syncService.js
 
 import { triggerLocalNotification } from "../../utils/notificationUtils";
-import { safeRun, safeGetFirst, safeGetAll, safeExec } from '../../utils/dbHelpers';
+import { safeRun, safeGetFirst, safeGetAll, safeExec, enableWAL } from '../../utils/dbHelpers';
 
 /**
  * Saves full user sync data from server into local SQLite database (transactional).
@@ -12,6 +12,8 @@ export async function saveSyncDataToSQLite(data, db) {
   if (!db) {
     throw new Error("Database instance is required");
   }
+
+  await enableWAL(db);
 
   try {
     console.log("🚀 Starting sync transaction...");

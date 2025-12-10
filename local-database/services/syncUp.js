@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { saveSyncDataToSQLite  } from '../../local-database/services/syncService.js';
 import { dbMutex } from '../../utils/databaseMutex.js';
 import { appLifecycleManager } from '../../utils/appLifecycleManager.js';
-import {safeExec, safeGetAll, safeGetFirst, safeRun} from '../../utils/dbHelpers';
+import {safeExec, safeGetAll, safeGetFirst, safeRun, enableWAL} from '../../utils/dbHelpers';
 
 // ===============================
 // 🔥 Background Sync Queue System
@@ -86,6 +86,8 @@ export async function syncTestScoresToServer(db) {
 
   const net = await NetInfo.fetch();
   if (!net.isConnected) return false;
+
+  await enableWAL(db);
 
   try {
     const API_URL = await getApiUrl();
@@ -186,6 +188,8 @@ export async function syncNotifications(db) {
   if (!db || !isDbInitialized) return false;
   const net = await NetInfo.fetch();
   if (!net.isConnected) return false;
+
+  await enableWAL(db);
 
   try {
     const API_URL = await getApiUrl();
@@ -312,6 +316,8 @@ export async function syncProgressToServer(db) {
     return false;
   }
 
+  await enableWAL(db);
+
   const net = await NetInfo.fetch();
   if (!net.isConnected) {
     console.log('❌ No internet connection → cannot sync progress');
@@ -419,6 +425,8 @@ export async function syncAchievements(db) {
     return false;
   }
 
+  await enableWAL(db);
+
   try {
     const API_URL = await getApiUrl();
     const token = await SecureStore.getItemAsync('authToken');
@@ -497,6 +505,8 @@ export async function triggerSyncIfOnline(db, flags = {}) {
     console.log("⛔ Sync blocked → not online or API unreachable");
     return;
   }
+
+  await enableWAL(db);
 
   // 🔍 Comprehensive user and auth check
   try {

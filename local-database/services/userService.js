@@ -1,5 +1,5 @@
 // local-database/services/userService.js
-import { safeRun, safeGetAll, safeGetFirst, safeExecMany } from '../../utils/dbHelpers';
+import { safeRun, safeGetAll, safeGetFirst, safeExecMany, enableWAL } from '../../utils/dbHelpers';
 
 export default class UserService {
   static db = null;
@@ -9,6 +9,8 @@ export default class UserService {
     this.db = db;
   }
 
+  
+
   // Sync user with server
   static async syncUser(serverUser, token, dbInstance = null) {
     const activeDb = dbInstance || this.db;
@@ -17,6 +19,8 @@ export default class UserService {
       console.warn('❌ syncUser: Database not initialized');
       return;
     }
+
+    await enableWAL(activeDb);
 
     console.log("User from Server: ", serverUser);
 
@@ -118,6 +122,8 @@ export default class UserService {
       return null;
     }
 
+    await enableWAL(activeDb);
+
     try {
       const tableExists = await safeGetFirst(activeDb, 
         `SELECT name FROM sqlite_master 
@@ -140,6 +146,8 @@ export default class UserService {
   static async clearUserData(dbInstance = null) {
     const activeDb = dbInstance || this.db;
     if (!activeDb) return;
+
+    await enableWAL(activeDb);
 
     const tables = ['classmates', 'notifications', 'pupil_achievements', 'pupil_answers',
         'pupil_test_scores', 'games', 'game_types', 'subject_contents',
@@ -176,6 +184,8 @@ export default class UserService {
       return;
     }
 
+    await enableWAL(activeDb);
+
     try {
       await this.clearUserData(activeDb);
 
@@ -186,7 +196,7 @@ export default class UserService {
         'sessions', 'users'
       ];
 
-      const statements = tables.map(t => ({
+      const statements = tablesToClear.map(t => ({
         sql: `DELETE FROM ${t}`,
         params: []
       }));

@@ -2,7 +2,8 @@
 
 import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath } from './resolveLocalPath';
-import { safeExec, safeGetAll, safeRun, safeGetFirst } from './dbHelpers';
+import { safeExec, safeGetAll, safeRun, safeGetFirst, safeExecMany, enableWAL } from './dbHelpers';
+import { appLifecycleManager } from './appLifecycleManager';
 
 export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db) => {
   try {
@@ -38,9 +39,14 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
       }
     }
 
+    if (db) {
+      await enableWAL(db);
+    }
+
     // Update the database to decrement no_of_contents
     if (db && lesson_bellonId) {
       try {
+        appLifecycleManager.markSyncStart(); // mark sync start
         await safeRun(
           db, 
           `UPDATE lessons
@@ -48,15 +54,18 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
           WHERE lesson_id = ?`,
           [lesson_bellonId]
         );
-        console.log(`✅ Deccremented no_of_contents for lesson_id=${lesson_bellonId}`);
+        console.log(`✅ Decremented no_of_contents for lesson_id=${lesson_bellonId}`);
       } catch (err) {
         console.warn('Failed to update lesson no_of_contents:', err);
+      } finally {
+        appLifecycleManager.markSyncEnd(); // mark sync end
       }
     }
 
-    if(file){
-      try{
 
+    if(file){
+      try {
+        appLifecycleManager.markSyncStart();
         await safeRun(
           db,
           `UPDATE subject_contents
@@ -67,8 +76,11 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
         console.log("Success updating subject_contents.");
       } catch (err){
         console.warn('Failed to update subject_contents:', err);
+      } finally {
+        appLifecycleManager.markSyncEnd();
       }
     }
+
 
     // Delete the JSON file
     await FileSystem.deleteAsync(localPath, { idempotent: true });

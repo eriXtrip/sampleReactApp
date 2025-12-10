@@ -3,10 +3,10 @@ import {
   dismissLoadingToast,
   triggerLocalNotification,
   showSuccessToast,
-  showErrorToast 
+  showErrorToast
 } from './notificationUtils';
 
-import { safeExec, safeGetAll, safeRun, safeGetFirst } from './dbHelpers';
+import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
 
 export async function saveAchievementAndUpdateContent(db, gameBadge, content_id) {
     console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
@@ -18,6 +18,10 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
       return;
     }
     const pupilId = userRow.user_id;
+
+    if (db) {
+      await enableWAL(db);
+    }
 
     // Insert earned achievement
     await safeRun(
@@ -45,7 +49,7 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id)
       [gameBadge?.title]
     );
 
-
+    
     // Update subject_contents
     await safeRun(
       db,

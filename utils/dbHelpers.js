@@ -1,5 +1,6 @@
 // dbHelpers.js
 import { dbMutex } from "./databaseMutex";
+import { initializeDatabase } from "../local-database/services/database";
 
 /**
  * Enable WAL to prevent database locking in release builds.
@@ -17,16 +18,32 @@ export async function enableWAL(db) {
   }
 }
 
+/* --------------------------- HELPER: Retry with DB reinit --------------------------- */
+async function runWithDbRetry(fn, db, ...args) {
+  let retried = false;
+  while (true) {
+    try {
+      return await fn(db, ...args, retried);
+    } catch (err) {
+      if (!retried) {
+        console.warn("⚠️ SQLite fatal error detected, reinitializing DB...", err);
+        retried = true;
+        await initializeDatabase(db);
+        await enableWAL(db);
+        continue; // retry the same operation once
+      }
+      throw err; // already retried → throw
+    }
+  }
+}
+
 /* ---------------------------------------------------------------
-   SAFE RUN — for single SQL statements (INSERT / UPDATE / DELETE)
-   --------------------------------------------------------------- */
-export async function safeRun(db, sql, params = [], timeout = 30000) {
+   SAFE RUN — single SQL statement
+--------------------------------------------------------------- */
+export async function safeRun(db, sql, params = [], timeout = 30000, hasRetried = false) {
   await dbMutex.acquire("db", timeout);
   try {
     return await db.runAsync(sql, params);
-  } catch (err) {
-    console.error("❌ safeRun SQL ERROR:", err);
-    throw err;
   } finally {
     try { dbMutex.release("db"); } catch {}
   }
@@ -34,14 +51,11 @@ export async function safeRun(db, sql, params = [], timeout = 30000) {
 
 /* ---------------------------------------------------------------
    SAFE SELECT (multiple rows)
-   --------------------------------------------------------------- */
-export async function safeGetAll(db, sql, params = [], timeout = 30000) {
+--------------------------------------------------------------- */
+export async function safeGetAll(db, sql, params = [], timeout = 30000, hasRetried = false) {
   await dbMutex.acquire("db", timeout);
   try {
     return await db.getAllAsync(sql, params);
-  } catch (err) {
-    console.error("❌ safeGetAll ERROR:", err);
-    throw err;
   } finally {
     try { dbMutex.release("db"); } catch {}
   }
@@ -49,41 +63,29 @@ export async function safeGetAll(db, sql, params = [], timeout = 30000) {
 
 /* ---------------------------------------------------------------
    SAFE SELECT (first row only)
-   --------------------------------------------------------------- */
-export async function safeGetFirst(db, sql, params = [], timeout = 30000) {
+--------------------------------------------------------------- */
+export async function safeGetFirst(db, sql, params = [], timeout = 30000, hasRetried = false) {
   await dbMutex.acquire("db", timeout);
   try {
     return await db.getFirstAsync(sql, params);
-  } catch (err) {
-    console.error("❌ safeGetFirst ERROR:", err);
-    throw err;
   } finally {
     try { dbMutex.release("db"); } catch {}
   }
 }
 
 /* ---------------------------------------------------------------
-   SAFE EXEC — for batching MULTIPLE SQL statements in one transaction
-   (ex: clearing tables, seeding data, syncing chunks)
-   --------------------------------------------------------------- */
-export async function safeExec(db, sql, timeout = 30000) {
+   SAFE EXEC — multiple SQL statements in one transaction
+--------------------------------------------------------------- */
+export async function safeExec(db, sql, timeout = 30000, hasRetried = false) {
   await dbMutex.acquire("db", timeout);
-
   try {
-    await db.execAsync("BEGIN IMMEDIATE;");   // prevents concurrent writes
-
-    const result = await db.execAsync(sql);  // executes all statements
-
+    await db.execAsync("BEGIN IMMEDIATE;");
+    const result = await db.execAsync(sql);
     await db.execAsync("COMMIT;");
     return result;
-
   } catch (err) {
-    console.error("❌ safeExec ERROR → ROLLBACK", err);
-    try { await db.execAsync("ROLLBACK;"); } catch (e2) {
-      console.error("❌ Rollback failed:", e2);
-    }
+    try { await db.execAsync("ROLLBACK;"); } catch(e) { console.error("Rollback failed:", e); }
     throw err;
-
   } finally {
     try { dbMutex.release("db"); } catch {}
   }
@@ -91,33 +93,31 @@ export async function safeExec(db, sql, timeout = 30000) {
 
 /* ---------------------------------------------------------------
    SAFE EXECUTE MANY — array of separate SQL statements
-   (each statement is run in a single large transaction)
-   --------------------------------------------------------------- */
-export async function safeExecMany(db, statements = [], timeout = 30000) {
-  await dbMutex.acquire("db", timeout);
+--------------------------------------------------------------- */
+export async function safeExecMany(db, statements = [], timeout = 30000, hasRetried = false) {
+  if (!statements.length) return;
 
+  await dbMutex.acquire("db", timeout);
   try {
     await db.execAsync("BEGIN IMMEDIATE;");
-
     for (const { sql, params } of statements) {
       await db.runAsync(sql, params ?? []);
     }
-
     await db.execAsync("COMMIT;");
   } catch (err) {
-    console.error("❌ safeExecMany ERROR → ROLLBACK", err);
-    try { await db.execAsync("ROLLBACK;"); } catch {}
+    try { await db.execAsync("ROLLBACK;"); } catch(e) { console.error("Rollback failed:", e); }
     throw err;
   } finally {
     try { dbMutex.release("db"); } catch {}
   }
 }
 
+/* --------------------------- EXPORT WITH AUTO-RETRY --------------------------- */
 export default {
   enableWAL,
-  safeRun,
-  safeGetAll,
-  safeGetFirst,
-  safeExec,
-  safeExecMany,
+  safeRun: (db, sql, params, timeout) => runWithDbRetry(safeRun, db, sql, params, timeout),
+  safeGetAll: (db, sql, params, timeout) => runWithDbRetry(safeGetAll, db, sql, params, timeout),
+  safeGetFirst: (db, sql, params, timeout) => runWithDbRetry(safeGetFirst, db, sql, params, timeout),
+  safeExec: (db, sql, timeout) => runWithDbRetry(safeExec, db, sql, timeout),
+  safeExecMany: (db, statements, timeout) => runWithDbRetry(safeExecMany, db, statements, timeout),
 };

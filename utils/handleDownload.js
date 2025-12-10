@@ -9,7 +9,7 @@ import {
   showSuccessToast,
   showErrorToast 
 } from './notificationUtils';
-import { safeExec, safeGetAll, safeRun, safeGetFirst } from './dbHelpers';
+import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
 
 // Download the main file and associated images for JSON-based content
 export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db) => {
@@ -127,6 +127,11 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
       await FileSystem.copyAsync({ from: downloadedUri, to: localPath });
       console.log("Saved non-JSON file ✅:", file);
     }
+
+    if (db) {
+      await enableWAL(db);
+    }
+
 
     if (db && lesson_bellonId) {
 
