@@ -1,9 +1,10 @@
 // SAMPLEREACTAPP/contexts/UserContext.jsx  to create apk: eas build --platform android --profile preview    to expose API: ngrok http 3001
 
-import { createContext, useState, useEffect, useCallback, useContext } from "react";
+// SAMPLEREACTAPP/contexts/UserContext.jsx
+import { createContext, useState, useEffect, useCallback, useContext, useRef } from "react";
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
-import  UserService  from '../local-database/services/userService';
+import UserService from '../local-database/services/userService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { initializeDatabase } from '../local-database/services/database';
 import { testServerConnection } from '../local-database/services/testServerConnection';
@@ -25,16 +26,31 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [serverReachable, setServerReachable] = useState(false);
-  //const API_URL = "http://192.168.0.101:3001/api";
   const [API_URL, setApiUrl] = useState(null);
-  const {db, inizialized} = useSQLiteContext();
+  
+  // Use refs for database state to avoid re-renders
+  const dbRef = useRef(null);
+  const initializedRef = useRef(false);
+  
+  const sqliteContext = useSQLiteContext();
   const router = useRouter();
-
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 
+  // Update refs when SQLite context changes
   useEffect(() => {
-    console.log("🔍 useSQLiteContext db in UserContext:", db);
-  }, [db]);
+    console.log("🔍 UserContext - SQLiteContext changed:", { 
+      db: sqliteContext?.db ? 'available' : 'undefined',
+      initialized: sqliteContext?.initialized 
+    });
+    
+    if (sqliteContext?.db) {
+      dbRef.current = sqliteContext.db;
+    }
+    
+    if (sqliteContext?.initialized !== undefined) {
+      initializedRef.current = sqliteContext.initialized;
+    }
+  }, [sqliteContext]);
 
   const getCurrentFlags = () => ({
     isOffline,
@@ -47,37 +63,52 @@ export function UserProvider({ children }) {
       const url = await getApiUrl();
       setApiUrl(url);
       console.log('URL: ', url);
-      
     })();
   }, []);
 
-  // Initialize database using database.js
+  // Initialize database - ONLY when we have a valid db
   useEffect(() => {
     const initDb = async () => {
-      if (!db) {
-        console.warn("⏳ Database not ready yet in UserContext");
+      const currentDb = dbRef.current;
+      const isInitialized = initializedRef.current;
+      
+      if (!currentDb || !isInitialized) {
+        console.warn("⏳ Database not ready yet in UserContext", {
+          db: !!currentDb,
+          initialized: isInitialized
+        });
         return;
       }
 
-      // Only initialize if UserService doesn't already have a db (set by DatabaseBinder)
+      // Only initialize if UserService doesn't already have a db
       if (!UserService.db) {
         try {
-          await initializeDatabase(db);
-          UserService.setDatabase(db);
-          console.log("✅ Database initialized successfully (UserContext)");
+          await initializeDatabase(currentDb);
+          UserService.setDatabase(currentDb);
+          console.log("✅ Database initialized successfully in UserContext");
         } catch (error) {
-          //console.error("❌ Logout failed:", logoutError);("❌ Database initialization error in UserContext:", error);
+          console.error("❌ Database initialization error in UserContext:", error);
         } finally {
           setDbInitialized(true);
         }
       } else {
-        console.log("⚡ UserService already has a DB from DatabaseBinder");
+        console.log("⚡ UserService already has a DB");
         setDbInitialized(true);
       }
     };
 
     initDb();
-  }, [db]); // ✅ dependency array must be separate
+  }, [sqliteContext?.db, sqliteContext?.initialized]); // Watch context changes
+
+  // Get current database (safe accessor)
+  const getDatabase = () => {
+    return dbRef.current;
+  };
+
+  // Get database initialization status
+  const isDatabaseReady = () => {
+    return dbRef.current && initializedRef.current && dbInitialized;
+  };
 
   // Registration functions (unchanged)
   const startRegistration = async (data) => {
@@ -131,29 +162,39 @@ export function UserProvider({ children }) {
     }
   };
 
-
   const login = async (email, password) => {
     try {
       setLoading(true);
-      console.log('Attempting login with:', { email, API_URL, dbInitialized, hasUserServiceDb: !!UserService.db });
+      console.log('Attempting login with:', { 
+        email, 
+        API_URL, 
+        dbInitialized, 
+        hasUserServiceDb: !!UserService.db,
+        sqliteDb: !!dbRef.current,
+        sqliteInitialized: initializedRef.current
+      });
 
-      // defensive: ensure API_URL & db
+      // defensive: ensure API_URL
       if (!API_URL) {
         throw new Error('API_URL not set yet');
       }
-      if (!db) {
-        console.warn('⚠️ login: local db (useSQLiteContext) is not available. Aborting sync steps.');
+      
+      // Get database - try multiple sources
+      let dbToUse = dbRef.current;
+      if (!dbToUse && UserService.db) {
+        console.log('Using UserService.db as fallback');
+        dbToUse = UserService.db;
       }
-
-      // clear previous user rows (if DB available)
-      // try {
-      //   if (UserService && UserService.db) {
-      //     console.log('Clearing existing user data via UserService');
-      //     await UserService.clearUserData(db); // pass db or fallback inside method
-      //   }
-      // } catch (clearErr) {
-      //   console.warn('Failed clearing user data (non-fatal):', clearErr);
-      // }
+      
+      if (!dbToUse) {
+        console.warn('⚠️ login: No database available. Will attempt to initialize during login.');
+        
+        // Try to get database from context again
+        if (sqliteContext?.db) {
+          dbToUse = sqliteContext.db;
+          dbRef.current = dbToUse;
+        }
+      }
 
       // call login endpoint
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -203,18 +244,17 @@ export function UserProvider({ children }) {
 
       if (isWebUser) {
         console.log('User is web user (role 1 or 2), skipping local storage');
-        // For web users, we don't store data locally or download avatars
         return { 
           success: true, 
           user: userDataForSync,
-          isWebUser: true // This flag will control navigation
+          isWebUser: true
         };
       }
 
       if (data.user.avatar?.url && data.user.avatar?.fileName) {
         console.log('Downloading avatar:', data.user.avatar.fileName);
 
-        await ensureAvatarDirectory(); // ← same pattern as your videos
+        await ensureAvatarDirectory();
 
         const localPath = getLocalAvatarPath(data.user.avatar.fileName);
 
@@ -225,8 +265,8 @@ export function UserProvider({ children }) {
 
         if (downloadRes.status === 200) {
           console.log('AVATAR DOWNLOADED:', localPath);
-          userDataForSync.avatar_url = localPath;         // ← save full path
-          userDataForSync.avatar_file_name = data.user.avatar.fileName; // ← save name only
+          userDataForSync.avatar_url = localPath;
+          userDataForSync.avatar_file_name = data.user.avatar.fileName;
         }
       }
 
@@ -237,33 +277,44 @@ export function UserProvider({ children }) {
       );
       console.log("DOES LOCAL AVATAR EXIST?", info);
 
-      // store auth token and userData sequentially so we know exactly what failed
+      // store auth token and userData
       try {
         console.log('Saving token and userData to SecureStore...');
         await SecureStore.setItemAsync('authToken', data.token);
         await SecureStore.setItemAsync('userData', JSON.stringify(userDataForSync));
         console.log('SecureStore write OK');
       } catch (storeErr) {
-        //console.error("❌ Logout failed:", logoutError);('Failed to save token/userData to SecureStore:', storeErr);
-        // decide whether to continue; here we continue to local DB sync
+        console.error('Failed to save token/userData to SecureStore:', storeErr);
       }
 
-      // Sync user row into local DB using the live db (db from useSQLiteContext())
+      // Initialize database during login if not already done
+      if (!dbInitialized && dbToUse) {
+        try {
+          console.log('Initializing database during login...');
+          await initializeDatabase(dbToUse);
+          UserService.setDatabase(dbToUse);
+          setDbInitialized(true);
+          console.log('✅ Database initialized during login');
+        } catch (initErr) {
+          console.warn('Database initialization during login failed:', initErr);
+        }
+      }
+
+      // Sync user row into local DB
       try {
         console.log('Running UserService.syncUser(...)');
-        await UserService.syncUser(userDataForSync, data.token, db); // pass db explicitly
+        await UserService.syncUser(userDataForSync, data.token, dbToUse);
         console.log('UserService.syncUser completed');
       } catch (usrSyncErr) {
         console.warn('UserService.syncUser failed (non-fatal):', usrSyncErr);
-        // continue to full sync attempt (or decide to abort)
       }
 
       await triggerLocalNotification('Login Successful', `Welcome back, ${userDataForSync.first_name}`);
       setUser(userDataForSync);
 
-      // Fetch full sync data then save to sqlite (guard db)
+      // Fetch full sync data then save to sqlite
       try {
-        if (!db) {
+        if (!dbToUse) {
           console.warn('⚠️ Skipping full sync: db unavailable');
         } else {
           console.log('Fetching /user/sync-data from server...');
@@ -280,8 +331,8 @@ export function UserProvider({ children }) {
             throw new Error('Invalid JSON from sync endpoint: ' + e?.message);
           });
 
-          console.log('Saving full sync payload into local DB (saveSyncDataToSQLite)...');
-          await saveSyncDataToSQLite(syncData, db); // pass same db
+          console.log('Saving full sync payload into local DB...');
+          await saveSyncDataToSQLite(syncData, dbToUse);
           console.log('✅ Full sync completed');
         }
       } catch (syncErr) {
@@ -290,16 +341,13 @@ export function UserProvider({ children }) {
 
       return { success: true, user: userDataForSync, isWebUser: false };
     } catch (error) {
-      // don't swallow the real error — log then rethrow so caller/UI sees it
-      //console.error("❌ Logout failed:", logoutError);('Login flow error:', error);
-      // try best-effort cleanup
-      try { await UserService.clearUserData(db); } catch (_) {}
+      console.error('Login flow error:', error);
+      try { await UserService.clearUserData(dbRef.current); } catch (_) {}
       throw error;
     } finally {
       setLoading(false);
     }
   };
-
 
   // Load user session on initial render
   const loadUserSession = useCallback(async () => {
@@ -316,6 +364,7 @@ export function UserProvider({ children }) {
         return;
       }
 
+      // Wait for database to be ready
       if (!UserService.db) {
         console.log('Database not initialized - skipping session load');
         return;
@@ -339,7 +388,7 @@ export function UserProvider({ children }) {
         }
       }
     } catch (error) {
-      //console.error("❌ Logout failed:", logoutError);('Session load error:', error);
+      console.error('Session load error:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -351,7 +400,7 @@ export function UserProvider({ children }) {
     if (dbInitialized) {
       const initApp = async () => {
         await loadUserSession();
-        const isReachable = await testServerConnection(API_URL); // Use the service
+        const isReachable = await testServerConnection(API_URL);
         setServerReachable(isReachable);
       };
       initApp();
@@ -670,6 +719,9 @@ export function UserProvider({ children }) {
       changepassword,
       testVulnerableFunction,
       testSecureFunction,
+      getDatabase,
+      isDatabaseReady,
+      dbInitialized
     }}>
       {children}
     </UserContext.Provider>

@@ -233,11 +233,11 @@ const RootLayoutContent = () => {
 const RootLayout = () => { 
   return (
     <SQLiteProvider databaseName="mquest.db" onInit={initializeDatabase}>
-      <DatabaseBinder />
+      <DatabaseBinder />                    
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ApiUrlProvider> 
           <DownloadProvider>
-            <UserProvider>
+            <UserProvider>                  
               <ProfileProvider>
                 <SearchProvider>
                   <EnrollmentProvider>
