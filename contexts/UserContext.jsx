@@ -16,7 +16,7 @@ import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { useRouter } from 'expo-router';
 import { safeExec, safeGetAll, safeGetFirst, safeRun } from "../utils/dbHelpers.js";
-import { waitForDb } from "../utils/dbWaiter.js";
+import { waitForDbReady } from "../local-database/services/dbReady.js";
 
 export const UserContext = createContext();
 
@@ -28,7 +28,7 @@ export function UserProvider({ children }) {
   const [serverReachable, setServerReachable] = useState(false);
   const [API_URL, setApiUrl] = useState(null);
   
-  // Use refs for database state to avoid re-renders
+  // Use refs for database state
   const dbRef = useRef(null);
   const initializedRef = useRef(false);
   
@@ -36,19 +36,27 @@ export function UserProvider({ children }) {
   const router = useRouter();
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
 
-  // Update refs when SQLite context changes
+  // Track SQLite context changes and update refs
   useEffect(() => {
-    console.log("🔍 UserContext - SQLiteContext changed:", { 
-      db: sqliteContext?.db ? 'available' : 'undefined',
-      initialized: sqliteContext?.initialized 
+    if (!sqliteContext) {
+      console.log("⏳ UserContext - SQLiteContext not available yet, will wait for dbReady flag");
+      return;
+    }
+
+    const { db, initialized } = sqliteContext;
+    
+    console.log("✓ UserContext - SQLiteContext now available:", { 
+      db: db ? 'available' : 'not set',
+      initialized 
     });
     
-    if (sqliteContext?.db) {
-      dbRef.current = sqliteContext.db;
+    if (db) {
+      dbRef.current = db;
+      console.log("✓ Updated dbRef from SQLiteContext");
     }
     
-    if (sqliteContext?.initialized !== undefined) {
-      initializedRef.current = sqliteContext.initialized;
+    if (initialized !== undefined) {
+      initializedRef.current = initialized;
     }
   }, [sqliteContext]);
 
@@ -62,43 +70,57 @@ export function UserProvider({ children }) {
     (async () => {
       const url = await getApiUrl();
       setApiUrl(url);
-      console.log('URL: ', url);
+      console.log('🌐 API URL loaded:', url);
     })();
   }, []);
 
-  // Initialize database - ONLY when we have a valid db
+  // Initialize database - wait for global readiness flag
   useEffect(() => {
-    const initDb = async () => {
-      const currentDb = dbRef.current;
-      const isInitialized = initializedRef.current;
-      
-      if (!currentDb || !isInitialized) {
-        console.warn("⏳ Database not ready yet in UserContext", {
-          db: !!currentDb,
-          initialized: isInitialized
-        });
-        return;
-      }
+    let isMounted = true;
 
-      // Only initialize if UserService doesn't already have a db
-      if (!UserService.db) {
-        try {
-          await initializeDatabase(currentDb);
-          UserService.setDatabase(currentDb);
-          console.log("✅ Database initialized successfully in UserContext");
-        } catch (error) {
-          console.error("❌ Database initialization error in UserContext:", error);
-        } finally {
-          setDbInitialized(true);
+    const initDb = async () => {
+      try {
+        // Wait for the global DB ready flag (set by database.js or DatabaseBinder)
+        console.log("⏳ UserContext: waiting for database to be ready...");
+        await waitForDbReady(10000); // 10 second timeout
+        
+        if (!isMounted) {
+          console.log("⚠️ UserContext unmounted, skipping DB init");
+          return;
         }
-      } else {
-        console.log("⚡ UserService already has a DB");
+
+        console.log("✅ Database readiness confirmed (UserContext)");
+        
+        // Try to get db from context or ref
+        const currentDb = dbRef.current || sqliteContext?.db;
+        if (!currentDb) {
+          console.warn("⚠️ Database ready flag set, but no db instance found");
+          setDbInitialized(false);
+          return;
+        }
+
+        // Inject into UserService if not already done
+        if (!UserService.db) {
+          UserService.setDatabase(currentDb);
+          console.log("✅ UserService database injected");
+        } else {
+          console.log("✓ UserService already has database");
+        }
+        
         setDbInitialized(true);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("❌ Database initialization timeout:", error.message);
+        setDbInitialized(false);
       }
     };
 
     initDb();
-  }, [sqliteContext?.db, sqliteContext?.initialized]); // Watch context changes
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Run once on mount
 
   // Get current database (safe accessor)
   const getDatabase = () => {
