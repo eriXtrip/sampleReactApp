@@ -13,6 +13,7 @@ import ThemedView from '../../components/ThemedView';
 import SearchResultCard from '../../components/SearchResultCard';
 import { useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { wait } from '../../utils/wait';
 
 const SearchPage = () => {
   const colorScheme = useColorScheme();
@@ -69,7 +70,8 @@ const SearchPage = () => {
         createdBy={item.teacher}
         schoolYear={item.school_year}
         requiresEnrollmentKey={false}
-        onPress={() =>
+        onPress={async () => {
+          await wait(200);
           router.push({
             pathname: '/self_enroll_page',
             params: {
@@ -81,7 +83,7 @@ const SearchPage = () => {
               enrollment_key: item.enrollment_key,
             },
           })
-        }
+        }}
       />
     );
   };

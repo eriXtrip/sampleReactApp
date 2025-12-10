@@ -146,6 +146,16 @@ const RootLayoutContent = () => {
   // }, []);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      console.log('App state changed to:', nextAppState);
+      setAppState(nextAppState);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+
+  useEffect(() => {
     (async () => {
       const hasStoragePermission = await askStoragePermission();
       if (hasStoragePermission) {
@@ -155,6 +165,7 @@ const RootLayoutContent = () => {
       
       // ADD THIS: Setup navigation bar after permissions
       await setupNavigationBar();
+
     })();
   }, []);
 

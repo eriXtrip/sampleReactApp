@@ -22,6 +22,7 @@ import { ASSETS_ICONS } from '../../data/assets_icon';
 import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { wait } from '../../utils/wait';
 
 
 const Home = () => {
@@ -124,6 +125,11 @@ const Home = () => {
 
   useEffect(() => {
     const loadRecentActivity = async () => {
+      if (!user) {       // <-- important
+        setRecentActivities([]);
+        return;
+      }
+
       try {
         const activities = await safeGetAll(db, `
           -- Completed lessons
@@ -199,7 +205,7 @@ const Home = () => {
     loadRecentActivity();
     const interval = setInterval(loadRecentActivity, 30000);
     return () => clearInterval(interval);
-  }, [db]);
+  }, [db, user]);
 
   useEffect(() => {
     (async () => {
@@ -238,8 +244,17 @@ const Home = () => {
         
         {/* Header with Search and Avatar */}
         <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/searchpage')} style={{ width: '80%'}}>
-            <ThemedSearch 
+          <TouchableOpacity
+            onPress={() => {
+              const goToSearch = async () => {
+                await wait(500); // adjust delay if needed
+                router.push('/searchpage');
+              };
+              goToSearch();
+            }}
+            style={{ width: '80%' }}
+          >
+            <ThemedSearch
               placeholder="Search..."
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -248,12 +263,19 @@ const Home = () => {
               editable={false}
             />
           </TouchableOpacity>
+
           
           <TouchableOpacity
-            onPress={() => router.push('/profile_page')}
-            >
+            onPress={() => {
+              const go = async () => {
+                await wait(250);   // small delay is enough
+                router.push('/profile_page');
+              };
+              go();
+            }}
+          >
             <Image
-              key={avatarUri || 'no-avatar'}   // ← Forces remount when URI changes
+              key={avatarUri || 'no-avatar'}
               source={{ uri: avatarUri || undefined }}
               style={styles.avatar}
               onLoad={() => console.log('AVATAR LOADED:', avatarUri)}
@@ -263,6 +285,7 @@ const Home = () => {
               }}
             />
           </TouchableOpacity>
+
         </View>
 
         <Spacer height={20} />

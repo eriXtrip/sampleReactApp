@@ -423,10 +423,19 @@ const Register = () => {
                 {step === 0 ? (
                     <>
                         <View style={{ alignItems: 'flex-start' }}>
-                            <Pressable onPress={() => router.push('/login')}>
+                            <Pressable
+                                onPress={() => {
+                                const goBack = async () => {
+                                    await wait(1500); // or however long you need
+                                    router.push('/login');
+                                };
+                                goBack();
+                                }}
+                            >
                                 <Ionicons name="arrow-back" size={24} color={theme.text} />
                             </Pressable>
                         </View>
+
 
                         <ThemedText title={true} style={[styles.title, { textAlign: 'left' }]}>
                             Who are you registering as?

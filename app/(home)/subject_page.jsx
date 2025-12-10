@@ -409,7 +409,7 @@ const SubjectPage = () => {
   
 
   
-  const { user } = useContext(UserContext);
+  const { user } = useContext(ProfileContext);
 
   const subjectIcon = SUBJECT_ICON_MAP[subjectName] || SUBJECT_ICON_MAP.English;
 
@@ -640,7 +640,7 @@ const SubjectPage = () => {
         >
           {/* Lesson tab */}
           <Animated.View style={{ width: screenWidth }}>
-            <View style={[styles.tabContent, { paddingBottom: selectionMode ? 70 : 0 }]}>
+            <View style={[styles.tabContent, { paddingBottom: selectionMode ? 80 : 0 }]}>
           <AnimatedSectionList
             sections={groupedSections}
             keyExtractor={(item) => String(item.lesson_id)}

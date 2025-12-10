@@ -1,18 +1,10 @@
-import { useContext, useRef, useState, useEffect } from 'react';
+import { useContext, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { ProfileContext } from '../contexts/ProfileContext';
 
-// Bottom action bar overlay styled similarly to ThemedTabs
-// Props:
-// - visible: boolean
-// - onMarkDone: () => void
-// - onUndone: () => void
-// - onDownload: () => void
-// - onDelete: () => void
-// - style?: ViewStyle (optional)
 const ThemedActionBar = ({
   visible,
   onMarkDone,
@@ -20,31 +12,12 @@ const ThemedActionBar = ({
   onDownload,
   onDelete,
   style,
+  showMarkDone = false, // New prop to control visibility
+  showUndone = false,   // New prop to control visibility
 }) => {
   const colorScheme = useColorScheme();
   const { themeColors } = useContext(ProfileContext);
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
-
-  const [activeHint, setActiveHint] = useState(null); // 'done' | 'undone' | 'download' | 'delete' | null
-  const hintTimerRef = useRef(null);
-
-  const showHint = (key) => {
-    setActiveHint(key);
-    if (hintTimerRef.current) {
-      clearTimeout(hintTimerRef.current);
-    }
-    hintTimerRef.current = setTimeout(() => {
-      setActiveHint(null);
-    }, 1500);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hintTimerRef.current) {
-        clearTimeout(hintTimerRef.current);
-      }
-    };
-  }, []);
 
   if (!visible) return null;
 
@@ -53,54 +26,55 @@ const ThemedActionBar = ({
       styles.container,
       {
         backgroundColor: theme.navBackground,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -5 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
         shadowColor: '#000',
         zIndex: 2,
       },
       style,
     ]}>
       <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.action}
-          onPress={onMarkDone}
-          onLongPress={() => showHint('done')}
-        >
-          <Ionicons name="checkmark-done-outline" size={28} color={theme.text} />
-          {activeHint === 'done' && (
+        {/* Conditionally render Mark as Done */}
+        {showMarkDone && (
+          <TouchableOpacity
+            style={styles.action}
+            onPress={onMarkDone}
+          >
+            <Ionicons name="checkmark-done-outline" size={20} color={theme.text} />
             <Text style={[styles.hintText, { color: theme.text }]}>Mark as done</Text>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        )}
 
-        <TouchableOpacity
-          style={styles.action}
-          onPress={onUndone}
-          onLongPress={() => showHint('undone')}
-        >
-          <Ionicons name="close-outline" size={28} color={theme.text} />
-          {activeHint === 'undone' && (
+        {/* Conditionally render Undone */}
+        {showUndone && (
+          <TouchableOpacity
+            style={styles.action}
+            onPress={onUndone}
+          >
+            <Ionicons name="close-outline" size={20} color={theme.text} />
             <Text style={[styles.hintText, { color: theme.text }]}>Undone</Text>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        )}
 
+        {/* Always show Download */}
         <TouchableOpacity
           style={styles.action}
           onPress={onDownload}
-          onLongPress={() => showHint('download')}
         >
-          <Ionicons name="cloud-download-outline" size={28} color={theme.text} /> 
-          {activeHint === 'download' && (
-            <Text style={[styles.hintText, { color: theme.text }]}>Download</Text>
-          )}
+          <Ionicons name="cloud-download-outline" size={28} color={theme.text} />
+          <Text style={[styles.hintText, { color: theme.text }]}>Download</Text>
         </TouchableOpacity>
 
+        {/* Always show Delete */}
         <TouchableOpacity
           style={styles.action}
           onPress={onDelete}
-          onLongPress={() => showHint('delete')}
         >
           <Ionicons name="trash-outline" size={28} color={theme.text} />
-          {activeHint === 'delete' && (
-            <Text style={[styles.hintText, { color: theme.text }]}>Delete</Text>
-          )}
+          <Text style={[styles.hintText, { color: theme.text }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -115,7 +89,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 12,
+    paddingTop: 18,
     paddingBottom: Platform.OS === 'android' ? 15 : 12,
     marginBottom: 0,
   },
@@ -128,12 +102,14 @@ const styles = StyleSheet.create({
   action: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    flex: 1,
   },
   hintText: {
     fontSize: 12,
     marginTop: 6,
+    textAlign: 'center',
   },
 });
 

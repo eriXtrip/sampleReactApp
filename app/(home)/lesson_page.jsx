@@ -14,6 +14,7 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { wait } from '../../utils/wait'
 
 const LessonPage = () => {
   const colorScheme = useColorScheme();
@@ -118,8 +119,12 @@ const LessonPage = () => {
     return (
       <TouchableOpacity
         disabled={locked}
-        onPress={() =>
-          !locked &&
+        onPress={async () => {
+          if (locked) return;
+
+          // Wait for 300ms before navigating
+          await wait(300);
+
           router.push({
             pathname: "/content_details",
             params: {
@@ -129,8 +134,8 @@ const LessonPage = () => {
               type: item.content_type,
               status: isDone,
             },
-          })
-        }
+          });
+        }}
       >
         <View
           style={[

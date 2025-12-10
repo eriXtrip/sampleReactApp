@@ -1,5 +1,5 @@
 // local-database/services/userService.js
-import { safeRun, safeGetAll, safeGetFirst } from '../../utils/dbHelpers';
+import { safeRun, safeGetAll, safeGetFirst, safeExecMany } from '../../utils/dbHelpers';
 
 export default class UserService {
   static db = null;
@@ -141,14 +141,17 @@ export default class UserService {
     const activeDb = dbInstance || this.db;
     if (!activeDb) return;
 
-    const tables = ['users', 'sessions'];
-    for (const table of tables) {
-      try {
-        await safeRun(activeDb, `DELETE FROM ${table}`);
-      } catch (e) {
-        console.debug(`(debug) Skip clear ${table}: ${e.message}`);
-      }
-    }
+    const tables = ['classmates', 'notifications', 'pupil_achievements', 'pupil_answers',
+        'pupil_test_scores', 'games', 'game_types', 'subject_contents',
+        'lessons', 'subjects_in_section', 'subjects', 'sections', 
+        'sessions', 'users'
+    ];
+
+    const statements = tables.map(t => ({
+      sql: `DELETE FROM ${t}`,
+      params: []
+    })); 
+    await safeExecMany(activeDb, statements);
   }
 
   // Compare changes
@@ -177,16 +180,21 @@ export default class UserService {
       await this.clearUserData(activeDb);
 
       const tablesToClear = [
-        'sections', 'subjects', 'lessons', 'subject_contents',
-        'games', 'notifications', 'pupil_test_scores', 'pupil_achievements'
+        'classmates', 'notifications', 'pupil_achievements', 'pupil_answers',
+        'pupil_test_scores', 'games', 'game_types', 'subject_contents',
+        'lessons', 'subjects_in_section', 'subjects', 'sections', 
+        'sessions', 'users'
       ];
 
-      for (const table of tablesToClear) {
-        try {
-          await safeRun(activeDb,`DELETE FROM ${table}`);
-        } catch (e) {
-          console.warn(`⚠️ Skip clear ${table}:`, e.message);
-        }
+      const statements = tables.map(t => ({
+        sql: `DELETE FROM ${t}`,
+        params: []
+      }));
+
+      try {
+        await safeExecMany(activeDb, statements);
+      } catch (e) {
+        console.warn(`❌ clearAllUserData failed`, e.message);
       }
 
       console.log('🧹 All user-related data cleared');

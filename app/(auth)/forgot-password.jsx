@@ -18,6 +18,7 @@ import ThemedCodeInput from '../../components/ThemedCodeInput'
 import ThemedTextInput from '../../components/ThemedTextInput'
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { useResendTimer } from  '../../hooks/useResendTimer';
+import { wait } from '../../utils/wait';
 
 const ForgotPassword = () => {
     const router = useRouter()
@@ -151,7 +152,8 @@ const ForgotPassword = () => {
             await completePasswordReset({ email, password: formData.password });
             console.log('email:', email, 'password:', formData.password);
             showAlert('Password has been reset successfully');
-            setTimeout(() => router.push('/login'), 2000);
+            await wait(1500);
+            router.push('/login');
         } catch (error) {
             showAlert(error.message || 'Failed to reset password');
         }

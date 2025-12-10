@@ -15,6 +15,7 @@ import ThemedTextInput from '../../components/ThemedTextInput';
 import ThemedPasswordInput from '../../components/ThemedPasswordInput';
 import ApiConfigScreen from '../contact';
 import { clearApiUrl } from '../../utils/apiManager';
+import { wait } from '../../utils/wait';
 
 const Login = () => {
   const router = useRouter();
@@ -29,10 +30,16 @@ const Login = () => {
   const { user, isLoading } = useUser();
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    const goHome = async () => {
+      await wait(1500); 
       router.replace('/home');
-    }
+    };
+
+    goHome();
   }, [user]);
+
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -52,6 +59,7 @@ const Login = () => {
       if (result.isWebUser) {
         // Navigate to in-app browser for web users (roles 1 & 2)
         console.log('Navigating to in-app browser for web user');
+        await wait(1500);
         router.replace({
           pathname: '/inapp-browser',
           params: {
@@ -62,6 +70,7 @@ const Login = () => {
       } else {
         // Navigate to home for mobile users (role 3)
         console.log('Navigating to home for mobile user');
+        await wait (1500);
         router.replace('/home');
       }
     } catch (error) {

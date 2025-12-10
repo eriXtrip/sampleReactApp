@@ -145,14 +145,14 @@ export function UserProvider({ children }) {
       }
 
       // clear previous user rows (if DB available)
-      try {
-        if (UserService && UserService.db) {
-          console.log('Clearing existing user data via UserService');
-          await UserService.clearUserData(db); // pass db or fallback inside method
-        }
-      } catch (clearErr) {
-        console.warn('Failed clearing user data (non-fatal):', clearErr);
-      }
+      // try {
+      //   if (UserService && UserService.db) {
+      //     console.log('Clearing existing user data via UserService');
+      //     await UserService.clearUserData(db); // pass db or fallback inside method
+      //   }
+      // } catch (clearErr) {
+      //   console.warn('Failed clearing user data (non-fatal):', clearErr);
+      // }
 
       // call login endpoint
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -474,22 +474,11 @@ export function UserProvider({ children }) {
       // 3. Clear all local DB tables
       if (dbInitialized && db) {
         console.log("🗑️ Clearing local DB tables...");
-        await safeExec(
-          db, 
-          `DELETE FROM users;
-          DELETE FROM sections;
-          DELETE FROM subjects;
-          DELETE FROM subjects_in_section;
-          DELETE FROM lessons;
-          DELETE FROM subject_contents;
-          DELETE FROM games;
-          DELETE FROM notifications;
-          DELETE FROM pupil_test_scores;
-          DELETE FROM pupil_achievements;
-          DELETE FROM pupil_answers;
-          DELETE FROM notifications;
-          DELETE FROM classmates;
-        `);
+        try {
+          await UserService.clearUserData(db);
+        } catch (dbClearErr) {
+          console.log('⚠️ Failed to clear local DB:', dbClearErr);
+        }
         console.log("✅ Local DB cleared");
       } else {
         console.warn("⚠️ DB not ready — skipped clear");

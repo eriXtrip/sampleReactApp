@@ -1,74 +1,123 @@
-import { dbMutex } from './databaseMutex';
+// dbHelpers.js
+import { dbMutex } from "./databaseMutex";
 
 /**
- * Run a SQL statement inside a transaction with mutex
+ * Enable WAL to prevent database locking in release builds.
+ * Call once when initializing the DB.
  */
-export async function safeRun(db, sql, params = [], timeout = 30000) {
-  await dbMutex.acquire('db', timeout);
+export async function enableWAL(db) {
   try {
-    await db.runAsync("BEGIN TRANSACTION;");
-    const result = await db.runAsync(sql, params);
-    await db.runAsync("COMMIT;");
-    return result;
+    await db.execAsync("PRAGMA journal_mode = WAL;");
+    await db.execAsync("PRAGMA synchronous = NORMAL;");
+    await db.execAsync("PRAGMA temp_store = MEMORY;");
+    await db.execAsync("PRAGMA cache_size = -20000;");
+    console.log("🟢 SQLite WAL mode enabled");
   } catch (err) {
-    console.error("❌ SQL ERROR → ROLLBACK", err);
-    try { await db.runAsync("ROLLBACK;"); } catch (rollbackErr) {
-      console.error("❌ Rollback failed:", rollbackErr);
-    }
-    throw err;
-  } finally {
-    try { dbMutex.release('db'); } catch (e) { console.error('Error releasing db mutex', e); }
+    console.warn("⚠️ WAL enable failed:", err.message);
   }
 }
 
-/**
- * Safe SELECT for multiple rows
- */
+/* ---------------------------------------------------------------
+   SAFE RUN — for single SQL statements (INSERT / UPDATE / DELETE)
+   --------------------------------------------------------------- */
+export async function safeRun(db, sql, params = [], timeout = 30000) {
+  await dbMutex.acquire("db", timeout);
+  try {
+    return await db.runAsync(sql, params);
+  } catch (err) {
+    console.error("❌ safeRun SQL ERROR:", err);
+    throw err;
+  } finally {
+    try { dbMutex.release("db"); } catch {}
+  }
+}
+
+/* ---------------------------------------------------------------
+   SAFE SELECT (multiple rows)
+   --------------------------------------------------------------- */
 export async function safeGetAll(db, sql, params = [], timeout = 30000) {
-  await dbMutex.acquire('db', timeout);
+  await dbMutex.acquire("db", timeout);
   try {
     return await db.getAllAsync(sql, params);
-  } finally {
-    try { dbMutex.release('db'); } catch (e) { console.error('Error releasing db mutex', e); }
-  }
-}
-
-/**
- * Safe SELECT for single row
- */
-export async function safeGetFirst(db, sql, params = [], timeout = 30000) {
-  await dbMutex.acquire('db', timeout);
-  try {
-    return await db.getFirstAsync(sql, params);
-  } finally {
-    try { dbMutex.release('db'); } catch (e) { console.error('Error releasing db mutex', e); }
-  }
-}
-
-/**
- * Safe execution of multiple statements
- */
-export async function safeExec(db, sql, timeout = 30000) {
-  await dbMutex.acquire('db', timeout);
-  try {
-    await db.runAsync("BEGIN TRANSACTION;");
-    const result = await db.runAsync(sql);
-    await db.runAsync("COMMIT;");
-    return result;
   } catch (err) {
-    console.error("❌ SQL EXEC ERROR → ROLLBACK", err);
-    try { await db.runAsync("ROLLBACK;"); } catch (rollbackErr) {
-      console.error("❌ Rollback failed:", rollbackErr);
-    }
+    console.error("❌ safeGetAll ERROR:", err);
     throw err;
   } finally {
-    try { dbMutex.release('db'); } catch (e) { console.error('Error releasing db mutex', e); }
+    try { dbMutex.release("db"); } catch {}
+  }
+}
+
+/* ---------------------------------------------------------------
+   SAFE SELECT (first row only)
+   --------------------------------------------------------------- */
+export async function safeGetFirst(db, sql, params = [], timeout = 30000) {
+  await dbMutex.acquire("db", timeout);
+  try {
+    return await db.getFirstAsync(sql, params);
+  } catch (err) {
+    console.error("❌ safeGetFirst ERROR:", err);
+    throw err;
+  } finally {
+    try { dbMutex.release("db"); } catch {}
+  }
+}
+
+/* ---------------------------------------------------------------
+   SAFE EXEC — for batching MULTIPLE SQL statements in one transaction
+   (ex: clearing tables, seeding data, syncing chunks)
+   --------------------------------------------------------------- */
+export async function safeExec(db, sql, timeout = 30000) {
+  await dbMutex.acquire("db", timeout);
+
+  try {
+    await db.execAsync("BEGIN IMMEDIATE;");   // prevents concurrent writes
+
+    const result = await db.execAsync(sql);  // executes all statements
+
+    await db.execAsync("COMMIT;");
+    return result;
+
+  } catch (err) {
+    console.error("❌ safeExec ERROR → ROLLBACK", err);
+    try { await db.execAsync("ROLLBACK;"); } catch (e2) {
+      console.error("❌ Rollback failed:", e2);
+    }
+    throw err;
+
+  } finally {
+    try { dbMutex.release("db"); } catch {}
+  }
+}
+
+/* ---------------------------------------------------------------
+   SAFE EXECUTE MANY — array of separate SQL statements
+   (each statement is run in a single large transaction)
+   --------------------------------------------------------------- */
+export async function safeExecMany(db, statements = [], timeout = 30000) {
+  await dbMutex.acquire("db", timeout);
+
+  try {
+    await db.execAsync("BEGIN IMMEDIATE;");
+
+    for (const { sql, params } of statements) {
+      await db.runAsync(sql, params ?? []);
+    }
+
+    await db.execAsync("COMMIT;");
+  } catch (err) {
+    console.error("❌ safeExecMany ERROR → ROLLBACK", err);
+    try { await db.execAsync("ROLLBACK;"); } catch {}
+    throw err;
+  } finally {
+    try { dbMutex.release("db"); } catch {}
   }
 }
 
 export default {
+  enableWAL,
   safeRun,
   safeGetAll,
   safeGetFirst,
   safeExec,
+  safeExecMany,
 };

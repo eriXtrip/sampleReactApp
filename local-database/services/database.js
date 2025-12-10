@@ -1,8 +1,12 @@
 // local-database/services/database.js
 import { markDbInitialized } from './syncUp.js';
-import { safeExec } from '../../utils/dbHelpers.js';
+import { safeExec, enableWAL  } from '../../utils/dbHelpers.js';
 
 export async function initializeDatabase(db) {
+
+  // enable WAL BEFORE creating tables
+  await enableWAL(db);
+  
   await safeExec(db, `
     -- roles (static, matches MySQL)
     CREATE TABLE IF NOT EXISTS roles (

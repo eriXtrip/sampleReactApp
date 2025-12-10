@@ -5,8 +5,10 @@ import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
 import { Colors } from '../../constants/Colors';
 import NetInfo from '@react-native-community/netinfo';
+import { wait } from '../../utils/wait';
 
 
 import ThemedView from '../../components/ThemedView';
@@ -20,10 +22,12 @@ import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import { useRanking } from '../../contexts/RankingContext';
 import SimpleStarsCard from '../../components/StarCard';
 import { use } from 'react';
+import { safeGetFirst } from '../../utils/dbHelpers';
 
 const ProfilePage = () => {
   const router = useRouter();
   //const {  } = useContext(UserContext || {});
+  const db = useSQLiteContext();
   const { themeColors, user, updateUser } = useContext(ProfileContext || {});
   const colorScheme = useColorScheme();
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -43,17 +47,37 @@ const ProfilePage = () => {
 
 
   useEffect(() => {
-    if (user) {
-      setFirstName(user.first_name || '');
-      setMiddleName(user.middle_name || '');
-      setLastName(user.last_name || '');
-      setEmail(user.email || '');
-      setGradeLevel(user.grade_level || '');
-      setSection(user.section || '');
-      setBirthday(user.birthday || '');
-      setPoints(user.pupil_points || '');
-    }
-  }, [user]);
+    let isMounted = true;
+
+    const fetchLatestUser = async () => {
+      try {
+        // Optional: wait for DB to be ready or debounce
+        await wait(100);  
+
+        // Fetch latest user from local SQLite
+        const latestUser = await safeGetFirst(db, 'SELECT * FROM users WHERE user_id = ?', [user.user_id]);
+
+        if (latestUser && isMounted) {
+          setFirstName(latestUser.first_name || '');
+          setMiddleName(latestUser.middle_name || '');
+          setLastName(latestUser.last_name || '');
+          setEmail(latestUser.email || '');
+          setGradeLevel(latestUser.grade_level || '');
+          setSection(latestUser.section || '');
+          setBirthday(latestUser.birthday || '');
+          setPoints(latestUser.pupil_points || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch latest user', err);
+      }
+    };
+
+    fetchLatestUser();
+
+    return () => {
+      isMounted = false; // cleanup flag
+    };
+  }, [user, db]); // triggers whenever user or db changes
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -81,8 +105,9 @@ const ProfilePage = () => {
         await updateUser(payload);
       } else {
         // fallback: simulate save if updateUser isn't provided by context
-        await new Promise(res => setTimeout(res, 800));
+        await wait(800);
       }
+
       Alert.alert('Saved', 'Profile updated successfully.', [{ text: 'OK' }]);
       router.back();
     } catch (err) {

@@ -21,6 +21,7 @@ import { triggerSyncIfOnline } from '../../local-database/services/syncUp';
 import {  saveSyncDataToSQLite } from '../../local-database/services/syncService';
 import { useSQLiteContext } from 'expo-sqlite';
 import { showWarringToast, showSuccessToast, showErrorToast } from '../../utils/notificationUtils.js';
+import { wait } from '../../utils/wait.js';
 
 
 const typeToAccent = {
@@ -111,7 +112,8 @@ const SelfEnrollPage = () => {
     [name, grade]
   );
 
-  const navigateToSubjectPage = () => {
+  const navigateToSubjectPage = async () => {
+    await wait(500);
     router.push({
       pathname: '/subjectlist',
       params: {
@@ -122,7 +124,8 @@ const SelfEnrollPage = () => {
     });
   };
 
-  const navigateToSectionPage = () => {
+  const navigateToSectionPage = async () => {
+    await wait(500);
     router.push({
       pathname: '/subjectlist', // or '/classroom', '/section_home', etc.
       params: {
