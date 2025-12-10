@@ -22,6 +22,7 @@ import {  saveSyncDataToSQLite } from '../../local-database/services/syncService
 import { useSQLiteContext } from 'expo-sqlite';
 import { showWarringToast, showSuccessToast, showErrorToast } from '../../utils/notificationUtils.js';
 import { wait } from '../../utils/wait.js';
+import { waitForDb } from '../../utils/dbWaiter.js';
 
 
 const typeToAccent = {
@@ -36,7 +37,7 @@ const typeToIcon = {
 
 async function safeOfflineSync(db, syncData) {
   if (!db) {
-    console.log("❌ No DB initialized — cannot sync or save.");
+    console.log("❌ No DB inizialized — cannot sync or save.");
     return;
   }
 

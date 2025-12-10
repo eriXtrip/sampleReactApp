@@ -10,12 +10,13 @@ import {
   showErrorToast 
 } from './notificationUtils';
 import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
+import { waitForDb } from './dbWaiter';
 
 // Download the main file and associated images for JSON-based content
 export const handleDownload = async (file, title, content, type, setFileExists, setDownloading, lesson_bellonId, db, inizialized) => {
    let loadingToastId = null;
 
-   if(!inizialized) return;
+  const activeDb = await waitForDb(db, inizialized);
 
   try {
     setDownloading(true);
@@ -130,17 +131,17 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
       console.log("Saved non-JSON file ✅:", file);
     }
 
-    if (db) {
-      await enableWAL(db);
+    if (activeDB) {
+      await enableWAL(activeDB);
     }
 
 
-    if (db && lesson_bellonId) {
+    if (activeDB && lesson_bellonId) {
 
         console.log("Updating lesson no_of_contents for lesson_id=", lesson_bellonId);
       try {
         await safeRun(
-          db,
+          activeDB,
           `UPDATE lessons
           SET no_of_contents = COALESCE(no_of_contents, 0) + 1,
               is_downloaded = 1
@@ -158,7 +159,7 @@ export const handleDownload = async (file, title, content, type, setFileExists, 
         const now = new Date().toISOString();
 
         await safeRun(
-          db,
+          activeDB,
           `UPDATE subject_contents
           SET downloaded = 1, downloaded_at = ?
           WHERE file_name = ?`,

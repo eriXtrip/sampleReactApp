@@ -13,6 +13,7 @@ import ThemedAchievement from '../../components/ThemedAchievement';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const AchievementsPage = () => {
   const navigation = useNavigation();
@@ -29,11 +30,9 @@ const AchievementsPage = () => {
 
   useEffect(() => {
     const loadAchievements = async () => {
-      if (!db || !inizialized) {
-        return;
-      }
+      const activeDB = await waitForDb(db, inizialized);
       try {
-        const result = await safeGetAll(db, `
+        const result = await safeGetAll(activeDB, `
           SELECT 
             title,
             description AS subtext,

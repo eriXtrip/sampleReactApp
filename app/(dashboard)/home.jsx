@@ -23,6 +23,7 @@ import { getLocalAvatarPath } from '../../utils/avatarHelper';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
 import { wait } from '../../utils/wait';
+import { waitForDb } from '../../utils/dbWaiter';
 
 
 const Home = () => {
@@ -43,14 +44,14 @@ const Home = () => {
 
   const [achievements, setAchievements] = useState([]);
   const {db, inizialized} = useSQLiteContext();
-  const { refreshControlProps } = usePullToRefresh(db);
+  const { refreshControlProps } = usePullToRefresh(db, inizialized);
 
   useEffect(() => {
     const fetchAchievements = async () => {
-      if(!inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
       try {
         const result = await safeGetAll(
-          db,
+          activeDB,
           `SELECT * FROM pupil_achievements`,
         );
         setAchievements(result);
@@ -92,10 +93,10 @@ const Home = () => {
 
   useEffect(() => {
     const loadSubjectsProgress = async () => {
-      if(!inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
       try {
         const result = await safeGetAll(
-        db,
+        activeDB,
         `SELECT 
             s.subject_id,
             s.subject_name,

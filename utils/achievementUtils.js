@@ -7,26 +7,27 @@ import {
 } from './notificationUtils';
 
 import { safeExec, safeGetAll, safeRun, safeGetFirst, enableWAL } from './dbHelpers';
+import { waitForDb } from './dbWaiter';
 
 export async function saveAchievementAndUpdateContent(db, gameBadge, content_id, inizialized) {
-    console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
-  if(!inizialized) return;
+  console.log("Saving Achievement and Updating Content:", { gameBadge, content_id });
+  const activeDB = await waitForDb(db, inizialized);
   try {
     // get current user_id
-    const userRow = await safeGetFirst(db, `SELECT user_id FROM users LIMIT 1`);
+    const userRow = await safeGetFirst(activeDB `SELECT user_id FROM users LIMIT 1`);
     if (!userRow) {
       console.warn("No user found in users table.");
       return;
     }
     const pupilId = userRow.user_id;
 
-    if (db) {
-      await enableWAL(db);
+    if (activeDB) {
+      await enableWAL(activeDB);
     }
 
     // Insert earned achievement
     await safeRun(
-      db,
+      activeDB
       `INSERT OR IGNORE INTO pupil_achievements 
         (server_badge_id, pupil_id, title, description, icon, color, earned_at, subject_content_id)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
@@ -43,7 +44,7 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id,
 
     // Insert earned achievement
     await safeRun(
-      db,
+      activeDB
       `INSERT OR IGNORE INTO notifications 
         (title, message, type, created_at)
       VALUES ('Badge Earn', ?, 'achievement_badge', datetime('now'))`,
@@ -53,7 +54,7 @@ export async function saveAchievementAndUpdateContent(db, gameBadge, content_id,
     
     // Update subject_contents
     await safeRun(
-      db,
+      activeDB
       `UPDATE subject_contents 
        SET done = 1, 
            last_accessed = datetime('now'), 

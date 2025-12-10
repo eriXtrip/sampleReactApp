@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import { resolveLocalPath } from './resolveLocalPath';
 import { safeExec, safeGetAll, safeRun, safeGetFirst, safeExecMany, enableWAL } from './dbHelpers';
 import { appLifecycleManager } from './appLifecycleManager';
+import { waitForDb } from './dbWaiter';
 
 export const handleDelete = async (file, type, setFileExists, lesson_bellonId, db, inizialized) => {
   try {
@@ -12,7 +13,7 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
       return false;
     }
 
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
     const localPath = resolveLocalPath(file);
 
     // Process associated image files if type is "gameIMGtext"
@@ -41,16 +42,16 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
       }
     }
 
-    if (db) {
-      await enableWAL(db);
+    if (activeDB) {
+      await enableWAL(activeDB);
     }
 
     // Update the database to decrement no_of_contents
-    if (db && lesson_bellonId) {
+    if (activeDB && lesson_bellonId) {
       try {
         appLifecycleManager.markSyncStart(); // mark sync start
         await safeRun(
-          db, 
+          activeDB, 
           `UPDATE lessons
           SET no_of_contents = COALESCE(no_of_contents, 0) - 1
           WHERE lesson_id = ?`,
@@ -69,7 +70,7 @@ export const handleDelete = async (file, type, setFileExists, lesson_bellonId, d
       try {
         appLifecycleManager.markSyncStart();
         await safeRun(
-          db,
+          activeDB,
           `UPDATE subject_contents
           SET downloaded = 0
           WHERE file_name = ?`,

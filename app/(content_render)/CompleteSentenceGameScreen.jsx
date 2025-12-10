@@ -20,6 +20,7 @@ import LoadingAnimation from "../../components/loadingAnimation";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 import { usePreventScreenCapture } from "expo-screen-capture";
+import { waitForDb } from '../../utils/dbHelpers';
 
 
 
@@ -270,7 +271,8 @@ export default function CompleteSentenceScreen() {
         badge={badge}   // ✅ comes directly from JSON
         onClose={async () => {
             console.log("Param to be sent:", { badge, content_id });
-            await saveAchievementAndUpdateContent(db, badge, content_id, inizialized);
+            const activeDB = await waitForDb(db, inizialized);
+            await saveAchievementAndUpdateContent(activeDB, badge, content_id, inizialized);
             setShowBadge(false)
             router.back();
         }}

@@ -36,6 +36,7 @@ const Profile = () => {
   const [alertMessage, setAlertMessage] = useState("");
   const [exitAlertVisible, setExitAlertVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false); // Add loading state
+  
   const { refreshing, onRefresh } = usePullToRefresh(db);
 
   // Safely access user data with fallbacks

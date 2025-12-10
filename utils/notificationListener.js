@@ -5,6 +5,7 @@ import { triggerLocalNotification } from './notificationUtils';
 import { waitForDbReady } from '../local-database/services/dbReady';
 import { dbMutex } from './databaseMutex';
 import { safeGetAll, safeRun } from './dbHelpers';
+import { waitForDb } from './dbWaiter';
 
 export function useNotificationListener() {
   const db = useSQLiteContext();

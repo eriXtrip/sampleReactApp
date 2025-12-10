@@ -11,6 +11,7 @@ import Spacer from '../../components/Spacer';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const SectionPage = () => {
   const {db, inizialized} = useSQLiteContext();
@@ -46,10 +47,10 @@ const SectionPage = () => {
   // Fetch subjects and classmates from SQLite
   useEffect(() => {
     const fetchData = async () => {
-      if(!inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
       try {
         // Query subjects
-        const subjectsResult = await safeGetAll(db, `
+        const subjectsResult = await safeGetAll(activeDB, `
           SELECT s.subject_id, s.subject_name, s.grade_level
           FROM subjects_in_section sis
           JOIN subjects s ON sis.subject_id = s.subject_id
@@ -68,7 +69,7 @@ const SectionPage = () => {
         console.log("recieved section_id:", section_id);
 
         // Query classmates
-        const classmatesResult = await safeGetAll(db, `
+        const classmatesResult = await safeGetAll(activeDB, `
           SELECT id, classmate_name, avatar
           FROM classmates
           WHERE section_id = ?

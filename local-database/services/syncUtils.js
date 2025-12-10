@@ -1,8 +1,11 @@
 // local-database/services/syncUtils.js
 
 import { safeRun, enableWAL } from "../../utils/dbHelpers";
+import { waitForDb } from "../../utils/dbWaiter";
+
 export async function markUnsynced(db, tableName, localId) {
   try {
+    // const activeDB = await waitForDb(db, inizialized);
     await enableWAL(db);
     await safeRun(
       db,

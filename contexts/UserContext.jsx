@@ -15,6 +15,7 @@ import { triggerSyncIfOnline } from "../local-database/services/syncUp.js";
 import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { useRouter } from 'expo-router';
 import { safeExec, safeGetAll, safeGetFirst, safeRun } from "../utils/dbHelpers.js";
+import { waitForDb } from "../utils/dbWaiter.js";
 
 export const UserContext = createContext();
 
@@ -26,7 +27,7 @@ export function UserProvider({ children }) {
   const [serverReachable, setServerReachable] = useState(false);
   //const API_URL = "http://192.168.0.101:3001/api";
   const [API_URL, setApiUrl] = useState(null);
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const router = useRouter();
 
   const { isOffline, isReachable, isApiLoaded } = useContext(ApiUrlContext);
@@ -407,7 +408,8 @@ export function UserProvider({ children }) {
       if (db) {
         try {
           console.log("🔄 Triggering offline sync before logout...");
-          await triggerSyncIfOnline(db, getCurrentFlags());
+          const activeDB = await waitForDb(db, inizialized);
+          await triggerSyncIfOnline(activeDB, getCurrentFlags(), inizialized);
           console.log("✅ Offline sync completed");
         } catch (syncErr) {
           console.warn("⚠️ Sync before logout failed (non-fatal):", syncErr);

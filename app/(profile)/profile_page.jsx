@@ -23,11 +23,12 @@ import { useRanking } from '../../contexts/RankingContext';
 import SimpleStarsCard from '../../components/StarCard';
 import { use } from 'react';
 import { safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const ProfilePage = () => {
   const router = useRouter();
   //const {  } = useContext(UserContext || {});
-  const db = useSQLiteContext();
+  const {db, inizialized} = useSQLiteContext();
   const { themeColors, user, updateUser } = useContext(ProfileContext || {});
   const colorScheme = useColorScheme();
   const theme = Colors[themeColors === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeColors];
@@ -53,9 +54,10 @@ const ProfilePage = () => {
       try {
         // Optional: wait for DB to be ready or debounce
         await wait(100);  
+        const activeDB = await waitForDb(db, inizialized);
 
         // Fetch latest user from local SQLite
-        const latestUser = await safeGetFirst(db, 'SELECT * FROM users WHERE user_id = ?', [user.user_id]);
+        const latestUser = await safeGetFirst(activeDB, 'SELECT * FROM users WHERE user_id = ?', [user.user_id]);
 
         if (latestUser && isMounted) {
           setFirstName(latestUser.first_name || '');
@@ -120,7 +122,7 @@ const ProfilePage = () => {
 
   const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
   const initials = (firstName?.[0] || '') + (lastName?.[0] || '');
-  const displayName = fullName || user?.name || user?.username || 'Your Name';
+  const displayName = fullName || user?.name || user?.username || 'Loading...';
   const displayEmail = email || user?.email || '';
 
   const [editing, setEditing] = useState(false);

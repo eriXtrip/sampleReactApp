@@ -30,6 +30,7 @@ import { handleDownload } from '../../utils/handleDownload';
 import { handleDelete } from '../../utils/handleDelete';
 import { useDownloadQueue } from '../../contexts/DownloadContext';
 import { ASSETS_ICONS } from '../../data/assets_icon';
+import { waitForDb } from '../../utils/dbWaiter';
 
 
 const SubjectPage = () => {
@@ -87,10 +88,10 @@ const SubjectPage = () => {
   }, [isFocused, db, subject_id]);
 
   const fetchLessonsAndAchievements = async () => {
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
     try {
       // 1️⃣ Fetch lessons for this subject
-      const lessonsData = await safeGetAll(db,
+      const lessonsData = await safeGetAll(activeDB,
         `SELECT lesson_id, lesson_title AS title, quarter AS Quarter, status, description, lesson_number, no_of_contents
         FROM lessons
         WHERE subject_belong = ?
@@ -104,7 +105,7 @@ const SubjectPage = () => {
 
       // 3️⃣ Fetch all content_ids related to these lessons
       const contentsData = lessonIds.length
-        ? await safeGetAll(db,
+        ? await safeGetAll(activeDB,
             `SELECT content_id, lesson_belong 
               FROM subject_contents
               WHERE lesson_belong IN (${lessonIds.map(() => '?').join(',')})`,
@@ -116,7 +117,7 @@ const SubjectPage = () => {
 
       // 4️⃣ Fetch pupil achievements for these contents
       const achievementsData = contentIds.length
-        ? await safeGetAll(db,
+        ? await safeGetAll(activeDB,
             `SELECT * 
               FROM pupil_achievements
               WHERE subject_content_id IN (${contentIds.map(() => '?').join(',')})`,
@@ -182,7 +183,7 @@ const SubjectPage = () => {
   // Mark selected lessons as done
   const onMarkDone = async () => {
     if (selectedIds.size === 0) return;
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     try {
       for (const lesson_id of selectedIds) {
@@ -191,7 +192,7 @@ const SubjectPage = () => {
         if (!lesson) continue;
 
         // Update all subject_contents for this lesson
-        await safeRun(db,
+        await safeRun(activeDB,
           `UPDATE subject_contents
           SET done = 1
           WHERE lesson_belong = ?`,
@@ -199,7 +200,7 @@ const SubjectPage = () => {
         );
 
         // Optionally, mark lesson itself as done
-        await safeRun(db,
+        await safeRun(activeDB,
           `UPDATE lessons
           SET status = 1
           WHERE lesson_id = ?`,
@@ -222,21 +223,21 @@ const SubjectPage = () => {
   const onUndone = async () => {
     if (selectedIds.size === 0) return;
 
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     try {
       for (const lesson_id of selectedIds) {
         const lesson = lessons.find(l => l.lesson_id === lesson_id);
         if (!lesson) continue;
 
-        await safeRun(db,
+        await safeRun(activeDB,
           `UPDATE subject_contents
           SET done = 0
           WHERE lesson_belong = ?`,
           [lesson.lesson_id]
         );
 
-        await safeRun(db,
+        await safeRun(activeDB,
           `UPDATE lessons
           SET status = 0
           WHERE lesson_id = ?`,
@@ -257,6 +258,7 @@ const SubjectPage = () => {
   
   const onDelete = async () => {
     if (selectedIds.size === 0) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     for (const lesson_id of selectedIds) {
       const lesson = lessons.find(l => l.lesson_id === lesson_id);
@@ -273,7 +275,7 @@ const SubjectPage = () => {
           content.content_type,
           () => {},  // setFileExists not needed here
           lesson.lesson_id,
-          db,
+          activeDB,
           inizialized
         );
       }
@@ -286,7 +288,7 @@ const SubjectPage = () => {
 
   const onDownload = async () => {
     if (!db) return;
-    if (!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
     if (selectedIds.size === 0) return;
 
     setDownloading(true);
@@ -299,7 +301,7 @@ const SubjectPage = () => {
       for (const lesson_id of lessonsToDownload) {
         const lessonId = lesson_id;
 
-        const contents = await safeGetAll(db,
+        const contents = await safeGetAll(activeDB,
           `SELECT content_id, title, file_name, url, content_type, lesson_belong FROM subject_contents WHERE lesson_belong = ?`,
           [lessonId]
         );
@@ -334,7 +336,7 @@ const SubjectPage = () => {
           () => {},
           () => {},
           c.lesson_belong,
-          db,
+          activeDB,
           inizialized
         );
 
@@ -343,7 +345,7 @@ const SubjectPage = () => {
 
           // mark in SQLite
           try {
-            await safeRun(db,
+            await safeRun(activeDB,
               `UPDATE subject_contents 
               SET downloaded_at = datetime('now'), file_name = ?, is_synced = 0
               WHERE content_id = ?`,
@@ -399,10 +401,10 @@ const SubjectPage = () => {
 
 
   const getContentsForLesson = async (lessonId) => {
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
     try {
       return await safeGetAll(
-        db,
+        activeDB,
         `SELECT content_id, content_type, url, file_name
         FROM subject_contents 
         WHERE lesson_belong = ?`,

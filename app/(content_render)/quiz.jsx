@@ -25,6 +25,7 @@ import { usePreventScreenCapture } from "expo-screen-capture";
 import Star from "../../components/Star";
 import { useRef } from "react";
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from "../../utils/dbWaiter";
 
 
 export default function QuizScreen() {
@@ -89,10 +90,10 @@ export default function QuizScreen() {
     const now = new Date().toISOString();
     const userId = await getCurrentUserId();
     if (!userId) return;
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     try {
-      await safeRun(db,
+      await safeRun(activeDB,
         `INSERT INTO pupil_test_scores (pupil_id, test_id, score, max_score, taken_at) 
         VALUES (?, ?, ?, ?, ?)`,
         [userId, quizData.quizId, finalScore, maxScore, now]
@@ -106,7 +107,7 @@ export default function QuizScreen() {
   const saveAnswers = async () => {
     const userId = await getCurrentUserId();
     if (!userId) return;
-    if(!inizialized);
+    const activeDB = await waitForDb(db, inizialized);
 
     try {
       for (const q of quizData.questions) {
@@ -117,7 +118,7 @@ export default function QuizScreen() {
           const selected = q.choices.find(c => c.text === userAns);
           const choiceId = selected ? selected.choice_id : null;
 
-          await safeRun(db,
+          await safeRun(activeDB,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, ?, 0, NULL)`,
             [userId, q.id, choiceId]
@@ -129,7 +130,7 @@ export default function QuizScreen() {
           const selected = q.choices.find(c => c.text === userAns);
           const choiceId = selected ? selected.choice_id : null;
 
-          await safeRun(db,
+          await safeRun(activeDB,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, ?, 0, NULL)`,
             [userId, q.id, choiceId]
@@ -144,7 +145,7 @@ export default function QuizScreen() {
             const selected = q.choices.find(c => c.text === ansText);
             const choiceId = selected ? selected.choice_id : null;
 
-            await safeRun(db,
+            await safeRun(activeDB,
               `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, is_synced, server_answer_id)
               VALUES (?, ?, ?, 0, NULL)`,
               [userId, q.id, choiceId]
@@ -154,7 +155,7 @@ export default function QuizScreen() {
 
         // ENUMERATION (NO choice_id)
         else if (q.type === "enumeration") {
-          await safeRun(db,
+          await safeRun(activeDB,
             `INSERT INTO pupil_answers (pupil_id, question_id, choice_id, answer_text, is_synced, server_answer_id)
             VALUES (?, ?, NULL, ?, 0, NULL)`,
             [userId, q.id, userAns || ""]

@@ -8,6 +8,7 @@ import { ApiUrlContext } from '../contexts/ApiUrlContext';
 import { usePreventScreenCapture } from "expo-screen-capture";
 import Star from './Star';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../utils/dbHelpers';
+import { waitForDb } from "../utils/dbWaiter";
 
 const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPracticeMode, onShowStar }) => {
   console.log("ResultScreen Props:", { score, quizData, answers, startedAt, isPracticeMode });
@@ -65,8 +66,8 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
 
   // 🔹 get single saved user from users table
   const getCurrentUserId = async () => {
-    if (!inizialized) return;
-    const result = await safeGetFirst(db, `SELECT user_id FROM users LIMIT 1`);
+    const activeDB = await waitForDb(db, inizialized);
+    const result = await safeGetFirst(activeDB, `SELECT user_id FROM users LIMIT 1`);
     return result?.user_id || null;
   };
 
@@ -79,7 +80,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
   const saveResults = async () => {
     const userId = await getCurrentUserId();
     if (!userId) return;
-    if (!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     const now = completedAt.toISOString();
 
@@ -87,7 +88,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
       // ----------------------------------------
       // 1. Get next attempt number
       // ----------------------------------------
-      const rows = await safeGetAll(db,
+      const rows = await safeGetAll(activeDB,
         `SELECT MAX(attempt_number) AS max_attempt
         FROM pupil_test_scores
         WHERE pupil_id = ? AND test_id = ?`,
@@ -102,7 +103,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
       // ----------------------------------------
       const grade = Math.round((score / quizData.settings.maxScore) * 100);
 
-      await safeRun(db,
+      await safeRun(activeDB,
         `INSERT INTO pupil_test_scores 
         (pupil_id, test_id, score, max_score, taken_at, grade, attempt_number, is_synced, server_score_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)`,
@@ -128,7 +129,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         }, 100);
 
         try {
-          await safeRun(db,
+          await safeRun(activeDB,
             `UPDATE users 
             SET pupil_points = pupil_points + 1 
             WHERE user_id = ?`,
@@ -146,14 +147,14 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
       // 3. Update content and lesson status (your existing code)
       // ----------------------------------------
       if (passed) {
-        await safeRun(db,
+        await safeRun(activeDB,
           `UPDATE subject_contents 
           SET done = 1, completed_at = ?, started_at = ?, duration = ?
           WHERE server_content_id = ?`,
           [now, startedAt, duration, quizData.contentId]
         );
 
-        const contentRow = await safeGetAll(db,
+        const contentRow = await safeGetAll(activeDB,
           `SELECT lesson_belong 
           FROM subject_contents 
           WHERE server_content_id = ?`,
@@ -163,7 +164,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         if (contentRow && contentRow.length > 0) {
           const lesson_belong = contentRow[0].lesson_belong;
 
-          const rows = await safeGetAll(db,
+          const rows = await safeGetAll(activeDB,
             `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
             [lesson_belong]
           );
@@ -175,7 +176,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
           const lessonStatus = progress === 100;
           const lessonCompletedAt = lessonStatus ? now : null;
 
-          await safeRun(db,
+          await safeRun(activeDB,
             `UPDATE lessons
             SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
             WHERE lesson_id = ?`,
@@ -203,7 +204,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
         if (q.type === "multichoice" || q.type === "truefalse") {
           const choiceId = findChoiceId(q, userAns);
 
-          await safeRun(db,
+          await safeRun(activeDB,
             `INSERT INTO pupil_answers 
             (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, ?, 0, NULL)`,
@@ -213,7 +214,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
 
         // ENUMERATION (no choice_id, only answer_text)
         else if (q.type === "enumeration") {
-          await safeRun(db,
+          await safeRun(activeDB,
             `INSERT INTO pupil_answers 
             (pupil_id, question_id, choice_id, is_synced, server_answer_id)
             VALUES (?, ?, NULL, 0, NULL)`,
@@ -228,7 +229,7 @@ const ResultScreen = ({ score, quizData, answers, onClose, startedAt, isPractice
           for (const ansText of arr) {
             const choiceId = findChoiceId(q, ansText);
 
-            await safeRun(db,
+            await safeRun(activeDB,
               `INSERT INTO pupil_answers 
               (pupil_id, question_id, choice_id, is_synced, server_answer_id)
               VALUES (?, ?, ?, 0, NULL)`,

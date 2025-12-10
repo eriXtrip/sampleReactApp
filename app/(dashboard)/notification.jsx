@@ -12,6 +12,7 @@ import { ProfileContext } from '../../contexts/ProfileContext';
 import { NOTIF_MAP } from '../../data/notif_map';
 import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const Notification = () => {
   const {db, inizialized} = useSQLiteContext(); // ✅ access to db
@@ -31,10 +32,10 @@ const Notification = () => {
 
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (!inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
       try {
         const result = await safeGetAll(
-          db,
+          activeDB,
           `SELECT * FROM notifications ORDER BY created_at DESC`
         );
         //console.log("📩 Notifications from DB:", result);

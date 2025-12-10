@@ -20,6 +20,7 @@ import { resolveLocalPath } from "../../utils/resolveLocalPath";
 import { useSQLiteContext } from 'expo-sqlite';
 import { saveAchievementAndUpdateContent } from "../../utils/achievementUtils";
 import { usePreventScreenCapture } from "expo-screen-capture";
+import { waitForDb } from "../../utils/dbHelpers";
 
 export default function AngleHuntScreen() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function AngleHuntScreen() {
   const [questionSource, setQuestionSource] = useState(null);
   const [choiceSources, setChoiceSources] = useState({});
   
-  const { db, initialized } = useSQLiteContext();
+  const { db, inizialized } = useSQLiteContext();
 
   // Load JSON data
   useEffect(() => {
@@ -256,7 +257,8 @@ export default function AngleHuntScreen() {
         badge={gameData.badge}
         onClose={async () => {
             console.log("Param to be sent:", { gameBadge: gameData.badge, content_id });
-            await saveAchievementAndUpdateContent(db, gameData.badge, content_id, inizialized);
+            const activeDB = await waitForDb(db, inizialized);
+            await saveAchievementAndUpdateContent(activeDB, gameData.badge, content_id, inizialized);
             setShowBadge(false)
             router.back();
         }}

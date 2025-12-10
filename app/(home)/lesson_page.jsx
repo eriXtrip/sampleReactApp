@@ -14,7 +14,8 @@ import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { LESSON_TYPE_ICON_MAP } from '../../data/lessonData';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
-import { wait } from '../../utils/wait'
+import { wait } from '../../utils/wait';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const LessonPage = () => {
   const colorScheme = useColorScheme();
@@ -44,9 +45,9 @@ const LessonPage = () => {
       try {
         if (!id) return;
 
-        if(!inizialized) return;
+        const activeDB = await waitForDb(db, inizialized);
 
-        const contents = await safeGetAll(db, 
+        const contents = await safeGetAll(activeDB, 
           `SELECT content_id, title, content_type, done, description, downloaded
           FROM subject_contents
           WHERE lesson_belong = ?`,

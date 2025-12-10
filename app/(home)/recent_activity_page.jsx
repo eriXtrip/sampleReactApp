@@ -11,6 +11,7 @@ import ThemedActivity from '../../components/ThemedActivity';
 import { Colors } from '../../constants/Colors';
 import { ProfileContext } from '../../contexts/ProfileContext';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const RecentActivityPage = () => {
   const navigation = useNavigation();
@@ -27,9 +28,9 @@ const RecentActivityPage = () => {
 
   useEffect(() => {
     const loadActivity = async () => {
-      if (!db || !inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
       try {
-        const raw = await safeGetAll(db, `
+        const raw = await safeGetAll(activeDB, `
           -- Completed Lessons
           SELECT 
             'lesson' AS type,

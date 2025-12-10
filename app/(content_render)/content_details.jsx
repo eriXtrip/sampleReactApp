@@ -1,6 +1,6 @@
 // samplereactapp/app/(content_render)/content_details.jsx
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, act } from 'react';
 import { useIsFocused } from "@react-navigation/native";
 import { View, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -34,6 +34,7 @@ import {
   showErrorToast 
 } from '../../utils/notificationUtils';
 import { safeExec, safeGetAll, safeRun, safeGetFirst } from '../../utils/dbHelpers';
+import { waitForDb } from '../../utils/dbWaiter';
 
 const ContentDetails = () => {
   const { id, title, type, shortdescription, content, file, status} = useLocalSearchParams();
@@ -83,10 +84,11 @@ const ContentDetails = () => {
     if (!id) return;
 
     const fetchContents = async () => {
-      if (!inizialized) return;
+      const activeDB = await waitForDb(db, inizialized);
+
       try {
         const result = await safeGetAll(
-          db,
+          activeDB,
           `SELECT * FROM subject_contents WHERE content_id = ?`,
           [id]
         );
@@ -104,13 +106,13 @@ const ContentDetails = () => {
           // 🔥 FETCH QUIZ SCORE WHEN type = quiz
           if (item.content_type === "quiz" && item.test_id) {
             const pupil = await safeGetFirst(
-              db,
+              activeDB,
               `SELECT user_id FROM users LIMIT 1`
             );
 
             if (pupil) {
               const scoreRow = await safeGetFirst(
-                db,
+                activeDB,
                 `SELECT score, max_score, grade, attempt_number, taken_at
                 FROM pupil_test_scores
                 WHERE test_id = ? AND pupil_id = ?
@@ -170,7 +172,7 @@ const ContentDetails = () => {
 
   const handleMarkAsDone = async () => {
     if (!contents.length) return;
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     const { content_id, lesson_belong } = contents[0];
     const newState = !isDone;
@@ -181,7 +183,7 @@ const ContentDetails = () => {
 
       // Step 1: Update subject_contents done & completed_at
       await safeRun(
-        db,
+        activeDB,
         `UPDATE subject_contents 
         SET done = ?, completed_at = ?, last_accessed = ?
         WHERE content_id = ?`,
@@ -191,7 +193,7 @@ const ContentDetails = () => {
 
       // Step 2: Fetch all contents for this lesson
       const rows = await safeGetAll(
-        db,
+        activeDB,
         `SELECT done FROM subject_contents WHERE lesson_belong = ?`,
         [lesson_belong]
       );
@@ -206,7 +208,7 @@ const ContentDetails = () => {
 
       // Step 4: Update lesson
       await safeRun(
-        db,
+        activeDB,
         `UPDATE lessons
         SET status = ?, progress = ?, last_accessed = ?, completed_at = ?
         WHERE lesson_id = ?`,
@@ -224,7 +226,7 @@ const ContentDetails = () => {
 
   const handleMarkAsDownloaded = async () => {
     if (!contents.length) return;
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     const item = contents[0];
 
@@ -248,7 +250,7 @@ const ContentDetails = () => {
           setFileExists,
           setDownloading,
           item.lesson_belong,
-          db,
+          activeDB,
           addDownload,        // pass to handleDownload
           updateDownload      // pass to handleDownload
         );
@@ -259,7 +261,7 @@ const ContentDetails = () => {
 
           const now = new Date().toISOString();
           await safeRun(
-            db,
+            activeDB,
             `UPDATE subject_contents 
             SET downloaded_at = ? 
             WHERE content_id = ?`,
@@ -279,7 +281,7 @@ const ContentDetails = () => {
 
   const handleOpen = async (practice = 0) => {
     if (!contents.length) return;
-    if(!inizialized) return;
+    const activeDB = await waitForDb(db, inizialized);
 
     const { content_id, file_name, url, content_type, title } = contents[0];
     console.log("Opening content:", { content_id, file_name, url, content_type, title });
@@ -290,7 +292,7 @@ const ContentDetails = () => {
     // --- update last_accessed column in subject_contents ---
     const now = new Date().toISOString();
       await safeRun(
-        db,
+        activeDB,
         `UPDATE subject_contents 
         SET last_accessed = ? 
         WHERE content_id = ?`,

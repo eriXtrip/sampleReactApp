@@ -35,7 +35,7 @@ const SyncInitializer = () => {
 };
 
 const SplashScreen = () => {
-  const db = useSQLiteContext();
+  const {db, initialized } = useSQLiteContext();
   const router = useRouter();
   const { user, isLoading } = useUser();
   const [targetRoute, setTargetRoute] = useState(null);
@@ -77,12 +77,12 @@ const SplashScreen = () => {
 
   // 2. When user is loaded → mark DB ready + trigger sync
   useEffect(() => {
-    if (!isLoading) {
+    if (db && initialized && !isLoading) {
       setTargetRoute(user ? '/home' : '/login');
       markDbInitialized();  // ← Enable sync
       triggerSyncIfOnline(db); // ← TRIGGER SYNC NOW
     }
-  }, [isLoading, user]);
+  }, [db, initialized, isLoading, user]);
 
   // 3. Navigate when ready
   useEffect(() => {
